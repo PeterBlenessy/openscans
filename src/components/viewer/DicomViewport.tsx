@@ -11,6 +11,7 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const [isInitialized, setIsInitialized] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isLoadingImage, setIsLoadingImage] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [isPanning, setIsPanning] = useState(false)
   const [isModifierKeyPressed, setIsModifierKeyPressed] = useState(false)
@@ -26,6 +27,7 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
   const currentPanRef = useRef({ x: 0, y: 0 })
   const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const fitScaleRef = useRef(1)
+  const currentImageIdRef = useRef<string | null>(null)
 
   const currentInstance = useStudyStore((state) => state.currentInstance)
   const settings = useViewportStore((state) => state.settings)
@@ -117,6 +119,16 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
     const element = canvasRef.current
     const imageId = currentInstance.imageId
 
+    // Skip if this is already the displayed image
+    if (currentImageIdRef.current === imageId) {
+      console.log('Image already displayed, skipping reload:', imageId)
+      return
+    }
+
+    // Mark image as loading to prevent viewport settings from interfering
+    setIsLoadingImage(true)
+    currentImageIdRef.current = imageId
+
     async function loadAndDisplayImage() {
       try {
         console.log('=== Starting image load ===')
@@ -175,20 +187,22 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
         }
 
         console.log('Image displayed successfully')
+        setIsLoadingImage(false)
       } catch (err) {
         console.error('Failed to load/display image:', err)
         console.error('Error details:', JSON.stringify(err, Object.getOwnPropertyNames(err)))
         console.error('Stack trace:', err instanceof Error ? err.stack : 'No stack trace')
         setError(`Failed to load DICOM image: ${err instanceof Error ? err.message : String(err)}`)
+        setIsLoadingImage(false)
       }
     }
 
     loadAndDisplayImage()
   }, [isInitialized, currentInstance])
 
-  // Update viewport settings when they change (but not during dragging or panning)
+  // Update viewport settings when they change (but not during dragging, panning, or image loading)
   useEffect(() => {
-    if (!isInitialized || !currentInstance || !canvasRef.current || isDragging || isPanning) return
+    if (!isInitialized || !currentInstance || !canvasRef.current || isDragging || isPanning || isLoadingImage) return
 
     const element = canvasRef.current
 
@@ -209,7 +223,7 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
     } catch (err) {
       console.error('Failed to update viewport:', err)
     }
-  }, [isInitialized, currentInstance, settings, isDragging, isPanning])
+  }, [isInitialized, currentInstance, settings, isDragging, isPanning, isLoadingImage])
 
   // Mouse event handlers for window/level adjustment
   useEffect(() => {
@@ -471,10 +485,11 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
     <div className={`bg-black ${className} relative`}>
       <div
         ref={canvasRef}
-        className="w-full h-full"
+        className="w-full h-full bg-black"
         style={{
           minHeight: '400px',
-          cursor: showZoomIndicator ? (isZoomingIn ? 'zoom-in' : 'zoom-out') : isDragging ? 'crosshair' : isPanning ? 'grabbing' : isModifierKeyPressed ? 'grab' : 'crosshair'
+          cursor: showZoomIndicator ? (isZoomingIn ? 'zoom-in' : 'zoom-out') : isDragging ? 'crosshair' : isPanning ? 'grabbing' : isModifierKeyPressed ? 'grab' : 'crosshair',
+          imageRendering: 'auto' // Use browser's default high-quality rendering for medical images
         }}
       />
 

@@ -38,6 +38,12 @@ export async function initCornerstone(): Promise<void> {
     cornerstoneWADOImageLoader.webWorkerManager.initialize(config)
     console.log('WADO Image Loader configured (web workers disabled)')
 
+    // Configure Cornerstone image cache for better performance
+    // This prevents flickering when navigating through images
+    const imageCacheSize = 1024 * 1024 * 1024 // 1GB cache
+    cornerstone.imageCache.setMaximumSizeBytes(imageCacheSize)
+    console.log(`Image cache configured: ${imageCacheSize / (1024 * 1024)}MB`)
+
     // Register the WADO image loader with Cornerstone for both schemes
     cornerstone.registerImageLoader('wadouri', cornerstoneWADOImageLoader.wadouri.loadImage)
     cornerstone.registerImageLoader('dicomfile', cornerstoneWADOImageLoader.wadouri.loadImage)
