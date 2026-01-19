@@ -13,13 +13,18 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
   const [error, setError] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [currentWL, setCurrentWL] = useState({ width: 0, center: 0 })
+  const [showZoomIndicator, setShowZoomIndicator] = useState(false)
+  const [currentZoom, setCurrentZoom] = useState(1)
   const dragStartPos = useRef({ x: 0, y: 0 })
   const dragStartWL = useRef({ width: 0, center: 0 })
   const currentWLRef = useRef({ width: 0, center: 0 })
+  const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const fitScaleRef = useRef(1)
 
   const currentInstance = useStudyStore((state) => state.currentInstance)
   const settings = useViewportStore((state) => state.settings)
   const setWindowLevel = useViewportStore((state) => state.setWindowLevel)
+  const setZoom = useViewportStore((state) => state.setZoom)
 
   // Initialize Cornerstone
   useEffect(() => {
@@ -95,13 +100,6 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
         console.log('Calling cornerstone.loadImage with imageId:', imageId)
         const image = await cornerstone.loadImage(imageId)
         console.log('✓ Image loaded successfully')
-        console.log('Image object:', {
-          width: image.width,
-          height: image.height,
-          color: image.color,
-          minPixelValue: image.minPixelValue,
-          maxPixelValue: image.maxPixelValue
-        })
 
         // Display it
         console.log('Displaying image on element...')
@@ -120,8 +118,6 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
           const windowWidth = currentInstance.metadata.windowWidth || settings.windowWidth
           const windowCenter = currentInstance.metadata.windowCenter || settings.windowCenter
 
-          console.log('[W/L] Image load - DICOM metadata W/L:', currentInstance.metadata.windowWidth, '/', currentInstance.metadata.windowCenter)
-          console.log('[W/L] Image load - Using W/L:', windowWidth, '/', windowCenter)
 
           // Calculate scale to fit image in viewport
           const elementRect = element.getBoundingClientRect()
@@ -132,6 +128,9 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
           const scaleX = elementWidth / image.width
           const scaleY = elementHeight / image.height
           const fitScale = Math.min(scaleX, scaleY)
+
+          // Store fitScale for zoom calculations
+          fitScaleRef.current = fitScale
 
           viewport.voi.windowWidth = windowWidth
           viewport.voi.windowCenter = windowCenter
@@ -166,10 +165,9 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
     try {
       const viewport = cornerstone.getViewport(element)
       if (viewport) {
-        console.log('[W/L] Applying settings from store - W:', settings.windowWidth, 'L:', settings.windowCenter)
         viewport.voi.windowWidth = settings.windowWidth
         viewport.voi.windowCenter = settings.windowCenter
-        viewport.scale = settings.zoom
+        viewport.scale = fitScaleRef.current * settings.zoom
         viewport.translation = { x: settings.pan.x, y: settings.pan.y }
         viewport.rotation = settings.rotation
         viewport.hflip = settings.flipHorizontal
@@ -189,7 +187,6 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
     if (!element || !isInitialized) return
 
     let isCurrentlyDragging = false
-    let moveCounter = 0
 
     const handleMouseDown = (e: MouseEvent) => {
       if (e.button === 0) { // Left mouse button
@@ -200,7 +197,6 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
         dragStartWL.current = { width: settings.windowWidth, center: settings.windowCenter }
         currentWLRef.current = { ...dragStartWL.current }
         setCurrentWL(dragStartWL.current)
-        console.log('[W/L] Mouse down - starting values:', dragStartWL.current)
         e.preventDefault()
       }
     }
@@ -215,8 +211,8 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
       // Adjust window/level based on mouse movement
       // Horizontal movement: window width (contrast)
       // Vertical movement: window center (brightness)
-      const newWidth = Math.max(1, dragStartWL.current.width + totalDeltaX * 4)
-      const newCenter = dragStartWL.current.center - totalDeltaY * 4
+      const newWidth = Math.max(1, dragStartWL.current.width + totalDeltaX * 1.5)
+      const newCenter = dragStartWL.current.center - totalDeltaY * 1.5
 
       // Store in ref for mouseUp
       currentWLRef.current = { width: newWidth, center: newCenter }
@@ -225,10 +221,6 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
       try {
         const viewport = cornerstone.getViewport(element)
         if (viewport) {
-          // Log every 10th move to avoid spam
-          if (moveCounter++ % 10 === 0) {
-            console.log('[W/L] Drag - deltaX:', totalDeltaX, 'deltaY:', totalDeltaY, '→ W:', Math.round(newWidth), 'L:', Math.round(newCenter))
-          }
           viewport.voi.windowWidth = newWidth
           viewport.voi.windowCenter = newCenter
           cornerstone.setViewport(element, viewport)
@@ -245,7 +237,6 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
       if (isCurrentlyDragging) {
         isCurrentlyDragging = false
         setIsDragging(false)
-        console.log('[W/L] Mouse up - final values:', currentWLRef.current)
         // Now update the store with final values
         setWindowLevel(currentWLRef.current.center, currentWLRef.current.width)
       }
@@ -272,6 +263,62 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
       element.removeEventListener('mouseleave', handleMouseLeave)
     }
   }, [isInitialized, settings.windowWidth, settings.windowCenter, setWindowLevel])
+
+  // Mouse wheel event handler for zoom
+  useEffect(() => {
+    const element = canvasRef.current
+    if (!element || !isInitialized) return
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+
+      // Calculate zoom delta (negative deltaY = scroll up = zoom in)
+      const zoomDelta = -Math.sign(e.deltaY) * 0.05
+
+      // Get current zoom from store and calculate new zoom
+      const currentZoomValue = settings.zoom
+      const newZoom = Math.max(0.1, Math.min(20, currentZoomValue + zoomDelta))
+
+      console.log('[Zoom] Wheel - current:', currentZoomValue.toFixed(2), 'delta:', zoomDelta.toFixed(2), '→ new:', newZoom.toFixed(2))
+
+      // Apply zoom directly to viewport
+      try {
+        const viewport = cornerstone.getViewport(element)
+        if (viewport) {
+          viewport.scale = fitScaleRef.current * newZoom
+          cornerstone.setViewport(element, viewport)
+
+          // Update local state for display
+          setCurrentZoom(newZoom)
+          setShowZoomIndicator(true)
+
+          // Clear existing timeout
+          if (zoomTimeoutRef.current) {
+            clearTimeout(zoomTimeoutRef.current)
+          }
+
+          // Hide zoom indicator after 1 second
+          zoomTimeoutRef.current = setTimeout(() => {
+            setShowZoomIndicator(false)
+          }, 1000)
+
+          // Update store with new zoom value
+          setZoom(newZoom)
+        }
+      } catch (err) {
+        console.error('Failed to update zoom:', err)
+      }
+    }
+
+    element.addEventListener('wheel', handleWheel, { passive: false })
+
+    return () => {
+      element.removeEventListener('wheel', handleWheel)
+      if (zoomTimeoutRef.current) {
+        clearTimeout(zoomTimeoutRef.current)
+      }
+    }
+  }, [isInitialized, settings.zoom, setZoom])
 
   if (error) {
     return (
@@ -320,8 +367,17 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
       {isDragging && (
         <div className="absolute top-4 left-4 bg-black/80 text-white px-4 py-2 rounded shadow-lg">
           <div className="text-sm font-mono">
-            <div>W: {Math.round(currentWL.width)}</div>
-            <div>L: {Math.round(currentWL.center)}</div>
+            <div>Contrast: {Math.round(currentWL.width)}</div>
+            <div>Brightness: {Math.round(currentWL.center)}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Zoom indicator overlay */}
+      {showZoomIndicator && !isDragging && (
+        <div className="absolute top-4 left-4 bg-black/80 text-white px-4 py-2 rounded shadow-lg">
+          <div className="text-sm font-mono">
+            <div>Zoom: {currentZoom.toFixed(1)}x</div>
           </div>
         </div>
       )}
