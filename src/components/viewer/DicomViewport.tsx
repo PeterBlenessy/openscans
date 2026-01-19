@@ -103,9 +103,24 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
         // Apply viewport settings
         const viewport = cornerstone.getViewport(element)
         if (viewport) {
-          viewport.voi.windowWidth = settings.windowWidth
-          viewport.voi.windowCenter = settings.windowCenter
-          viewport.scale = settings.zoom
+          // Use DICOM metadata window/level if available, otherwise use stored settings
+          // This is crucial for different modalities (MR vs X-ray) which have very different ranges
+          const windowWidth = currentInstance.metadata.windowWidth || settings.windowWidth
+          const windowCenter = currentInstance.metadata.windowCenter || settings.windowCenter
+
+          // Calculate scale to fit image in viewport
+          const elementRect = element.getBoundingClientRect()
+          const elementWidth = elementRect.width
+          const elementHeight = elementRect.height
+
+          // Fit the image to the viewport by calculating the appropriate scale
+          const scaleX = elementWidth / image.width
+          const scaleY = elementHeight / image.height
+          const fitScale = Math.min(scaleX, scaleY)
+
+          viewport.voi.windowWidth = windowWidth
+          viewport.voi.windowCenter = windowCenter
+          viewport.scale = fitScale * settings.zoom
           viewport.translation = { x: settings.pan.x, y: settings.pan.y }
           viewport.rotation = settings.rotation
           viewport.hflip = settings.flipHorizontal

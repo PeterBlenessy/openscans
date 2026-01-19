@@ -63,17 +63,29 @@ export const useStudyStore = create<StudyState>((set, get) => ({
   },
 
   setCurrentSeries: (seriesUID) => {
-    const { currentStudy } = get()
-    if (!currentStudy) return
+    const { studies } = get()
 
-    const series = currentStudy.series.find(
-      (s) => s.seriesInstanceUID === seriesUID
-    )
-    if (series) {
+    // Find which study contains this series
+    let foundStudy: DicomStudy | null = null
+    let foundSeries: DicomSeries | null = null
+
+    for (const study of studies) {
+      const series = study.series.find(
+        (s) => s.seriesInstanceUID === seriesUID
+      )
+      if (series) {
+        foundStudy = study
+        foundSeries = series
+        break
+      }
+    }
+
+    if (foundStudy && foundSeries) {
       set({
-        currentSeries: series,
+        currentStudy: foundStudy,
+        currentSeries: foundSeries,
         currentInstanceIndex: 0,
-        currentInstance: series.instances[0] || null,
+        currentInstance: foundSeries.instances[0] || null,
       })
     }
   },
