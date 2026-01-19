@@ -3,14 +3,20 @@ import { FileDropzone } from './components/viewer/FileDropzone'
 import { DicomViewport } from './components/viewer/DicomViewport'
 import { StudySeriesBrowser } from './components/viewer/StudySeriesBrowser'
 import { ThumbnailStrip } from './components/viewer/ThumbnailStrip'
+import { KeyboardShortcutsHelp } from './components/viewer/KeyboardShortcutsHelp'
 import { useStudyStore } from './stores/studyStore'
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 
 function App() {
   const [showDropzone, setShowDropzone] = useState(true)
+  const [showHelp, setShowHelp] = useState(false)
   const currentInstance = useStudyStore((state) => state.currentInstance)
   const currentSeries = useStudyStore((state) => state.currentSeries)
   const currentInstanceIndex = useStudyStore((state) => state.currentInstanceIndex)
   const { nextInstance, previousInstance } = useStudyStore()
+
+  // Enable keyboard shortcuts
+  useKeyboardShortcuts({ onToggleHelp: () => setShowHelp(!showHelp) })
 
   const handleFilesLoaded = () => {
     setShowDropzone(false)
@@ -18,15 +24,28 @@ function App() {
 
   return (
     <div className="h-screen bg-gray-900 text-white flex flex-col">
+      {/* Keyboard Shortcuts Help */}
+      <KeyboardShortcutsHelp show={showHelp} onClose={() => setShowHelp(false)} />
+
       {/* Header */}
-      <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
-        <h1 className="text-2xl font-bold">MR DICOM Viewer</h1>
-        {currentSeries && (
-          <p className="text-sm text-gray-400 mt-1">
-            {currentSeries.seriesDescription || `Series ${currentSeries.seriesNumber}`} -
-            Image {currentInstanceIndex + 1} of {currentSeries.instances.length}
-          </p>
-        )}
+      <header className="bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">MR DICOM Viewer</h1>
+          {currentSeries && (
+            <p className="text-sm text-gray-400 mt-1">
+              {currentSeries.seriesDescription || `Series ${currentSeries.seriesNumber}`} -
+              Image {currentInstanceIndex + 1} of {currentSeries.instances.length}
+            </p>
+          )}
+        </div>
+        <button
+          onClick={() => setShowHelp(true)}
+          className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm flex items-center gap-2"
+          title="Keyboard shortcuts"
+        >
+          <span>?</span>
+          <span>Help</span>
+        </button>
       </header>
 
       {/* Main Content */}
