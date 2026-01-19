@@ -11,9 +11,15 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const [isInitialized, setIsInitialized] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [currentWL, setCurrentWL] = useState({ width: 0, center: 0 })
+  const dragStartPos = useRef({ x: 0, y: 0 })
+  const dragStartWL = useRef({ width: 0, center: 0 })
+  const currentWLRef = useRef({ width: 0, center: 0 })
 
   const currentInstance = useStudyStore((state) => state.currentInstance)
   const settings = useViewportStore((state) => state.settings)
+  const setWindowLevel = useViewportStore((state) => state.setWindowLevel)
 
   // Initialize Cornerstone
   useEffect(() => {
@@ -89,7 +95,13 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
         console.log('Calling cornerstone.loadImage with imageId:', imageId)
         const image = await cornerstone.loadImage(imageId)
         console.log('✓ Image loaded successfully')
-        console.log('Image object:', {width: image.width, height: image.height, color: image.color})
+        console.log('Image object:', {
+          width: image.width,
+          height: image.height,
+          color: image.color,
+          minPixelValue: image.minPixelValue,
+          maxPixelValue: image.maxPixelValue
+        })
 
         // Display it
         console.log('Displaying image on element...')
@@ -107,6 +119,9 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
           // This is crucial for different modalities (MR vs X-ray) which have very different ranges
           const windowWidth = currentInstance.metadata.windowWidth || settings.windowWidth
           const windowCenter = currentInstance.metadata.windowCenter || settings.windowCenter
+
+          console.log('[W/L] Image load - DICOM metadata W/L:', currentInstance.metadata.windowWidth, '/', currentInstance.metadata.windowCenter)
+          console.log('[W/L] Image load - Using W/L:', windowWidth, '/', windowCenter)
 
           // Calculate scale to fit image in viewport
           const elementRect = element.getBoundingClientRect()
@@ -140,17 +155,18 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
     }
 
     loadAndDisplayImage()
-  }, [isInitialized, currentInstance, settings])
+  }, [isInitialized, currentInstance])
 
-  // Update viewport settings when they change
+  // Update viewport settings when they change (but not during dragging)
   useEffect(() => {
-    if (!isInitialized || !currentInstance || !canvasRef.current) return
+    if (!isInitialized || !currentInstance || !canvasRef.current || isDragging) return
 
     const element = canvasRef.current
 
     try {
       const viewport = cornerstone.getViewport(element)
       if (viewport) {
+        console.log('[W/L] Applying settings from store - W:', settings.windowWidth, 'L:', settings.windowCenter)
         viewport.voi.windowWidth = settings.windowWidth
         viewport.voi.windowCenter = settings.windowCenter
         viewport.scale = settings.zoom
@@ -165,7 +181,97 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
     } catch (err) {
       console.error('Failed to update viewport:', err)
     }
-  }, [isInitialized, currentInstance, settings])
+  }, [isInitialized, currentInstance, settings, isDragging])
+
+  // Mouse event handlers for window/level adjustment
+  useEffect(() => {
+    const element = canvasRef.current
+    if (!element || !isInitialized) return
+
+    let isCurrentlyDragging = false
+    let moveCounter = 0
+
+    const handleMouseDown = (e: MouseEvent) => {
+      if (e.button === 0) { // Left mouse button
+        isCurrentlyDragging = true
+        setIsDragging(true)
+        dragStartPos.current = { x: e.clientX, y: e.clientY }
+        // Store the starting window/level values from current settings
+        dragStartWL.current = { width: settings.windowWidth, center: settings.windowCenter }
+        currentWLRef.current = { ...dragStartWL.current }
+        setCurrentWL(dragStartWL.current)
+        console.log('[W/L] Mouse down - starting values:', dragStartWL.current)
+        e.preventDefault()
+      }
+    }
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isCurrentlyDragging) return
+
+      // Calculate total delta from initial mouse down position
+      const totalDeltaX = e.clientX - dragStartPos.current.x
+      const totalDeltaY = e.clientY - dragStartPos.current.y
+
+      // Adjust window/level based on mouse movement
+      // Horizontal movement: window width (contrast)
+      // Vertical movement: window center (brightness)
+      const newWidth = Math.max(1, dragStartWL.current.width + totalDeltaX * 4)
+      const newCenter = dragStartWL.current.center - totalDeltaY * 4
+
+      // Store in ref for mouseUp
+      currentWLRef.current = { width: newWidth, center: newCenter }
+
+      // Apply directly to Cornerstone viewport (no store update yet)
+      try {
+        const viewport = cornerstone.getViewport(element)
+        if (viewport) {
+          // Log every 10th move to avoid spam
+          if (moveCounter++ % 10 === 0) {
+            console.log('[W/L] Drag - deltaX:', totalDeltaX, 'deltaY:', totalDeltaY, '→ W:', Math.round(newWidth), 'L:', Math.round(newCenter))
+          }
+          viewport.voi.windowWidth = newWidth
+          viewport.voi.windowCenter = newCenter
+          cornerstone.setViewport(element, viewport)
+
+          // Update local state for display only
+          setCurrentWL({ width: newWidth, center: newCenter })
+        }
+      } catch (err) {
+        console.error('Failed to update viewport during drag:', err)
+      }
+    }
+
+    const handleMouseUp = () => {
+      if (isCurrentlyDragging) {
+        isCurrentlyDragging = false
+        setIsDragging(false)
+        console.log('[W/L] Mouse up - final values:', currentWLRef.current)
+        // Now update the store with final values
+        setWindowLevel(currentWLRef.current.center, currentWLRef.current.width)
+      }
+    }
+
+    const handleMouseLeave = () => {
+      if (isCurrentlyDragging) {
+        isCurrentlyDragging = false
+        setIsDragging(false)
+        // Update store on mouse leave too
+        setWindowLevel(currentWLRef.current.center, currentWLRef.current.width)
+      }
+    }
+
+    element.addEventListener('mousedown', handleMouseDown)
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    element.addEventListener('mouseleave', handleMouseLeave)
+
+    return () => {
+      element.removeEventListener('mousedown', handleMouseDown)
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+      element.removeEventListener('mouseleave', handleMouseLeave)
+    }
+  }, [isInitialized, settings.windowWidth, settings.windowCenter, setWindowLevel])
 
   if (error) {
     return (
@@ -200,12 +306,25 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
   }
 
   return (
-    <div className={`bg-black ${className}`}>
+    <div className={`bg-black ${className} relative`}>
       <div
         ref={canvasRef}
         className="w-full h-full"
-        style={{ minHeight: '400px' }}
+        style={{
+          minHeight: '400px',
+          cursor: isDragging ? 'grabbing' : 'grab'
+        }}
       />
+
+      {/* Window/Level indicator overlay */}
+      {isDragging && (
+        <div className="absolute top-4 left-4 bg-black/80 text-white px-4 py-2 rounded shadow-lg">
+          <div className="text-sm font-mono">
+            <div>W: {Math.round(currentWL.width)}</div>
+            <div>L: {Math.round(currentWL.center)}</div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
