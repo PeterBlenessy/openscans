@@ -4,6 +4,7 @@ import { DicomViewport } from './components/viewer/DicomViewport'
 import { StudySeriesBrowser } from './components/viewer/StudySeriesBrowser'
 import { ThumbnailStrip } from './components/viewer/ThumbnailStrip'
 import { KeyboardShortcutsHelp } from './components/viewer/KeyboardShortcutsHelp'
+import { ImagePresets } from './components/viewer/ImagePresets'
 import { useStudyStore } from './stores/studyStore'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 
@@ -49,7 +50,7 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex">
+      <main className="flex-1 flex overflow-hidden">
         {showDropzone ? (
           <div className="flex-1 flex items-center justify-center p-8">
             <FileDropzone
@@ -102,6 +103,11 @@ function App() {
                 </div>
               </div>
 
+              {/* Image Presets */}
+              <div className="p-4 border-b border-gray-700 flex-shrink-0">
+                <ImagePresets />
+              </div>
+
               {/* Current Metadata */}
               <div className="p-4 flex-1 overflow-y-auto">
                 <h2 className="text-lg font-semibold mb-3">Current Image</h2>
@@ -128,11 +134,11 @@ function App() {
                       <p className="text-white">{currentInstance.instanceNumber}</p>
                     </div>
                     <div>
-                      <span className="text-gray-400">Window Center:</span>
+                      <span className="text-gray-400">Brightness:</span>
                       <p className="text-white">{currentInstance.metadata.windowCenter}</p>
                     </div>
                     <div>
-                      <span className="text-gray-400">Window Width:</span>
+                      <span className="text-gray-400">Contrast:</span>
                       <p className="text-white">{currentInstance.metadata.windowWidth}</p>
                     </div>
                   </div>
