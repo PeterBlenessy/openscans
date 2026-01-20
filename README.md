@@ -132,8 +132,10 @@ pnpm test
 - ✅ **Phase 1.1**: Project setup, dependencies, folder structure
 - ✅ **Phase 1.2**: Cornerstone integration, DICOM image loader
 - ✅ **Phase 1.3**: File loading, parsing, and basic viewer
-- ⏳ **Phase 1.4**: Navigation controls and viewport manipulation tools
-- ⏳ **Phase 1.5**: Testing and polish for MVP
+- ✅ **Phase 1.4**: Navigation controls and viewport manipulation tools (Window/Level, Zoom, Pan, Image Presets)
+- ✅ **Phase 1.5**: Polish & UX (Thumbnails, Keyboard Shortcuts, Help Overlay, Image Slider, Collapsible Sidebar, Dark Theme)
+
+**Overall Progress**: Phase 1 MVP is 95% complete. See [STATUS.md](plans/STATUS.md) for detailed progress.
 
 ## Contributing
 
@@ -141,7 +143,7 @@ This is currently a development project following the implementation plan outlin
 
 ## License
 
-To be determined
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Resources
 
