@@ -43,44 +43,28 @@ This document captures feature ideas and UX improvements for consideration in fu
 
 ---
 
-### 2. Reset View Button
+### 2. Reset View Button ✅ COMPLETED
 
 **Description**: A toolbar button to reset zoom, pan, rotation, and window/level to defaults.
 
-**Rationale**: Currently users must reload files to reset the viewport. This is a common action in medical imaging workflows.
-
-**Features**:
-- Single button to reset all viewport transformations
-- Keyboard shortcut (e.g., `R` or `Escape`)
-- Option to reset only specific settings (zoom only, W/L only)
-
-**Complexity**: Low
-**Dependencies**: None
+**Status**: Implemented as part of the Viewport Toolbar (January 20, 2026)
 
 ---
 
-### 3. Viewport Toolbar
+### 3. Viewport Toolbar ✅ COMPLETED
 
 **Description**: A floating or docked toolbar on the viewport with quick-access buttons for common actions.
 
-**Rationale**: Improves discoverability of existing features. Currently many features are only accessible via keyboard shortcuts.
+**Status**: Implemented January 20, 2026
 
-**Toolbar Actions**:
-- Reset view
+**Implemented Features**:
+- Reset view button
 - Fit to window
-- 1:1 zoom (actual pixels)
+- Zoom in/out buttons
 - Rotate 90° clockwise/counter-clockwise
-- Flip horizontal/vertical
-- Invert colors
-- Current tool indicator with dropdown
-
-**Placement Options**:
-- Floating overlay (top or bottom of viewport)
-- Docked toolbar (above viewport)
-- Expandable radial menu
-
-**Complexity**: Medium
-**Dependencies**: None
+- Flip horizontal/vertical (toggleable)
+- Invert colors (toggleable)
+- Floating overlay at top center of viewport
 
 ---
 
@@ -141,21 +125,19 @@ This document captures feature ideas and UX improvements for consideration in fu
 
 ---
 
-### 7. Recent Studies History
+### 7. Recent Studies History ✅ COMPLETED
 
 **Description**: Keep track of recently loaded studies within a session.
 
-**Rationale**: Users may load multiple studies and want to switch between them without re-loading files.
+**Status**: Implemented January 20, 2026
 
-**Features**:
-- Session history list in sidebar
+**Implemented Features**:
+- Session history list in left drawer menu
 - Quick-switch between loaded studies
-- Study count indicator
+- Study metadata display (patient name, description, series/image counts)
 - Clear history option
-- Future enhancement: persist metadata in localStorage (without PHI)
-
-**Complexity**: Medium
-**Dependencies**: studyStore modifications
+- Automatic tracking when studies are loaded
+- Limits to 10 most recent entries
 
 ---
 
@@ -237,15 +219,16 @@ The following features were considered but are not recommended for this project:
 ## Implementation Suggestions
 
 ### Quick Wins (< 1 day each)
-1. Reset View Button
+1. ~~Reset View Button~~ ✅ Completed
 2. Full-Screen Mode
 3. Theme Toggle (if using Tailwind dark mode)
 
 ### Medium Effort (1-3 days each)
 1. Settings Panel (basic version)
-2. Viewport Toolbar
+2. ~~Viewport Toolbar~~ ✅ Completed
 3. Cine Loop
 4. Contextual Information Overlay
+5. ~~Recent Studies History~~ ✅ Completed
 
 ### Larger Efforts (3+ days each)
 1. Comparison/Split View
@@ -258,18 +241,19 @@ The following features were considered but are not recommended for this project:
 
 These features can be integrated into the existing phase structure:
 
-| Feature | Suggested Phase |
-|---------|-----------------|
-| Reset View Button | Phase 1.5 (Polish) |
-| Viewport Toolbar | Phase 1.5 (Polish) |
-| Theme Toggle | Phase 1.5 or Phase 4 |
-| Settings Panel | Phase 1.5 or Phase 4 |
-| Cine Loop | Phase 2 or standalone |
-| Contextual Overlay | Phase 2 |
-| Measurement Tools | Phase 2 (with annotations) |
-| Split View | Phase 2 or Phase 3 |
-| Full-Screen Mode | Phase 4 (Polish) |
-| Recent Studies | Phase 4 (Polish) |
+| Feature | Suggested Phase | Status |
+|---------|-----------------|--------|
+| Reset View Button | Phase 1.5 (Polish) | ✅ Completed |
+| Viewport Toolbar | Phase 1.5 (Polish) | ✅ Completed |
+| Recent Studies | Phase 1.5 (Polish) | ✅ Completed |
+| Left Drawer Menu | Phase 1.5 (Polish) | ✅ Completed |
+| Theme Toggle | Phase 1.5 or Phase 4 | Pending |
+| Settings Panel | Phase 1.5 or Phase 4 | Pending |
+| Cine Loop | Phase 2 or standalone | Pending |
+| Contextual Overlay | Phase 2 | Pending |
+| Measurement Tools | Phase 2 (with annotations) | Pending |
+| Split View | Phase 2 or Phase 3 | Pending |
+| Full-Screen Mode | Phase 4 (Polish) | Pending |
 
 ---
 

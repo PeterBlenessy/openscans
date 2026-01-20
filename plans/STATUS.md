@@ -1,7 +1,7 @@
 # MR DICOM Viewer - Implementation Status
 
-**Last Updated**: January 19, 2026
-**Current Phase**: Phase 1 Nearly Complete (90%+) ✅
+**Last Updated**: January 20, 2026
+**Current Phase**: Phase 1 Nearly Complete (95%+)
 
 ---
 
@@ -108,6 +108,9 @@
 - [x] **Collapsible Sidebar** - Expandable/collapsible sections with localStorage persistence
 - [x] **Modern Dark Theme** - Professional black color scheme with neutral grays
 - [x] **Headless UI Integration** - Accessible, unstyled UI components
+- [x] **Viewport Toolbar** - Floating toolbar with reset, fit, zoom, rotate, flip, invert buttons
+- [x] **Left Drawer Menu** - Collapsible left drawer with recent studies and quick actions
+- [x] **Recent Studies History** - Session history for switching between loaded studies
 - [ ] Loading indicators (basic states present, could be enhanced)
 - [ ] Error handling improvements (basic error handling present)
 - [ ] Comprehensive testing with various DICOM files
@@ -121,7 +124,6 @@
 ### Phase 1.5: Final Polish (Optional)
 - [ ] Enhanced loading indicators and progress bars
 - [ ] Improved error messages and recovery options
-- [ ] Reset view button (reset zoom/pan/window-level)
 - [ ] Performance optimization and memory profiling
 - [ ] Comprehensive DICOM file testing
 
@@ -213,19 +215,20 @@ pnpm lint
 ## 🎯 Immediate Next Actions
 
 ### Option A: Polish Phase 1
-1. **Add Reset View Button**
-   - Reset zoom, pan, and window/level to defaults
-   - Quick and useful UX improvement
-
-2. **Enhanced Loading States**
+1. **Enhanced Loading States**
    - Better progress indicators for large files
    - Skeleton loaders for thumbnails
    - User-friendly error messages
 
-3. **Testing & Optimization**
+2. **Testing & Optimization**
    - Test with various DICOM files from MR-data folder
    - Memory profiling and leak prevention
    - Performance optimization
+
+3. **Additional UI Enhancements**
+   - Theme toggle (light/dark)
+   - Full-screen mode
+   - Settings panel
 
 ### Option B: Start Phase 2 (Recommended)
 1. **Begin Annotation System**
