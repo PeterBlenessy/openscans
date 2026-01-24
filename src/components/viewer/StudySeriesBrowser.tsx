@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useStudyStore } from '@/stores/studyStore'
 import { DicomStudy, DicomSeries } from '@/types'
+import { formatSeriesDescription } from '@/lib/utils/formatSeriesDescription'
 
 export function StudySeriesBrowser() {
   const studies = useStudyStore((state) => state.studies)
@@ -121,15 +122,15 @@ function SeriesItem({ series, isSelected, onClick }: SeriesItemProps) {
   return (
     <button
       onClick={onClick}
-      className={`w-full px-3 py-2 pl-8 text-left hover:bg-[#1a1a1a]/50 transition-colors ${
-        isSelected ? 'bg-[#2a2a2a] hover:bg-[#3a3a3a]' : ''
+      className={`w-full px-3 py-2 pl-8 text-left transition-colors ${
+        isSelected ? 'bg-[#2a2a2a] border border-[#3a3a3a] hover:bg-[#3a3a3a]' : 'border border-transparent hover:bg-[#1a1a1a]/50'
       }`}
     >
       <div className="flex items-start gap-2">
         <span className="text-gray-400 text-xs mt-0.5 flex-shrink-0">📊</span>
         <div className="flex-1 min-w-0">
           <div className="text-sm truncate">
-            {series.seriesDescription || `Series ${series.seriesNumber}`}
+            {formatSeriesDescription(series.seriesDescription) || `Series ${series.seriesNumber}`}
           </div>
           <div className="text-xs text-gray-400">
             {series.modality} • {series.instances.length} {series.instances.length === 1 ? 'image' : 'images'}

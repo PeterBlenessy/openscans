@@ -33,7 +33,11 @@ export interface DicomMetadata {
   studyDate?: string
   studyDescription?: string
   seriesDescription?: string
+  modality?: string
+  seriesNumber?: number
   instanceNumber?: number
+  rows?: number
+  columns?: number
   windowCenter?: number
   windowWidth?: number
   sliceLocation?: number

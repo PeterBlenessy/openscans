@@ -1,5 +1,6 @@
 import { useEffect, useRef, forwardRef } from 'react'
 import { useStudyStore } from '@/stores/studyStore'
+import { useFavoritesStore } from '@/stores/favoritesStore'
 import { cornerstone } from '@/lib/cornerstone/initCornerstone'
 import { DicomInstance } from '@/types'
 
@@ -58,6 +59,11 @@ const Thumbnail = forwardRef<HTMLButtonElement, ThumbnailProps>(
   ({ instance, index, isSelected, onClick }, ref) => {
     const canvasRef = useRef<HTMLDivElement>(null)
     const loadedRef = useRef(false)
+
+    // Subscribe to favorites array to trigger re-render on changes
+    const isFavorite = useFavoritesStore((state) =>
+      state.favorites.some(f => f.sopInstanceUID === instance.sopInstanceUID)
+    )
 
     useEffect(() => {
       if (!canvasRef.current || loadedRef.current) return
@@ -123,6 +129,18 @@ const Thumbnail = forwardRef<HTMLButtonElement, ThumbnailProps>(
         </div>
         {isSelected && (
           <div className="absolute inset-0 border-2 border-[#4a4a4a] pointer-events-none" />
+        )}
+        {isFavorite && (
+          <div className="absolute top-1 right-1 pointer-events-none">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="w-4 h-4 text-yellow-500 drop-shadow-[0_0_3px_rgba(0,0,0,0.8)]"
+            >
+              <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401z" clipRule="evenodd" />
+            </svg>
+          </div>
         )}
       </button>
     )

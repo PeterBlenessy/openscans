@@ -13,9 +13,11 @@ import { parseDicomFilesWithDirectories } from '@/lib/dicom/parser'
 interface LeftDrawerProps {
   onLoadNewFiles: () => void
   onOpenSettings: () => void
+  onOpenKeyboardShortcuts: () => void
+  onOpenHelp: () => void
 }
 
-export function LeftDrawer({ onLoadNewFiles, onOpenSettings }: LeftDrawerProps) {
+export function LeftDrawer({ onLoadNewFiles, onOpenSettings, onOpenKeyboardShortcuts, onOpenHelp }: LeftDrawerProps) {
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('leftDrawerOpen')
     return saved ? JSON.parse(saved) : false
@@ -195,7 +197,9 @@ export function LeftDrawer({ onLoadNewFiles, onOpenSettings }: LeftDrawerProps) 
                         disabled={!isClickable || isLoading}
                         className={`w-full text-left p-3 rounded-lg transition-colors ${
                           isActive
-                            ? 'bg-blue-600/20 border border-blue-500/50'
+                            ? theme === 'dark'
+                              ? 'bg-[#2a2a2a] border border-[#3a3a3a]'
+                              : 'bg-gray-200 border border-gray-300'
                             : isClickable
                             ? theme === 'dark'
                               ? 'bg-[#1a1a1a] hover:bg-[#2a2a2a] border border-transparent'
@@ -288,18 +292,32 @@ export function LeftDrawer({ onLoadNewFiles, onOpenSettings }: LeftDrawerProps) 
             <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Settings</span>
           </button>
 
+          {/* Keyboard Shortcuts Button */}
+          <button
+            onClick={() => {
+              onOpenKeyboardShortcuts()
+              setIsOpen(false)
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${theme === 'dark' ? 'hover:bg-[#1a1a1a]' : 'hover:bg-gray-100'}`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+              <path d="M7 3.5C7 2.67 7.67 2 8.5 2h1C10.33 2 11 2.67 11 3.5v1c0 .83-.67 1.5-1.5 1.5h-1C7.67 6 7 5.33 7 4.5v-1zm6 0C13 2.67 13.67 2 14.5 2h1c.83 0 1.5.67 1.5 1.5v1c0 .83-.67 1.5-1.5 1.5h-1C13.67 6 13 5.33 13 4.5v-1zM7 9.5C7 8.67 7.67 8 8.5 8h1C10.33 8 11 8.67 11 9.5v1c0 .83-.67 1.5-1.5 1.5h-1C7.67 12 7 11.33 7 10.5v-1zm6 0C13 8.67 13.67 8 14.5 8h1c.83 0 1.5.67 1.5 1.5v1c0 .83-.67 1.5-1.5 1.5h-1c-.83 0-1.5-.67-1.5-1.5v-1zM2 15.5C2 14.67 2.67 14 3.5 14h17c.83 0 1.5.67 1.5 1.5v1c0 .83-.67 1.5-1.5 1.5h-17C2.67 18 2 17.33 2 16.5v-1zm5-6C7 8.67 7.67 8 8.5 8h7c.83 0 1.5.67 1.5 1.5v1c0 .83-.67 1.5-1.5 1.5h-7C7.67 12 7 11.33 7 10.5v-1z"/>
+            </svg>
+            <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Keyboard Shortcuts</span>
+          </button>
+
           {/* Help Button */}
           <button
             onClick={() => {
-              // Dispatch keyboard shortcut event to open help
-              window.dispatchEvent(new KeyboardEvent('keydown', { key: '?' }))
+              onOpenHelp()
+              setIsOpen(false)
             }}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${theme === 'dark' ? 'hover:bg-[#1a1a1a]' : 'hover:bg-gray-100'}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.061-1.061 3 3 0 112.871 5.026v.345a.75.75 0 01-1.5 0v-.5c0-.72.57-1.172 1.081-1.287A1.5 1.5 0 108.94 6.94zM10 15a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
             </svg>
-            <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Keyboard Shortcuts</span>
+            <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Help & Documentation</span>
           </button>
         </div>
       </div>

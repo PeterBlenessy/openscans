@@ -1,9 +1,25 @@
+import { useEffect } from 'react'
+
 interface KeyboardShortcutsHelpProps {
   show: boolean
   onClose: () => void
 }
 
 export function KeyboardShortcutsHelp({ show, onClose }: KeyboardShortcutsHelpProps) {
+  // Close on Escape key
+  useEffect(() => {
+    if (!show) return
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [show, onClose])
+
   if (!show) return null
 
   const shortcuts = [

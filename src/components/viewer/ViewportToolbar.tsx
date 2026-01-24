@@ -1,10 +1,13 @@
 import { useViewportStore } from '@/stores/viewportStore'
+import { useStudyStore } from '@/stores/studyStore'
+import { useFavoritesStore, FavoriteImage } from '@/stores/favoritesStore'
 
 interface ViewportToolbarProps {
   className?: string
+  onExportClick?: () => void
 }
 
-export function ViewportToolbar({ className = '' }: ViewportToolbarProps) {
+export function ViewportToolbar({ className = '', onExportClick }: ViewportToolbarProps) {
   const settings = useViewportStore((state) => state.settings)
   const resetSettings = useViewportStore((state) => state.resetSettings)
   const setRotation = useViewportStore((state) => state.setRotation)
@@ -12,6 +15,15 @@ export function ViewportToolbar({ className = '' }: ViewportToolbarProps) {
   const setFlipVertical = useViewportStore((state) => state.setFlipVertical)
   const setInvert = useViewportStore((state) => state.setInvert)
   const setZoom = useViewportStore((state) => state.setZoom)
+  const currentInstance = useStudyStore((state) => state.currentInstance)
+  const currentStudy = useStudyStore((state) => state.currentStudy)
+  const currentSeries = useStudyStore((state) => state.currentSeries)
+  const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite)
+
+  // Subscribe to favorites array to trigger re-render on changes
+  const isCurrentFavorite = useFavoritesStore((state) =>
+    currentInstance ? state.favorites.some(f => f.sopInstanceUID === currentInstance.sopInstanceUID) : false
+  )
 
   const handleRotateLeft = () => {
     setRotation((settings.rotation - 90 + 360) % 360)
@@ -45,6 +57,26 @@ export function ViewportToolbar({ className = '' }: ViewportToolbarProps) {
     // Reset zoom and pan to defaults
     useViewportStore.getState().setZoom(1)
     useViewportStore.getState().setPan(0, 0)
+  }
+
+  const handleToggleFavorite = () => {
+    if (!currentInstance || !currentStudy || !currentSeries) return
+
+    const favoriteImage: FavoriteImage = {
+      sopInstanceUID: currentInstance.sopInstanceUID,
+      studyInstanceUID: currentStudy.studyInstanceUID,
+      seriesInstanceUID: currentSeries.seriesInstanceUID,
+      instanceNumber: currentInstance.instanceNumber,
+      imageId: currentInstance.imageId,
+      patientName: currentInstance.metadata?.patientName,
+      studyDate: currentInstance.metadata?.studyDate,
+      seriesNumber: currentInstance.metadata?.seriesNumber,
+      seriesDescription: currentInstance.metadata?.seriesDescription,
+      modality: currentInstance.metadata?.modality,
+      favoritedAt: Date.now(),
+    }
+
+    toggleFavorite(favoriteImage)
   }
 
   return (
@@ -158,6 +190,43 @@ export function ViewportToolbar({ className = '' }: ViewportToolbarProps) {
           </svg>
         }
       />
+
+      <ToolbarDivider />
+
+      {/* Favorite */}
+      <button
+        onClick={handleToggleFavorite}
+        title={isCurrentFavorite ? "Remove from favorites" : "Add to favorites"}
+        disabled={!currentInstance}
+        className={`p-2 rounded transition-colors ${
+          !currentInstance
+            ? 'text-gray-600 cursor-not-allowed'
+            : 'text-gray-300 hover:bg-[#2a2a2a] hover:text-white'
+        }`}
+      >
+        {isCurrentFavorite ? (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-yellow-500">
+            <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401z" clipRule="evenodd" />
+          </svg>
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+          </svg>
+        )}
+      </button>
+
+      {/* Export */}
+      <ToolbarButton
+        onClick={onExportClick || (() => {})}
+        title="Export image (E)"
+        disabled={!currentInstance}
+        icon={
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+            <path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" />
+            <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.25 2.25 0 004.25 17.5h11.5A2.25 2.25 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .414-.336.75-.75.75H4.25a.75.75 0 01-.75-.75v-2.5z" />
+          </svg>
+        }
+      />
     </div>
   )
 }
@@ -167,15 +236,19 @@ interface ToolbarButtonProps {
   title: string
   icon: React.ReactNode
   active?: boolean
+  disabled?: boolean
 }
 
-function ToolbarButton({ onClick, title, icon, active = false }: ToolbarButtonProps) {
+function ToolbarButton({ onClick, title, icon, active = false, disabled = false }: ToolbarButtonProps) {
   return (
     <button
       onClick={onClick}
       title={title}
+      disabled={disabled}
       className={`p-2 rounded transition-colors ${
-        active
+        disabled
+          ? 'text-gray-600 cursor-not-allowed'
+          : active
           ? 'bg-blue-600 text-white hover:bg-blue-700'
           : 'text-gray-300 hover:bg-[#2a2a2a] hover:text-white'
       }`}

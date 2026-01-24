@@ -4,18 +4,22 @@ import { DicomViewport } from './components/viewer/DicomViewport'
 import { StudySeriesBrowser } from './components/viewer/StudySeriesBrowser'
 import { ThumbnailStrip } from './components/viewer/ThumbnailStrip'
 import { KeyboardShortcutsHelp } from './components/viewer/KeyboardShortcutsHelp'
+import { HelpDialog } from './components/help/HelpDialog'
 import { ImagePresets } from './components/viewer/ImagePresets'
+import { FavoritesPanel } from './components/favorites/FavoritesPanel'
 import { LeftDrawer } from './components/layout/LeftDrawer'
 import { SettingsPanel } from './components/settings/SettingsPanel'
 import { useStudyStore } from './stores/studyStore'
 import { useRecentStudiesStore } from './stores/recentStudiesStore'
 import { useSettingsStore } from './stores/settingsStore'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { formatSeriesDescription } from './lib/utils/formatSeriesDescription'
 
 function App() {
   // Force HMR update
   const [showDropzone, setShowDropzone] = useState(true)
   const [showHelp, setShowHelp] = useState(false)
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [hasProcessedStudies, setHasProcessedStudies] = useState(false)
   const theme = useSettingsStore((state) => state.theme)
@@ -41,6 +45,7 @@ function App() {
     return {
       studiesOpen: true,
       presetsOpen: false,
+      favoritesOpen: true,
       metadataOpen: true
     }
   })
@@ -51,7 +56,7 @@ function App() {
   }, [sectionState])
 
   // Enable keyboard shortcuts
-  useKeyboardShortcuts({ onToggleHelp: () => setShowHelp(!showHelp) })
+  useKeyboardShortcuts({ onToggleHelp: () => setShowKeyboardShortcuts(!showKeyboardShortcuts) })
 
   const handleFilesLoaded = () => {
     setHasProcessedStudies(false) // Reset so we process the new studies
@@ -98,13 +103,18 @@ function App() {
       <LeftDrawer
         onLoadNewFiles={() => setShowDropzone(true)}
         onOpenSettings={() => setShowSettings(true)}
+        onOpenKeyboardShortcuts={() => setShowKeyboardShortcuts(true)}
+        onOpenHelp={() => setShowHelp(true)}
       />
 
       {/* Settings Panel */}
       <SettingsPanel show={showSettings} onClose={() => setShowSettings(false)} />
 
       {/* Keyboard Shortcuts Help */}
-      <KeyboardShortcutsHelp show={showHelp} onClose={() => setShowHelp(false)} />
+      <KeyboardShortcutsHelp show={showKeyboardShortcuts} onClose={() => setShowKeyboardShortcuts(false)} />
+
+      {/* Help Dialog */}
+      <HelpDialog show={showHelp} onClose={() => setShowHelp(false)} />
 
       {/* Header */}
       <header className={`px-6 py-4 flex items-center justify-between border-b ${theme === 'dark' ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
@@ -112,7 +122,7 @@ function App() {
           <h1 className="text-2xl font-bold">MR DICOM Viewer</h1>
           {currentSeries && (
             <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-              {currentSeries.seriesDescription || `Series ${currentSeries.seriesNumber}`} -
+              {formatSeriesDescription(currentSeries.seriesDescription) || `Series ${currentSeries.seriesNumber}`} -
               Image {currentInstanceIndex + 1} of {currentSeries.instances.length}
             </p>
           )}
@@ -120,7 +130,7 @@ function App() {
         <button
           onClick={() => setShowHelp(true)}
           className={`px-3 py-2 rounded text-sm flex items-center gap-2 transition-colors ${theme === 'dark' ? 'bg-[#0f0f0f] hover:bg-[#1a1a1a]' : 'bg-gray-100 hover:bg-gray-200'}`}
-          title="Keyboard shortcuts"
+          title="Help & Documentation"
         >
           <span>?</span>
           <span>Help</span>
@@ -209,6 +219,22 @@ function App() {
                 )}
               </div>
 
+              {/* Favorites - Collapsible, Persistent */}
+              <div className={`border-b ${theme === 'dark' ? 'border-[#2a2a2a]' : 'border-gray-200'}`}>
+                <button
+                  onClick={() => setSectionState((prev: typeof sectionState) => ({ ...prev, favoritesOpen: !prev.favoritesOpen }))}
+                  className={`w-full p-4 flex items-center justify-between transition-colors ${theme === 'dark' ? 'hover:bg-[#0f0f0f]' : 'hover:bg-gray-50'}`}
+                >
+                  <h2 className="text-lg font-semibold">Favorites</h2>
+                  <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>{sectionState.favoritesOpen ? '▼' : '▶'}</span>
+                </button>
+                {sectionState.favoritesOpen && (
+                  <div className="px-4 pb-4">
+                    <FavoritesPanel />
+                  </div>
+                )}
+              </div>
+
               {/* Current Metadata - Collapsible, Persistent */}
               <div className="flex-1 flex flex-col overflow-hidden">
                 <button
@@ -236,7 +262,7 @@ function App() {
                         </div>
                         <div>
                           <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>Series:</span>
-                          <p>{currentInstance.metadata.seriesDescription}</p>
+                          <p>{formatSeriesDescription(currentInstance.metadata.seriesDescription)}</p>
                         </div>
                         <div>
                           <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>Instance:</span>
@@ -254,16 +280,6 @@ function App() {
                     )}
                   </div>
                 )}
-              </div>
-
-              {/* Load New Files Button */}
-              <div className={`p-4 border-t flex-shrink-0 ${theme === 'dark' ? 'border-[#2a2a2a]' : 'border-gray-200'}`}>
-                <button
-                  onClick={() => setShowDropzone(true)}
-                  className={`w-full px-4 py-2 rounded transition-colors ${theme === 'dark' ? 'bg-[#2a2a2a] hover:bg-[#3a3a3a]' : 'bg-gray-100 hover:bg-gray-200'}`}
-                >
-                  Load New Files
-                </button>
               </div>
             </aside>
           </>

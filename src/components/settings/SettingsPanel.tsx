@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useSettingsStore, Theme, ScrollDirection } from '@/stores/settingsStore'
 
 interface SettingsPanelProps {
@@ -20,6 +21,20 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
   const setShowMetadataOverlay = useSettingsStore((state) => state.setShowMetadataOverlay)
   const setPersistStudies = useSettingsStore((state) => state.setPersistStudies)
   const resetToDefaults = useSettingsStore((state) => state.resetToDefaults)
+
+  // Close on Escape key
+  useEffect(() => {
+    if (!show) return
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [show, onClose])
 
   if (!show) return null
 

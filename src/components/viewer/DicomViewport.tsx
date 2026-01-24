@@ -3,6 +3,7 @@ import { useStudyStore } from '@/stores/studyStore'
 import { useViewportStore } from '@/stores/viewportStore'
 import { initCornerstone, cornerstone } from '@/lib/cornerstone/initCornerstone'
 import { ViewportToolbar } from './ViewportToolbar'
+import { ExportDialog } from '@/components/export/ExportDialog'
 
 interface DicomViewportProps {
   className?: string
@@ -18,6 +19,7 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
   const [isModifierKeyPressed, setIsModifierKeyPressed] = useState(false)
   const [currentWL, setCurrentWL] = useState({ width: 0, center: 0 })
   const [isActivelyZooming, setIsActivelyZooming] = useState(false)
+  const [showExportDialog, setShowExportDialog] = useState(false)
   const dragStartPos = useRef({ x: 0, y: 0 })
   const dragStartWL = useRef({ width: 0, center: 0 })
   const dragStartPan = useRef({ x: 0, y: 0 })
@@ -28,9 +30,7 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
   const zoomTimeoutRef = useRef<number | null>(null)
 
   const currentInstance = useStudyStore((state) => state.currentInstance)
-  const currentSeries = useStudyStore((state) => state.currentSeries)
   const settings = useViewportStore((state) => state.settings)
-  const currentModality = useViewportStore((state) => state.currentModality)
   const setWindowLevel = useViewportStore((state) => state.setWindowLevel)
   const setModality = useViewportStore((state) => state.setModality)
   const setZoom = useViewportStore((state) => state.setZoom)
@@ -40,7 +40,7 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
   // W/L is per-image in DICOM, so each image can have different optimal values
   useEffect(() => {
     if (currentInstance?.metadata) {
-      const modality = currentInstance.metadata.modality
+      const modality = currentInstance.metadata.modality || 'OT'
       const dicomCenter = currentInstance.metadata.windowCenter
       const dicomWidth = currentInstance.metadata.windowWidth
 
@@ -544,7 +544,17 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
       />
 
       {/* Viewport Toolbar */}
-      <ViewportToolbar className="absolute top-4 left-1/2 -translate-x-1/2" />
+      <ViewportToolbar
+        className="absolute top-4 left-1/2 -translate-x-1/2"
+        onExportClick={() => setShowExportDialog(true)}
+      />
+
+      {/* Export Dialog */}
+      <ExportDialog
+        show={showExportDialog}
+        onClose={() => setShowExportDialog(false)}
+        viewportElement={canvasRef.current}
+      />
 
       {/* Window/Level indicator - bottom-left corner (above zoom) */}
       <div
