@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { PanelLeft, PanelRight, PanelBottom } from 'lucide-react'
 import { FileDropzone } from './components/viewer/FileDropzone'
 import { DicomViewport } from './components/viewer/DicomViewport'
 import { StudySeriesBrowser } from './components/viewer/StudySeriesBrowser'
@@ -22,6 +23,15 @@ function App() {
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [hasProcessedStudies, setHasProcessedStudies] = useState(false)
+
+  // Panel visibility state
+  const [showLeftDrawer, setShowLeftDrawer] = useState(() => {
+    const saved = localStorage.getItem('leftDrawerOpen')
+    return saved ? JSON.parse(saved) : false
+  })
+  const [showRightSidebar, setShowRightSidebar] = useState(true)
+  const [showThumbnailStrip, setShowThumbnailStrip] = useState(true)
+
   const theme = useSettingsStore((state) => state.theme)
   const currentInstance = useStudyStore((state) => state.currentInstance)
   const currentSeries = useStudyStore((state) => state.currentSeries)
@@ -54,6 +64,11 @@ function App() {
   useEffect(() => {
     localStorage.setItem('sidebarSections', JSON.stringify(sectionState))
   }, [sectionState])
+
+  // Save left drawer state to localStorage
+  useEffect(() => {
+    localStorage.setItem('leftDrawerOpen', JSON.stringify(showLeftDrawer))
+  }, [showLeftDrawer])
 
   // Enable keyboard shortcuts
   useKeyboardShortcuts({ onToggleHelp: () => setShowKeyboardShortcuts(!showKeyboardShortcuts) })
@@ -99,14 +114,6 @@ function App() {
 
   return (
     <div className={`h-screen flex flex-col ${theme === 'dark' ? 'bg-black text-white' : 'bg-gray-100 text-gray-900'}`}>
-      {/* Left Drawer */}
-      <LeftDrawer
-        onLoadNewFiles={() => setShowDropzone(true)}
-        onOpenSettings={() => setShowSettings(true)}
-        onOpenKeyboardShortcuts={() => setShowKeyboardShortcuts(true)}
-        onOpenHelp={() => setShowHelp(true)}
-      />
-
       {/* Settings Panel */}
       <SettingsPanel show={showSettings} onClose={() => setShowSettings(false)} />
 
@@ -117,7 +124,7 @@ function App() {
       <HelpDialog show={showHelp} onClose={() => setShowHelp(false)} />
 
       {/* Header */}
-      <header className={`px-6 py-4 flex items-center justify-between border-b ${theme === 'dark' ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
+      <header className={`px-6 py-4 flex items-center justify-between border-b flex-shrink-0 ${theme === 'dark' ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
         <div>
           <h1 className="text-2xl font-bold">MR DICOM Viewer</h1>
           {currentSeries && (
@@ -127,27 +134,74 @@ function App() {
             </p>
           )}
         </div>
-        <button
-          onClick={() => setShowHelp(true)}
-          className={`px-3 py-2 rounded text-sm flex items-center gap-2 transition-colors ${theme === 'dark' ? 'bg-[#0f0f0f] hover:bg-[#1a1a1a]' : 'bg-gray-100 hover:bg-gray-200'}`}
-          title="Help & Documentation"
-        >
-          <span>?</span>
-          <span>Help</span>
-        </button>
+
+        {/* Toolbar */}
+        <div className={`flex items-center gap-2 px-3 py-2 rounded ${theme === 'dark' ? 'bg-[#0f0f0f]' : 'bg-gray-100'}`}>
+          {/* Left Panel Toggle */}
+          <button
+            onClick={() => setShowLeftDrawer(!showLeftDrawer)}
+            className={`p-2 rounded transition-colors ${showLeftDrawer ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-500' : 'hover:bg-gray-200 text-gray-400')}`}
+            title="Toggle Left Panel"
+          >
+            <PanelLeft size={18} />
+          </button>
+
+          {/* Right Panel Toggle */}
+          <button
+            onClick={() => setShowRightSidebar(!showRightSidebar)}
+            className={`p-2 rounded transition-colors ${showRightSidebar ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-500' : 'hover:bg-gray-200 text-gray-400')}`}
+            title="Toggle Right Panel"
+          >
+            <PanelRight size={18} />
+          </button>
+
+          {/* Bottom Panel Toggle */}
+          <button
+            onClick={() => setShowThumbnailStrip(!showThumbnailStrip)}
+            className={`p-2 rounded transition-colors ${showThumbnailStrip ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-500' : 'hover:bg-gray-200 text-gray-400')}`}
+            title="Toggle Thumbnail Strip"
+          >
+            <PanelBottom size={18} />
+          </button>
+
+          {/* Divider */}
+          <div className={`w-px h-6 ${theme === 'dark' ? 'bg-[#2a2a2a]' : 'bg-gray-300'}`}></div>
+
+          {/* Help Button */}
+          <button
+            onClick={() => setShowHelp(true)}
+            className={`px-3 py-1.5 rounded text-sm flex items-center gap-2 transition-colors ${theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-300' : 'hover:bg-gray-200 text-gray-700'}`}
+            title="Help & Documentation"
+          >
+            <span>?</span>
+            <span>Help</span>
+          </button>
+        </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 flex overflow-hidden">
-        {showDropzone ? (
-          <div className="flex-1 flex items-center justify-center p-8">
-            <FileDropzone
-              className="w-full max-w-2xl"
-              onFilesLoaded={handleFilesLoaded}
-            />
-          </div>
-        ) : (
-          <>
+      {/* Main Container - Horizontal Layout */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Drawer */}
+        <LeftDrawer
+          isOpen={showLeftDrawer}
+          setIsOpen={setShowLeftDrawer}
+          onLoadNewFiles={() => setShowDropzone(true)}
+          onOpenSettings={() => setShowSettings(true)}
+          onOpenKeyboardShortcuts={() => setShowKeyboardShortcuts(true)}
+          onOpenHelp={() => setShowHelp(true)}
+        />
+
+        {/* Main Content */}
+        <main className="flex-1 flex overflow-hidden relative">
+          {showDropzone ? (
+            <div className="flex-1 flex items-center justify-center p-8">
+              <FileDropzone
+                className="w-full max-w-2xl"
+                onFilesLoaded={handleFilesLoaded}
+              />
+            </div>
+          ) : (
+            <>
             {/* Viewer */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
               <DicomViewport className="flex-1 min-h-0" />
@@ -180,11 +234,15 @@ function App() {
               )}
 
               {/* Thumbnail Navigation */}
-              <ThumbnailStrip />
+              {showThumbnailStrip && <ThumbnailStrip />}
             </div>
 
             {/* Sidebar */}
-            <aside className={`w-80 flex flex-col overflow-hidden border-l ${theme === 'dark' ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
+            <aside className={`flex flex-col overflow-hidden border-l transition-all duration-300 ease-in-out flex-shrink-0 ${
+              showRightSidebar ? 'w-64' : 'w-0 border-l-0'
+            } ${theme === 'dark' ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
+              {showRightSidebar && (
+                <>
               {/* Study/Series Browser - Collapsible, Persistent */}
               <div className={`border-b ${theme === 'dark' ? 'border-[#2a2a2a]' : 'border-gray-200'}`}>
                 <button
@@ -281,10 +339,13 @@ function App() {
                   </div>
                 )}
               </div>
+              </>
+              )}
             </aside>
           </>
         )}
-      </main>
+        </main>
+      </div>
     </div>
   )
 }

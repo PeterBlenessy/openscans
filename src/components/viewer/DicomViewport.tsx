@@ -102,6 +102,29 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
     const handleResize = () => {
       try {
         cornerstone.resize(element, true) // Re-apply high-DPI scaling on resize
+
+        // Recalculate fit scale and reapply viewport after resize
+        const viewport = cornerstone.getViewport(element)
+        if (viewport && currentInstance) {
+          const image = cornerstone.getImage(element)
+          if (image) {
+            const elementRect = element.getBoundingClientRect()
+            const elementWidth = elementRect.width
+            const elementHeight = elementRect.height
+
+            // Recalculate the fit scale for the new container size
+            const scaleX = elementWidth / image.width
+            const scaleY = elementHeight / image.height
+            const newFitScale = Math.min(scaleX, scaleY)
+
+            // Update the stored fit scale
+            fitScaleRef.current = newFitScale
+
+            // Reapply viewport with new fit scale
+            viewport.scale = newFitScale * settings.zoom
+            cornerstone.setViewport(element, viewport)
+          }
+        }
       } catch (err) {
         console.warn('Error resizing viewport:', err)
       }
@@ -109,8 +132,16 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
 
     window.addEventListener('resize', handleResize)
 
+    // Use ResizeObserver to detect container size changes (e.g., when sidebars show/hide)
+    const resizeObserver = new ResizeObserver(() => {
+      handleResize()
+    })
+
+    resizeObserver.observe(element)
+
     return () => {
       window.removeEventListener('resize', handleResize)
+      resizeObserver.disconnect()
       try {
         cornerstone.disable(element)
       } catch (err) {
@@ -544,7 +575,7 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
 
       {/* Viewport Toolbar */}
       <ViewportToolbar
-        className="absolute top-4 left-1/2 -translate-x-1/2"
+        className="absolute top-4 left-1/2 -translate-x-1/2 transition-all duration-300 ease-in-out"
         onExportClick={() => setShowExportDialog(true)}
       />
 

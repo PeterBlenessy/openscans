@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRecentStudiesStore, RecentStudyEntry } from '@/stores/recentStudiesStore'
 import { useStudyStore } from '@/stores/studyStore'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -11,17 +11,15 @@ import {
 import { parseDicomFilesWithDirectories } from '@/lib/dicom/parser'
 
 interface LeftDrawerProps {
+  isOpen: boolean
+  setIsOpen: (open: boolean) => void
   onLoadNewFiles: () => void
   onOpenSettings: () => void
   onOpenKeyboardShortcuts: () => void
   onOpenHelp: () => void
 }
 
-export function LeftDrawer({ onLoadNewFiles, onOpenSettings, onOpenKeyboardShortcuts, onOpenHelp }: LeftDrawerProps) {
-  const [isOpen, setIsOpen] = useState(() => {
-    const saved = localStorage.getItem('leftDrawerOpen')
-    return saved ? JSON.parse(saved) : false
-  })
+export function LeftDrawer({ isOpen, setIsOpen, onLoadNewFiles, onOpenSettings, onOpenKeyboardShortcuts, onOpenHelp }: LeftDrawerProps) {
 
   const recentStudies = useRecentStudiesStore((state) => state.recentStudies)
   const clearRecentStudies = useRecentStudiesStore((state) => state.clearRecentStudies)
@@ -34,11 +32,6 @@ export function LeftDrawer({ onLoadNewFiles, onOpenSettings, onOpenKeyboardShort
   const setTheme = useSettingsStore((state) => state.setTheme)
 
   const [isLoading, setIsLoading] = useState(false)
-
-  // Save open state to localStorage
-  useEffect(() => {
-    localStorage.setItem('leftDrawerOpen', JSON.stringify(isOpen))
-  }, [isOpen])
 
   const handleStudyClick = async (entry: RecentStudyEntry) => {
     // Check if this study is still loaded
@@ -120,35 +113,11 @@ export function LeftDrawer({ onLoadNewFiles, onOpenSettings, onOpenKeyboardShort
   }
 
   return (
-    <>
-      {/* Toggle Button - Always visible */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`fixed left-0 top-1/2 -translate-y-1/2 z-50 border border-l-0 rounded-r-lg p-2 transition-all duration-300 ${
-          isOpen ? 'translate-x-64' : 'translate-x-0'
-        } ${theme === 'dark' ? 'bg-[#1a1a1a] hover:bg-[#2a2a2a] border-[#2a2a2a]' : 'bg-white hover:bg-gray-100 border-gray-200'}`}
-        title={isOpen ? 'Close drawer' : 'Open drawer'}
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          className={`w-5 h-5 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''} ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}
-        >
-          <path
-            fillRule="evenodd"
-            d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-            clipRule="evenodd"
-          />
-        </svg>
-      </button>
-
-      {/* Drawer Panel */}
-      <div
-        className={`fixed left-0 top-0 h-full w-64 border-r z-40 transform transition-transform duration-300 ease-in-out flex flex-col ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        } ${theme === 'dark' ? 'bg-[#121212] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}
-      >
+    <aside className={`border-r flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${
+      isOpen ? 'w-64' : 'w-0 border-r-0'
+    } ${theme === 'dark' ? 'bg-[#121212] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
+      {isOpen && (
+        <>
         {/* Header */}
         <div className={`p-4 border-b ${theme === 'dark' ? 'border-[#2a2a2a]' : 'border-gray-200'}`}>
           <h2 className={`text-lg font-semibold flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -320,15 +289,8 @@ export function LeftDrawer({ onLoadNewFiles, onOpenSettings, onOpenKeyboardShort
             <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Help & Documentation</span>
           </button>
         </div>
-      </div>
-
-      {/* Overlay when drawer is open */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-          onClick={() => setIsOpen(false)}
-        />
+        </>
       )}
-    </>
+    </aside>
   )
 }
