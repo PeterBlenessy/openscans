@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { PanelLeft, PanelRight, PanelBottom } from 'lucide-react'
+import { PanelLeft, PanelRight, PanelBottom, ShieldCheck, ShieldOff } from 'lucide-react'
 import { FileDropzone } from './components/viewer/FileDropzone'
 import { DicomViewport } from './components/viewer/DicomViewport'
 import { StudySeriesBrowser } from './components/viewer/StudySeriesBrowser'
@@ -33,6 +33,8 @@ function App() {
   const [showThumbnailStrip, setShowThumbnailStrip] = useState(true)
 
   const theme = useSettingsStore((state) => state.theme)
+  const hidePersonalInfo = useSettingsStore((state) => state.hidePersonalInfo)
+  const setHidePersonalInfo = useSettingsStore((state) => state.setHidePersonalInfo)
   const currentInstance = useStudyStore((state) => state.currentInstance)
   const currentSeries = useStudyStore((state) => state.currentSeries)
   const currentStudy = useStudyStore((state) => state.currentStudy)
@@ -166,6 +168,15 @@ function App() {
 
           {/* Divider */}
           <div className={`w-px h-6 ${theme === 'dark' ? 'bg-[#2a2a2a]' : 'bg-gray-300'}`}></div>
+
+          {/* Privacy Toggle */}
+          <button
+            onClick={() => setHidePersonalInfo(!hidePersonalInfo)}
+            className={`p-2 rounded transition-colors ${hidePersonalInfo ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-500' : 'hover:bg-gray-200 text-gray-400')}`}
+            title={hidePersonalInfo ? 'Show Personal Information' : 'Hide Personal Information'}
+          >
+            {hidePersonalInfo ? <ShieldCheck size={18} /> : <ShieldOff size={18} />}
+          </button>
 
           {/* Help Button */}
           <button
@@ -306,14 +317,18 @@ function App() {
                   <div className="px-4 pb-4 flex-1 overflow-y-auto">
                     {currentInstance?.metadata && (
                       <div className="space-y-2 text-sm">
-                        <div>
-                          <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>Patient Name:</span>
-                          <p>{currentInstance.metadata.patientName}</p>
-                        </div>
-                        <div>
-                          <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>Patient ID:</span>
-                          <p>{currentInstance.metadata.patientID}</p>
-                        </div>
+                        {!hidePersonalInfo && (
+                          <>
+                            <div>
+                              <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>Patient Name:</span>
+                              <p>{currentInstance.metadata.patientName}</p>
+                            </div>
+                            <div>
+                              <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>Patient ID:</span>
+                              <p>{currentInstance.metadata.patientID}</p>
+                            </div>
+                          </>
+                        )}
                         <div>
                           <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>Study Date:</span>
                           <p>{currentInstance.metadata.studyDate}</p>

@@ -12,6 +12,9 @@ export interface SettingsState {
   windowLevelSensitivity: number // 0.5 to 3.0, default 1.5
   zoomSensitivity: number // 0.01 to 0.2, default 0.05
 
+  // Privacy
+  hidePersonalInfo: boolean // Hide patient names, IDs, and dates
+
   // Data persistence
   persistStudies: boolean // Whether to persist studies across sessions
 
@@ -20,6 +23,7 @@ export interface SettingsState {
   setScrollDirection: (direction: ScrollDirection) => void
   setWindowLevelSensitivity: (sensitivity: number) => void
   setZoomSensitivity: (sensitivity: number) => void
+  setHidePersonalInfo: (hide: boolean) => void
   setPersistStudies: (persist: boolean) => void
   resetToDefaults: () => void
 }
@@ -31,6 +35,7 @@ const defaultSettings = {
   scrollDirection: 'natural' as ScrollDirection,
   windowLevelSensitivity: 1.5,
   zoomSensitivity: 0.05,
+  hidePersonalInfo: true,
   persistStudies: true,
 }
 
@@ -93,6 +98,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
     setZoomSensitivity: (zoomSensitivity) => {
       set({ zoomSensitivity })
       saveSettings({ ...get(), zoomSensitivity })
+    },
+
+    setHidePersonalInfo: (hidePersonalInfo) => {
+      set({ hidePersonalInfo })
+      saveSettings({ ...get(), hidePersonalInfo })
     },
 
     setPersistStudies: (persistStudies) => {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useStudyStore } from '@/stores/studyStore'
+import { useSettingsStore } from '@/stores/settingsStore'
 import { DicomStudy, DicomSeries } from '@/types'
 import { formatSeriesDescription } from '@/lib/utils/formatSeriesDescription'
 
@@ -68,6 +69,7 @@ interface StudyItemProps {
 }
 
 function StudyItem({ study, isExpanded, onToggle, currentSeriesUID, onSeriesClick }: StudyItemProps) {
+  const hidePersonalInfo = useSettingsStore((state) => state.hidePersonalInfo)
   console.log(`StudyItem rendering: ${study.patientName}, series count: ${study.series.length}`, study.series)
 
   return (
@@ -81,11 +83,13 @@ function StudyItem({ study, isExpanded, onToggle, currentSeriesUID, onSeriesClic
           {isExpanded ? '▼' : '▶'}
         </span>
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-sm truncate">
-            {study.patientName || 'Unknown Patient'}
-          </div>
+          {!hidePersonalInfo && (
+            <div className="font-medium text-sm truncate">
+              {study.patientName || 'Unknown Patient'}
+            </div>
+          )}
           <div className="text-xs text-gray-400 truncate">
-            {study.patientID} • {study.studyDate}
+            {hidePersonalInfo ? study.studyDate : `${study.patientID} • ${study.studyDate}`}
           </div>
           {study.studyDescription && (
             <div className="text-xs text-gray-500 truncate">

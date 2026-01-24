@@ -11,12 +11,14 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
   const scrollDirection = useSettingsStore((state) => state.scrollDirection)
   const windowLevelSensitivity = useSettingsStore((state) => state.windowLevelSensitivity)
   const zoomSensitivity = useSettingsStore((state) => state.zoomSensitivity)
+  const hidePersonalInfo = useSettingsStore((state) => state.hidePersonalInfo)
   const persistStudies = useSettingsStore((state) => state.persistStudies)
 
   const setTheme = useSettingsStore((state) => state.setTheme)
   const setScrollDirection = useSettingsStore((state) => state.setScrollDirection)
   const setWindowLevelSensitivity = useSettingsStore((state) => state.setWindowLevelSensitivity)
   const setZoomSensitivity = useSettingsStore((state) => state.setZoomSensitivity)
+  const setHidePersonalInfo = useSettingsStore((state) => state.setHidePersonalInfo)
   const setPersistStudies = useSettingsStore((state) => state.setPersistStudies)
   const resetToDefaults = useSettingsStore((state) => state.resetToDefaults)
 
@@ -111,6 +113,17 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                 value={zoomSensitivity}
                 onChange={(e) => setZoomSensitivity(parseFloat(e.target.value))}
                 className={`w-32 h-2 rounded-lg appearance-none cursor-pointer ${isDark ? 'bg-[#0f0f0f]' : 'bg-gray-200'}`}
+              />
+            </SettingsRow>
+          </SettingsSection>
+
+          {/* Privacy Section */}
+          <SettingsSection title="Privacy" isDark={isDark}>
+            <SettingsRow label="Hide Personal Information" description="Hide patient names and IDs throughout the app" isDark={isDark}>
+              <ToggleSwitch
+                checked={hidePersonalInfo}
+                onChange={setHidePersonalInfo}
+                isDark={isDark}
               />
             </SettingsRow>
           </SettingsSection>

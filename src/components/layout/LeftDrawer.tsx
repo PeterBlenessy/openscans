@@ -30,6 +30,7 @@ export function LeftDrawer({ isOpen, setIsOpen, onLoadNewFiles, onOpenSettings, 
 
   const theme = useSettingsStore((state) => state.theme)
   const setTheme = useSettingsStore((state) => state.setTheme)
+  const hidePersonalInfo = useSettingsStore((state) => state.hidePersonalInfo)
 
   const [isLoading, setIsLoading] = useState(false)
 
@@ -167,9 +168,11 @@ export function LeftDrawer({ isOpen, setIsOpen, onLoadNewFiles, onOpenSettings, 
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                              {entry.patientName || 'Unknown Patient'}
-                            </p>
+                            {!hidePersonalInfo && (
+                              <p className={`text-sm font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                {entry.patientName || 'Unknown Patient'}
+                              </p>
+                            )}
                             <p className={`text-xs truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                               {entry.studyDescription || 'No description'}
                             </p>
