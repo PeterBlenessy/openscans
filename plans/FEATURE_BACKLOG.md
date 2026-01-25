@@ -1,4 +1,4 @@
-# MR DICOM Viewer - Feature Backlog
+# OpenScans - Feature Backlog
 
 **Last Updated**: January 24, 2026
 **Purpose**: Track proposed features and UX improvements beyond the current roadmap

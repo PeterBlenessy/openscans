@@ -1,4 +1,4 @@
-# Contributing to MR DICOM Viewer
+# Contributing to OpenScans
 
 Thank you for your interest in contributing! This document provides guidelines and workflows for contributing to the project.
 
@@ -913,4 +913,4 @@ For detailed architectural patterns, see `CLAUDE.md`.
 
 By contributing, you agree that your contributions will be licensed under the same license as the project (MIT License).
 
-Thank you for contributing to MR DICOM Viewer! 🏥
+Thank you for contributing to OpenScans! 🏥

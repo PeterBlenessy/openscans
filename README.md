@@ -1,4 +1,4 @@
-# MR DICOM Viewer
+# OpenScans
 
 A modern, privacy-first web-based DICOM viewer for medical imaging with advanced viewport tools, export capabilities, and comprehensive testing. Built with React, TypeScript, and Cornerstone.js.
 

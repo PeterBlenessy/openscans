@@ -1,5 +1,5 @@
 /**
- * E2E tests for MR DICOM Viewer - Critical Workflows
+ * E2E tests for OpenScans - Critical Workflows
  *
  * Tests 5-7 critical user workflows:
  * 1. File loading and display
@@ -37,7 +37,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/')
 
   // Wait for app to be ready
-  await expect(page.locator('text=MR DICOM Viewer')).toBeVisible({ timeout: 10000 })
+  await expect(page.locator('text=OpenScans')).toBeVisible({ timeout: 10000 })
 })
 
 test.describe('File Loading and Display', () => {
@@ -449,7 +449,7 @@ test.describe('Settings Persistence', () => {
 
     // Reload page
     await page.reload()
-    await expect(page.locator('text=MR DICOM Viewer')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('text=OpenScans')).toBeVisible({ timeout: 10000 })
 
     // Verify light theme persisted
     await expect(page.locator('html.light')).toHaveCount(1)
@@ -472,7 +472,7 @@ test.describe('Settings Persistence', () => {
 
     // Reload page
     await page.reload()
-    await expect(page.locator('text=MR DICOM Viewer')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('text=OpenScans')).toBeVisible({ timeout: 10000 })
 
     // Open settings again
     await settingsButton.click()
@@ -513,6 +513,6 @@ test.describe('Error Handling', () => {
     await fileInput.setInputFiles([])
 
     // Should not crash or show error
-    await expect(page.locator('text=MR DICOM Viewer')).toBeVisible()
+    await expect(page.locator('text=OpenScans')).toBeVisible()
   })
 })

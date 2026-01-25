@@ -128,9 +128,14 @@ function App() {
       {/* Header */}
       <header className={`px-6 py-4 flex items-center justify-between border-b flex-shrink-0 ${theme === 'dark' ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
         <div>
-          <h1 className="text-2xl font-bold">MR DICOM Viewer</h1>
+          <div>
+            <h1 className="text-2xl font-bold">OpenScans</h1>
+            <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+              Privacy-first DICOM viewer
+            </p>
+          </div>
           {currentSeries && (
-            <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+            <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
               {formatSeriesDescription(currentSeries.seriesDescription) || `Series ${currentSeries.seriesNumber}`} -
               Image {currentInstanceIndex + 1} of {currentSeries.instances.length}
             </p>

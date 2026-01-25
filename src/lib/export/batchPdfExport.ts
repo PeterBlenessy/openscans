@@ -217,7 +217,7 @@ function addBatchCoverPage(
   // Title
   pdf.setFontSize(20)
   pdf.setFont('helvetica', 'bold')
-  pdf.text('MR DICOM Viewer - Favorites Export', margin, yPosition)
+  pdf.text('OpenScans - Favorites Export', margin, yPosition)
   yPosition += 10
 
   // Export info

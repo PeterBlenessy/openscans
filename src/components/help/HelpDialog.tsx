@@ -32,7 +32,7 @@ export function HelpDialog({ show, onClose }: HelpDialogProps) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-100">MR DICOM Viewer Help</h2>
+          <h2 className="text-2xl font-bold text-gray-100">OpenScans Help</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-100 text-2xl leading-none transition-colors"
@@ -46,7 +46,7 @@ export function HelpDialog({ show, onClose }: HelpDialogProps) {
           <section>
             <h3 className="text-xl font-semibold text-blue-400 mb-3">About</h3>
             <p className="text-sm leading-relaxed mb-2">
-              MR DICOM Viewer is a web-based medical imaging viewer for DICOM files.
+              OpenScans is a web-based medical imaging viewer for DICOM files.
               All processing happens locally in your browser - no data is sent to external servers.
             </p>
             <p className="text-sm leading-relaxed">

@@ -1,6 +1,6 @@
 # Testing Guide
 
-This document explains how to run, write, and debug tests for the MR DICOM Viewer.
+This document explains how to run, write, and debug tests for the OpenScans.
 
 ## Table of Contents
 
@@ -390,7 +390,7 @@ import path from 'path'
 test('should load and display a DICOM file', async ({ page }) => {
   // Navigate to app
   await page.goto('/')
-  await expect(page.locator('text=MR DICOM Viewer')).toBeVisible()
+  await expect(page.locator('text=OpenScans')).toBeVisible()
 
   // Upload DICOM file using data-testid
   const fileInput = page.locator('[data-testid="file-input"]')

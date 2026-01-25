@@ -74,7 +74,7 @@ function addCoverPage(
   // Title
   pdf.setFontSize(20)
   pdf.setFont('helvetica', 'bold')
-  pdf.text('MR DICOM Viewer - Export Report', margin, yPosition)
+  pdf.text('OpenScans - Export Report', margin, yPosition)
   yPosition += 10
 
   // Export date

@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This document explains how to build and deploy the MR DICOM Viewer for production use.
+This document explains how to build and deploy the OpenScans for production use.
 
 ## Table of Contents
 
@@ -81,7 +81,7 @@ Test the production build thoroughly:
 
 ## Deployment Platforms
 
-The MR DICOM Viewer is a **static site** - no backend required. Deploy to any static hosting platform.
+The OpenScans is a **static site** - no backend required. Deploy to any static hosting platform.
 
 ### Recommended Platforms
 
@@ -263,7 +263,7 @@ docker run -d -p 80:80 dicom-viewer
 
 ### Important Disclaimer
 
-**The MR DICOM Viewer is a client-side application that processes DICOM data entirely in the browser. No data is sent to external servers by default.**
+**The OpenScans is a client-side application that processes DICOM data entirely in the browser. No data is sent to external servers by default.**
 
 ### HIPAA Considerations
 
@@ -322,7 +322,7 @@ Create `.env.production` for production builds:
 
 ```env
 # App Configuration
-VITE_APP_TITLE=MR DICOM Viewer
+VITE_APP_TITLE=OpenScans
 VITE_APP_VERSION=1.0.0
 
 # Feature Flags

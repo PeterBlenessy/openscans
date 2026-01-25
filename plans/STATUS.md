@@ -1,4 +1,4 @@
-# MR DICOM Viewer - Implementation Status
+# OpenScans - Implementation Status
 
 **Last Updated**: January 25, 2026
 **Current Phase**: Phase 4 Complete - Production Ready v1.0

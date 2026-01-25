@@ -1,8 +1,8 @@
-# MR DICOM Viewer - Architecture Documentation
+# OpenScans - Architecture Documentation
 
 ## Overview
 
-The MR DICOM Viewer is a modern web-based application built with React and TypeScript for viewing medical imaging DICOM files. The architecture emphasizes client-side processing, performance, and maintainability.
+The OpenScans is a modern web-based application built with React and TypeScript for viewing medical imaging DICOM files. The architecture emphasizes client-side processing, performance, and maintainability.
 
 **Version**: 1.1
 **Last Updated**: 2026-01-24

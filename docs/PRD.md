@@ -1,4 +1,4 @@
-# Product Requirement Description: MR DICOM Viewer
+# Product Requirement Description: OpenScans
 
 ## 1. Overview
 

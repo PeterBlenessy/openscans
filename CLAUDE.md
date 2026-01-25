@@ -1,10 +1,10 @@
-# Claude Development Guidelines for MR DICOM Viewer
+# Claude Development Guidelines for OpenScans
 
 This document outlines the common rules, conventions, and best practices for Claude when working on this project.
 
 ## Project Context
 
-**Project**: MR DICOM Viewer - A web-based medical imaging viewer for DICOM files
+**Project**: OpenScans - A web-based medical imaging viewer for DICOM files
 **Tech Stack**: React 18, TypeScript, Vite, Tailwind CSS, Cornerstone.js
 **Purpose**: Client-side DICOM viewing with annotations and export capabilities
 

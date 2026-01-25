@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
 /**
- * Playwright E2E test configuration for MR DICOM Viewer
+ * Playwright E2E test configuration for OpenScans
  *
  * Focus: Medical imaging workflows on Chromium only
  * Strategy: Sequential execution (DICOM files share state)

@@ -1,6 +1,6 @@
 # API Reference
 
-This document provides a comprehensive reference for the MR DICOM Viewer's public APIs, including Zustand stores, export functions, DICOM parsing, and utility functions.
+This document provides a comprehensive reference for the OpenScans's public APIs, including Zustand stores, export functions, DICOM parsing, and utility functions.
 
 ## Table of Contents
 
