@@ -83,7 +83,7 @@ export function LeftDrawer({ isOpen, setIsOpen, onLoadNewFiles, onOpenSettings, 
 
         console.log(`[LeftDrawer] Loaded ${loadedStudies.length} studies from directory`)
         loadedStudies.forEach((study, idx) => {
-          console.log(`[LeftDrawer] Study ${idx + 1}: ${study.patientName}, ${study.series.length} series, ${study.series.reduce((sum, s) => sum + s.instances.length, 0)} images`)
+          console.log(`[LeftDrawer] Study ${idx + 1}: ${study.series.length} series, ${study.series.reduce((sum, s) => sum + s.instances.length, 0)} images`)
         })
 
         // Set ALL the studies from this directory
@@ -92,7 +92,7 @@ export function LeftDrawer({ isOpen, setIsOpen, onLoadNewFiles, onOpenSettings, 
         // Find and set the current study to the one the user clicked
         const targetStudy = loadedStudies.find((s) => s.studyInstanceUID === entry.studyInstanceUID)
         if (targetStudy) {
-          console.log(`[LeftDrawer] Found target study: ${targetStudy.patientName}, ${targetStudy.series.length} series`)
+          console.log(`[LeftDrawer] Found target study: ${targetStudy.series.length} series`)
           setCurrentStudy(targetStudy.studyInstanceUID)
         } else {
           console.log(`[LeftDrawer] Target study not found, using first study`)

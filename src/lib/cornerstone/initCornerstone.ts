@@ -58,6 +58,7 @@ export async function initCornerstone(): Promise<void> {
       },
     })
 
+
     // Make cornerstone available globally for debugging
     ;(window as any).cornerstone = cornerstone
 
