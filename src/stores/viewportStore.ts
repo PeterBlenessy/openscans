@@ -16,6 +16,8 @@ interface ViewportState {
   tools: Tool[]
   showAnnotations: boolean
   showMetadata: boolean
+  isDetecting: boolean
+  detectionError: string | null
 
   // Actions
   setWindowLevel: (center: number, width: number) => void
@@ -29,6 +31,7 @@ interface ViewportState {
   setActiveTool: (toolName: string) => void
   toggleAnnotations: () => void
   toggleMetadata: () => void
+  setDetecting: (detecting: boolean, error?: string | null) => void
   resetSettings: () => void
 }
 
@@ -72,6 +75,8 @@ export const useViewportStore = create<ViewportState>((set) => ({
   tools: defaultTools,
   showAnnotations: true,
   showMetadata: true,
+  isDetecting: false,
+  detectionError: null,
 
   // Update W/L for the current modality and apply to viewport
   // IMPORTANT: Preserve dicomDefault when updating user adjustments
@@ -189,6 +194,9 @@ export const useViewportStore = create<ViewportState>((set) => ({
 
   toggleMetadata: () =>
     set((state) => ({ showMetadata: !state.showMetadata })),
+
+  setDetecting: (detecting, error = null) =>
+    set({ isDetecting: detecting, detectionError: error }),
 
   // Reset to current modality's default values
   // Priority: 1) Current image's DICOM metadata, 2) Hard-coded modality defaults

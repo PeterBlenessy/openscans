@@ -4,6 +4,9 @@ import { useViewportStore } from '@/stores/viewportStore'
 import { initCornerstone, cornerstone } from '@/lib/cornerstone/initCornerstone'
 import { ViewportToolbar } from './ViewportToolbar'
 import { ExportDialog } from '@/components/export/ExportDialog'
+import { AnnotationOverlay } from './AnnotationOverlay'
+import { useAnnotationStore } from '@/stores/annotationStore'
+import { mockDetector } from '@/lib/ai/mockVertebralDetector'
 
 interface DicomViewportProps {
   className?: string
@@ -35,6 +38,11 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
   const setModality = useViewportStore((state) => state.setModality)
   const setZoom = useViewportStore((state) => state.setZoom)
   const setPan = useViewportStore((state) => state.setPan)
+  const isDetecting = useViewportStore((state) => state.isDetecting)
+  const detectionError = useViewportStore((state) => state.detectionError)
+  const setDetecting = useViewportStore((state) => state.setDetecting)
+  const addAnnotations = useAnnotationStore.getState().addAnnotations
+  const deleteAnnotationsForInstance = useAnnotationStore.getState().deleteAnnotationsForInstance
 
   // When current image changes, update the DICOM reset target
   // W/L is per-image in DICOM, so each image can have different optimal values
@@ -144,17 +152,43 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
     }
   }, [isInitialized])
 
-  // Track modifier key state for cursor indication
+  // Track modifier key state for cursor indication and keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
         setIsModifierKeyPressed(true)
+      }
+
+      // AI detection keyboard shortcut (M)
+      if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+        if (currentInstance && !isDetecting) {
+          e.preventDefault()
+          // Trigger AI detection
+          handleAiDetection()
+        }
       }
     }
 
     const handleKeyUp = (e: KeyboardEvent) => {
       if (!e.ctrlKey && !e.metaKey) {
         setIsModifierKeyPressed(false)
+      }
+    }
+
+    const handleAiDetection = async () => {
+      if (!currentInstance || isDetecting) return
+
+      try {
+        setDetecting(true)
+        deleteAnnotationsForInstance(currentInstance.sopInstanceUID, true)
+        const result = await mockDetector.detectVertebrae(currentInstance)
+        addAnnotations(result.annotations)
+        console.log(`AI detection completed in ${result.processingTimeMs.toFixed(0)}ms with ${result.confidence.toFixed(2)} confidence`)
+        setDetecting(false)
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        console.error('AI detection failed:', error)
+        setDetecting(false, errorMessage)
       }
     }
 
@@ -165,7 +199,7 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [])
+  }, [currentInstance, isDetecting, setDetecting, addAnnotations, deleteAnnotationsForInstance])
 
   // Load and display image
   useEffect(() => {
@@ -461,11 +495,11 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
 
           // Clear existing timeout
           if (zoomTimeoutRef.current) {
-            clearTimeout(zoomTimeoutRef.current)
+            window.clearTimeout(zoomTimeoutRef.current)
           }
 
           // Fade to subtle after 1.5 seconds
-          zoomTimeoutRef.current = setTimeout(() => {
+          zoomTimeoutRef.current = window.setTimeout(() => {
             setIsActivelyZooming(false)
           }, 1500)
         }
@@ -479,7 +513,7 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
     return () => {
       element.removeEventListener('wheel', handleWheel)
       if (zoomTimeoutRef.current) {
-        clearTimeout(zoomTimeoutRef.current)
+        window.clearTimeout(zoomTimeoutRef.current)
       }
     }
   }, [isInitialized, settings.zoom, setZoom])
@@ -492,10 +526,10 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
       setIsActivelyZooming(true)
 
       if (zoomTimeoutRef.current) {
-        clearTimeout(zoomTimeoutRef.current)
+        window.clearTimeout(zoomTimeoutRef.current)
       }
 
-      zoomTimeoutRef.current = setTimeout(() => {
+      zoomTimeoutRef.current = window.setTimeout(() => {
         setIsActivelyZooming(false)
       }, 1500)
     }
@@ -553,12 +587,37 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
         onExportClick={() => setShowExportDialog(true)}
       />
 
+      {/* Annotation Overlay */}
+      <AnnotationOverlay canvasElement={canvasRef.current} />
+
       {/* Export Dialog */}
       <ExportDialog
         show={showExportDialog}
         onClose={() => setShowExportDialog(false)}
         viewportElement={canvasRef.current}
       />
+
+      {/* AI Detection Status */}
+      {isDetecting && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="bg-black/70 text-white px-6 py-3 rounded-lg shadow-xl">
+            <div className="flex items-center gap-3">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 animate-spin">
+                <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39z" clipRule="evenodd" />
+              </svg>
+              <span className="text-base">Detecting vertebrae...</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {detectionError && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="bg-black/70 text-white px-6 py-3 rounded-lg shadow-xl">
+            Detection failed: {detectionError}
+          </div>
+        </div>
+      )}
 
       {/* Window/Level indicator - bottom-left corner (above zoom) */}
       <div

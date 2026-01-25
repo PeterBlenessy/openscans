@@ -1,6 +1,8 @@
 import { useViewportStore } from '@/stores/viewportStore'
 import { useStudyStore } from '@/stores/studyStore'
 import { useFavoritesStore, FavoriteImage } from '@/stores/favoritesStore'
+import { useAnnotationStore } from '@/stores/annotationStore'
+import { mockDetector } from '@/lib/ai/mockVertebralDetector'
 
 interface ViewportToolbarProps {
   className?: string
@@ -15,10 +17,14 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
   const setFlipVertical = useViewportStore((state) => state.setFlipVertical)
   const setInvert = useViewportStore((state) => state.setInvert)
   const setZoom = useViewportStore((state) => state.setZoom)
+  const isDetecting = useViewportStore((state) => state.isDetecting)
+  const setDetecting = useViewportStore((state) => state.setDetecting)
   const currentInstance = useStudyStore((state) => state.currentInstance)
   const currentStudy = useStudyStore((state) => state.currentStudy)
   const currentSeries = useStudyStore((state) => state.currentSeries)
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite)
+  const addAnnotations = useAnnotationStore((state) => state.addAnnotations)
+  const deleteAnnotationsForInstance = useAnnotationStore((state) => state.deleteAnnotationsForInstance)
 
   // Subscribe to favorites array to trigger re-render on changes
   const isCurrentFavorite = useFavoritesStore((state) =>
@@ -77,6 +83,23 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
     }
 
     toggleFavorite(favoriteImage)
+  }
+
+  const handleAiDetection = async () => {
+    if (!currentInstance || isDetecting) return
+
+    try {
+      setDetecting(true)
+      deleteAnnotationsForInstance(currentInstance.sopInstanceUID, true)
+      const result = await mockDetector.detectVertebrae(currentInstance)
+      addAnnotations(result.annotations)
+      console.log(`AI detection completed in ${result.processingTimeMs.toFixed(0)}ms with ${result.confidence.toFixed(2)} confidence`)
+      setDetecting(false)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      console.error('AI detection failed:', error)
+      setDetecting(false, errorMessage)
+    }
   }
 
   return (
@@ -230,6 +253,28 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
             <path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" />
             <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.25 2.25 0 004.25 17.5h11.5A2.25 2.25 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .414-.336.75-.75.75H4.25a.75.75 0 01-.75-.75v-2.5z" />
           </svg>
+        }
+      />
+
+      <ToolbarDivider />
+
+      {/* AI Detection */}
+      <ToolbarButton
+        onClick={handleAiDetection}
+        title={isDetecting ? "Detecting..." : "AI detection (M)"}
+        disabled={!currentInstance || isDetecting}
+        active={isDetecting}
+        data-testid="ai-detection-button"
+        icon={
+          isDetecting ? (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 animate-spin">
+              <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39z" clipRule="evenodd" />
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path d="M15.98 1.804a1 1 0 00-1.96 0l-.24 1.192a1 1 0 01-.784.785l-1.192.238a1 1 0 000 1.962l1.192.238a1 1 0 01.785.785l.238 1.192a1 1 0 001.962 0l.238-1.192a1 1 0 01.785-.785l1.192-.238a1 1 0 000-1.962l-1.192-.238a1 1 0 01-.785-.785l-.238-1.192zM6.949 5.684a1 1 0 00-1.898 0l-.683 2.051a1 1 0 01-.633.633l-2.051.683a1 1 0 000 1.898l2.051.684a1 1 0 01.633.632l.683 2.051a1 1 0 001.898 0l.683-2.051a1 1 0 01.633-.633l2.051-.683a1 1 0 000-1.898l-2.051-.683a1 1 0 01-.633-.633L6.95 5.684zM13.949 13.684a1 1 0 00-1.898 0l-.184.551a1 1 0 01-.632.633l-.551.183a1 1 0 000 1.898l.551.183a1 1 0 01.633.633l.183.551a1 1 0 001.898 0l.184-.551a1 1 0 01.632-.633l.551-.183a1 1 0 000-1.898l-.551-.184a1 1 0 01-.633-.632l-.183-.551z" />
+            </svg>
+          )
         }
       />
     </div>
