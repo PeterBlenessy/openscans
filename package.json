@@ -24,6 +24,8 @@
     "@radix-ui/react-toggle": "^1.0.3",
     "@radix-ui/react-tooltip": "^1.0.7",
     "@tauri-apps/api": "^2.9.1",
+    "@tauri-apps/plugin-dialog": "^2.6.0",
+    "@tauri-apps/plugin-fs": "^2.4.5",
     "clsx": "^2.1.0",
     "cornerstone-core": "^2.6.1",
     "cornerstone-tools": "^6.0.10",

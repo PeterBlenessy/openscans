@@ -1,12 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useDicomLoader } from '@/hooks/useDicomLoader'
 import { cn } from '@/lib/utils'
-import {
-  readDicomFilesWithDirectories,
-} from '@/lib/storage/directoryHandleStorage'
-import { parseDicomFilesWithDirectories } from '@/lib/dicom/parser'
-import { useStudyStore } from '@/stores/studyStore'
-import { useSettingsStore } from '@/stores/settingsStore'
+import { pickDirectory, readFilesFromDirectory, isDirectoryPickerSupported } from '@/lib/utils/filePicker'
 
 interface FileDropzoneProps {
   className?: string
@@ -18,8 +13,6 @@ export function FileDropzone({ className, onFilesLoaded }: FileDropzoneProps) {
   const [localError, setLocalError] = useState<string | null>(null)
   const [localLoading, setLocalLoading] = useState(false)
   const { loadFiles, isLoading, error } = useDicomLoader()
-  const setStudies = useStudyStore((state) => state.setStudies)
-  const persistStudies = useSettingsStore((state) => state.persistStudies)
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -125,8 +118,16 @@ export function FileDropzone({ className, onFilesLoaded }: FileDropzoneProps) {
 
   const handleDirectoryPicker = useCallback(async () => {
     try {
-      // Check if File System Access API is supported
-      if (!('showDirectoryPicker' in window)) {
+      console.log('Platform check:', {
+        isDirectoryPickerSupported: isDirectoryPickerSupported(),
+        hasTauriGlobal: '__TAURI__' in window,
+        hasTauriInternals: '__TAURI_INTERNALS__' in window,
+        userAgent: navigator.userAgent,
+        windowKeys: Object.keys(window).filter(k => k.includes('TAURI') || k.includes('tauri'))
+      })
+
+      // Check if directory picker is supported
+      if (!isDirectoryPickerSupported()) {
         alert('Your browser does not support folder selection. Please use Chrome or Edge.')
         return
       }
@@ -134,43 +135,32 @@ export function FileDropzone({ className, onFilesLoaded }: FileDropzoneProps) {
       setLocalLoading(true)
       setLocalError(null)
 
-      // @ts-ignore - showDirectoryPicker is not in TypeScript types yet
-      const directoryHandle: FileSystemDirectoryHandle = await window.showDirectoryPicker({
-        mode: 'read',
-      })
+      // Use platform-aware directory picker
+      const result = await pickDirectory()
 
-      // Read all DICOM files with directory tracking
-      const filesWithDirs = await readDicomFilesWithDirectories(directoryHandle)
-
-      if (filesWithDirs.length === 0) {
-        alert('No DICOM files found in the selected folder.')
+      // User cancelled
+      if (!result) {
         setLocalLoading(false)
         return
       }
 
-      // Parse files with directory tracking
-      // Pass the root directory handle so all studies get the same root directory reference
-      const studies = await parseDicomFilesWithDirectories(filesWithDirs, directoryHandle)
+      // Read all files from directory
+      const allFiles = await readFilesFromDirectory(result)
 
-      if (studies.length === 0) {
-        alert('No valid DICOM studies found in the selected folder.')
+      if (allFiles.length === 0) {
+        alert('No files found in the selected folder.')
         setLocalLoading(false)
         return
       }
 
-      // If persistence is disabled, remove the directory handle IDs
-      if (!persistStudies) {
-        studies.forEach((study) => {
-          delete study.directoryHandleId
-        })
-      }
+      // Filter to DICOM files and load them
+      // Pass folder path if in desktop mode (result is a string)
+      const folderPath = typeof result === 'string' ? result : undefined
+      await loadFiles(allFiles, folderPath)
 
-      // Set the studies directly
-      setStudies(studies)
+      console.log(`Successfully loaded files from directory`)
 
-      console.log(`Successfully loaded ${studies.length} studies`)
-
-      // Call onFilesLoaded (no handle ID needed - it's in the studies now)
+      // Call onFilesLoaded
       onFilesLoaded?.()
 
       setLocalLoading(false)
@@ -184,7 +174,7 @@ export function FileDropzone({ className, onFilesLoaded }: FileDropzoneProps) {
       setLocalError('Failed to load DICOM files from folder')
       setLocalLoading(false)
     }
-  }, [setStudies, onFilesLoaded, persistStudies])
+  }, [loadFiles, onFilesLoaded])
 
   const combinedLoading = isLoading || localLoading
   const combinedError = error || localError

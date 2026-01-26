@@ -6,6 +6,9 @@
  * - Tauri desktop app (with Python ML capabilities)
  */
 
+// Cache the detection result since it won't change during runtime
+let tauriDetected: boolean | null = null
+
 /**
  * Check if running inside Tauri desktop app
  *
@@ -17,8 +20,20 @@ export function isTauri(): boolean {
     return false
   }
 
-  // Tauri injects __TAURI__ global when running as desktop app
-  return '__TAURI__' in window
+  // Return cached result if available
+  if (tauriDetected !== null) {
+    return tauriDetected
+  }
+
+  // Tauri v2 detection: Check for __TAURI_INTERNALS__
+  // This is more reliable than __TAURI__ which may not be injected
+  const detected = '__TAURI_INTERNALS__' in window ||
+                   '__TAURI__' in window ||
+                   // Additional check: Tauri specific user agent
+                   navigator.userAgent.includes('Tauri')
+
+  tauriDetected = detected
+  return detected
 }
 
 /**

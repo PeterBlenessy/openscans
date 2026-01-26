@@ -6,7 +6,8 @@ export interface DicomStudy {
   patientName: string
   patientID: string
   series: DicomSeries[]
-  directoryHandleId?: string // Reference to directory handle for this specific study
+  directoryHandleId?: string // Reference to directory handle for this specific study (web mode)
+  folderPath?: string // Folder path for this specific study (desktop mode)
 }
 
 export interface DicomSeries {

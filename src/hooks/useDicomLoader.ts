@@ -7,14 +7,14 @@ export function useDicomLoader() {
   const [error, setError] = useState<string | null>(null)
   const { setStudies, setLoading: setStoreLoading, setError: setStoreError } = useStudyStore()
 
-  const loadFiles = async (files: File[]) => {
+  const loadFiles = async (files: File[], folderPath?: string) => {
     setIsLoading(true)
     setStoreLoading(true)
     setError(null)
     setStoreError(null)
 
     try {
-      const studies = await parseDicomFiles(files)
+      const studies = await parseDicomFiles(files, folderPath)
 
       if (studies.length === 0) {
         throw new Error('No valid DICOM files found in the selected files/folder')

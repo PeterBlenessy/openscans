@@ -91,7 +91,7 @@ function App() {
   useEffect(() => {
     // Only process studies once per load, and only if we have studies
     if (studies.length > 0 && !hasProcessedStudies) {
-      // Add ALL studies to recent history with their own directoryHandleId
+      // Add ALL studies to recent history with their own directoryHandleId or folderPath
       studies.forEach((study) => {
         const imageCount = study.series.reduce(
           (total, series) => total + series.instances.length,
@@ -105,7 +105,8 @@ function App() {
           studyDescription: study.studyDescription || '',
           seriesCount: study.series.length,
           imageCount,
-          directoryHandleId: study.directoryHandleId, // Use the study's own directory handle
+          directoryHandleId: study.directoryHandleId, // Use the study's own directory handle (web mode)
+          folderPath: study.folderPath, // Use the folder path (desktop mode)
         })
       })
 

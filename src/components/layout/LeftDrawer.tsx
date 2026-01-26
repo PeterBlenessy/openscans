@@ -42,8 +42,56 @@ export function LeftDrawer({ isOpen, setIsOpen, onLoadNewFiles, onOpenSettings, 
       return
     }
 
-    // If study is not loaded but has a directory handle, try to reload it
-    if (entry.directoryHandleId) {
+    // Try to reload from folderPath (desktop mode) or directoryHandleId (web mode)
+    if (entry.folderPath) {
+      // Desktop mode - reload from folder path
+      try {
+        setIsLoading(true)
+
+        // Import platform-specific file utilities
+        const { readFilesFromDirectory } = await import('@/lib/utils/filePicker')
+        const { parseDicomFiles } = await import('@/lib/dicom/parser')
+
+        // Read all files from the folder path
+        const allFiles = await readFilesFromDirectory(entry.folderPath)
+        if (allFiles.length === 0) {
+          alert('No DICOM files found in the folder.')
+          return
+        }
+
+        // Parse and load the files
+        const loadedStudies = await parseDicomFiles(allFiles, entry.folderPath)
+        if (loadedStudies.length === 0) {
+          alert('No valid DICOM studies found in the folder.')
+          return
+        }
+
+        console.log(`[LeftDrawer] Loaded ${loadedStudies.length} studies from folder path`)
+        loadedStudies.forEach((study, idx) => {
+          console.log(`[LeftDrawer] Study ${idx + 1}: ${study.series.length} series, ${study.series.reduce((sum, s) => sum + s.instances.length, 0)} images`)
+        })
+
+        // Set ALL the studies from this directory
+        setStudies(loadedStudies)
+
+        // Find and set the current study to the one the user clicked
+        const targetStudy = loadedStudies.find((s) => s.studyInstanceUID === entry.studyInstanceUID)
+        if (targetStudy) {
+          console.log(`[LeftDrawer] Found target study: ${targetStudy.series.length} series`)
+          setCurrentStudy(targetStudy.studyInstanceUID)
+        } else {
+          console.log(`[LeftDrawer] Target study not found, using first study`)
+          // If the exact study isn't found, just set the first one
+          setCurrentStudy(loadedStudies[0].studyInstanceUID)
+        }
+      } catch (error) {
+        console.error('Failed to reload study from folder path:', error)
+        alert('Failed to reload the study. Please try loading the files again.')
+      } finally {
+        setIsLoading(false)
+      }
+    } else if (entry.directoryHandleId) {
+      // Web mode - reload from directory handle
       try {
         setIsLoading(true)
 
@@ -144,7 +192,7 @@ export function LeftDrawer({ isOpen, setIsOpen, onLoadNewFiles, onOpenSettings, 
                 {recentStudies.map((entry) => {
                   const isActive = currentStudy?.studyInstanceUID === entry.studyInstanceUID
                   const isLoaded = studies.some((s) => s.studyInstanceUID === entry.studyInstanceUID)
-                  const canReload = !!entry.directoryHandleId
+                  const canReload = !!entry.directoryHandleId || !!entry.folderPath
                   const isClickable = isLoaded || canReload
 
                   return (

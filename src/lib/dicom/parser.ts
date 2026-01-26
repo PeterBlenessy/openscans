@@ -5,8 +5,9 @@ import { FileWithDirectory, saveDirectoryHandle } from '../storage/directoryHand
 
 /**
  * Parse DICOM files and organize them into studies and series
+ * @param folderPath Optional folder path for desktop mode (Tauri)
  */
-export async function parseDicomFiles(files: File[]): Promise<DicomStudy[]> {
+export async function parseDicomFiles(files: File[], folderPath?: string): Promise<DicomStudy[]> {
   const instances: Array<{
     file: File
     dataset: any
@@ -48,6 +49,13 @@ export async function parseDicomFiles(files: File[]): Promise<DicomStudy[]> {
 
   // Organize into studies and series
   const studies = organizeDicomData(instances)
+
+  // If folderPath is provided (desktop mode), assign it to all studies
+  if (folderPath) {
+    studies.forEach(study => {
+      study.folderPath = folderPath
+    })
+  }
 
   return studies
 }

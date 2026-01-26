@@ -10,7 +10,8 @@ export interface RecentStudyEntry {
   seriesCount: number
   imageCount: number
   loadedAt: number
-  directoryHandleId?: string // Reference to stored directory handle in IndexedDB
+  directoryHandleId?: string // Reference to stored directory handle in IndexedDB (web mode)
+  folderPath?: string // Folder path for desktop mode
 }
 
 interface RecentStudiesState {
