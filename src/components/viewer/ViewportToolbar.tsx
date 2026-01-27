@@ -2,7 +2,9 @@ import { useViewportStore } from '@/stores/viewportStore'
 import { useStudyStore } from '@/stores/studyStore'
 import { useFavoritesStore, FavoriteImage } from '@/stores/favoritesStore'
 import { useAnnotationStore } from '@/stores/annotationStore'
+import { useSettingsStore } from '@/stores/settingsStore'
 import { mockDetector } from '@/lib/ai/mockVertebralDetector'
+import { claudeDetector } from '@/lib/ai/claudeVisionDetector'
 
 interface ViewportToolbarProps {
   className?: string
@@ -25,6 +27,16 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite)
   const addAnnotations = useAnnotationStore((state) => state.addAnnotations)
   const deleteAnnotationsForInstance = useAnnotationStore((state) => state.deleteAnnotationsForInstance)
+
+  // AI settings
+  const aiEnabled = useSettingsStore((state) => state.aiEnabled)
+  const aiProvider = useSettingsStore((state) => state.aiProvider)
+  const aiApiKey = useSettingsStore((state) => state.aiApiKey)
+
+  // Initialize Claude detector with API key
+  if (aiEnabled && aiProvider === 'claude' && aiApiKey) {
+    claudeDetector.setApiKey(aiApiKey)
+  }
 
   // Subscribe to favorites array to trigger re-render on changes
   const isCurrentFavorite = useFavoritesStore((state) =>
@@ -88,12 +100,23 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
   const handleAiDetection = async () => {
     if (!currentInstance || isDetecting) return
 
+    // Choose detector based on settings
+    let detector = mockDetector // Default to mock
+
+    if (aiEnabled && aiProvider === 'claude' && claudeDetector.isConfigured()) {
+      detector = claudeDetector
+      console.log('[ViewportToolbar] Using Claude Vision API for detection')
+    } else if (aiEnabled) {
+      console.warn('[ViewportToolbar] AI enabled but not configured, using mock detector')
+    }
+
     try {
       setDetecting(true)
       deleteAnnotationsForInstance(currentInstance.sopInstanceUID, true)
-      const result = await mockDetector.detectVertebrae(currentInstance)
+      const result = await detector.detectVertebrae(currentInstance)
       addAnnotations(result.annotations)
       console.log(`AI detection completed in ${result.processingTimeMs.toFixed(0)}ms with ${result.confidence.toFixed(2)} confidence`)
+      console.log(`Detected ${result.annotations.length} vertebrae`)
       setDetecting(false)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'

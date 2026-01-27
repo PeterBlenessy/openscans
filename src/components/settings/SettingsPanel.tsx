@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { useSettingsStore, Theme, ScrollDirection } from '@/stores/settingsStore'
+import { useEffect, useState } from 'react'
+import { useSettingsStore, Theme, ScrollDirection, AIProvider } from '@/stores/settingsStore'
 
 interface SettingsPanelProps {
   show: boolean
@@ -13,6 +13,10 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
   const zoomSensitivity = useSettingsStore((state) => state.zoomSensitivity)
   const hidePersonalInfo = useSettingsStore((state) => state.hidePersonalInfo)
   const persistStudies = useSettingsStore((state) => state.persistStudies)
+  const aiEnabled = useSettingsStore((state) => state.aiEnabled)
+  const aiProvider = useSettingsStore((state) => state.aiProvider)
+  const aiApiKey = useSettingsStore((state) => state.aiApiKey)
+  const aiConsentGiven = useSettingsStore((state) => state.aiConsentGiven)
 
   const setTheme = useSettingsStore((state) => state.setTheme)
   const setScrollDirection = useSettingsStore((state) => state.setScrollDirection)
@@ -20,7 +24,13 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
   const setZoomSensitivity = useSettingsStore((state) => state.setZoomSensitivity)
   const setHidePersonalInfo = useSettingsStore((state) => state.setHidePersonalInfo)
   const setPersistStudies = useSettingsStore((state) => state.setPersistStudies)
+  const setAiEnabled = useSettingsStore((state) => state.setAiEnabled)
+  const setAiProvider = useSettingsStore((state) => state.setAiProvider)
+  const setAiApiKey = useSettingsStore((state) => state.setAiApiKey)
+  const setAiConsentGiven = useSettingsStore((state) => state.setAiConsentGiven)
   const resetToDefaults = useSettingsStore((state) => state.resetToDefaults)
+
+  const [showApiKey, setShowApiKey] = useState(false)
 
   // Close on Escape key
   useEffect(() => {
@@ -139,6 +149,90 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                 <li>• Exported files exclude patient data by default</li>
               </ul>
             </div>
+          </SettingsSection>
+
+          {/* AI Detection Section */}
+          <SettingsSection title="AI Detection" isDark={isDark}>
+            <SettingsRow label="Enable AI Detection" description="Use Claude Vision API for vertebrae detection" isDark={isDark}>
+              <ToggleSwitch
+                checked={aiEnabled}
+                onChange={(enabled) => {
+                  if (enabled && !aiConsentGiven) {
+                    // Show consent prompt
+                    const consent = confirm(
+                      'AI Detection Privacy Notice:\n\n' +
+                      'When enabled, DICOM images will be sent to external AI services (Claude API) for analysis. ' +
+                      'Images are sent without patient metadata, but the pixel data itself leaves your device.\n\n' +
+                      'This is NOT HIPAA-compliant by default. Only use with de-identified images or in non-clinical settings.\n\n' +
+                      'Do you consent to sending image data to external AI services?'
+                    )
+                    if (consent) {
+                      setAiConsentGiven(true)
+                      setAiEnabled(true)
+                    }
+                  } else {
+                    setAiEnabled(enabled)
+                  }
+                }}
+                isDark={isDark}
+              />
+            </SettingsRow>
+
+            {aiEnabled && (
+              <>
+                <SettingsRow label="AI Provider" description="Which AI service to use" isDark={isDark}>
+                  <select
+                    value={aiProvider}
+                    onChange={(e) => setAiProvider(e.target.value as AIProvider)}
+                    className={`border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a] text-white focus:ring-[#3a3a3a]' : 'bg-gray-100 border-gray-300 text-gray-900 focus:ring-gray-400'}`}
+                  >
+                    <option value="claude">Claude (Anthropic)</option>
+                    <option value="openai">OpenAI (Coming Soon)</option>
+                    <option value="none">None (Mock Only)</option>
+                  </select>
+                </SettingsRow>
+
+                {aiProvider !== 'none' && (
+                  <SettingsRow label="API Key" description={aiProvider === 'claude' ? 'Your Anthropic API key' : 'Your OpenAI API key'} isDark={isDark}>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type={showApiKey ? 'text' : 'password'}
+                        value={aiApiKey}
+                        onChange={(e) => setAiApiKey(e.target.value)}
+                        placeholder="sk-ant-..."
+                        className={`flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a] text-white focus:ring-[#3a3a3a] placeholder-gray-600' : 'bg-gray-100 border-gray-300 text-gray-900 focus:ring-gray-400 placeholder-gray-400'}`}
+                      />
+                      <button
+                        onClick={() => setShowApiKey(!showApiKey)}
+                        className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-[#2a2a2a]' : 'hover:bg-gray-200'}`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                          {showApiKey ? (
+                            <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+                          ) : (
+                            <path fillRule="evenodd" d="M3.28 2.22a.75.75 0 00-1.06 1.06l14.5 14.5a.75.75 0 101.06-1.06l-1.745-1.745a10.029 10.029 0 003.3-4.38 1.651 1.651 0 000-1.185A10.004 10.004 0 009.999 3a9.956 9.956 0 00-4.744 1.194L3.28 2.22zM7.752 6.69l1.092 1.092a2.5 2.5 0 013.374 3.373l1.091 1.092a4 4 0 00-5.557-5.557z" clipRule="evenodd" />
+                          )}
+                        </svg>
+                      </button>
+                    </div>
+                  </SettingsRow>
+                )}
+
+                {/* AI Information */}
+                <div className={`p-3 rounded-lg text-xs ${isDark ? 'bg-[#0f0f0f] border border-[#2a2a2a]' : 'bg-gray-50 border border-gray-200'}`}>
+                  <p className={`font-medium mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+                    ⚠️ Privacy & Security Notice
+                  </p>
+                  <ul className="space-y-1 text-gray-500">
+                    <li>• Image pixel data is sent to external AI services</li>
+                    <li>• Patient metadata (names, IDs) is stripped before sending</li>
+                    <li>• Cost: ~$0.004-0.01 per image analyzed</li>
+                    <li>• API keys are stored locally (not encrypted)</li>
+                    <li>• For production use, implement secure backend proxy</li>
+                  </ul>
+                </div>
+              </>
+            )}
           </SettingsSection>
 
           {/* Data Section */}

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 
 export type Theme = 'dark' | 'light'
 export type ScrollDirection = 'natural' | 'inverted'
+export type AIProvider = 'claude' | 'openai' | 'none'
 
 export interface SettingsState {
   // Appearance
@@ -18,6 +19,12 @@ export interface SettingsState {
   // Data persistence
   persistStudies: boolean // Whether to persist studies across sessions
 
+  // AI Detection
+  aiEnabled: boolean // Enable AI vertebrae detection
+  aiProvider: AIProvider // Which API to use
+  aiApiKey: string // API key (stored in localStorage - not secure for production)
+  aiConsentGiven: boolean // User has consented to sending images to external API
+
   // Actions
   setTheme: (theme: Theme) => void
   setScrollDirection: (direction: ScrollDirection) => void
@@ -25,6 +32,10 @@ export interface SettingsState {
   setZoomSensitivity: (sensitivity: number) => void
   setHidePersonalInfo: (hide: boolean) => void
   setPersistStudies: (persist: boolean) => void
+  setAiEnabled: (enabled: boolean) => void
+  setAiProvider: (provider: AIProvider) => void
+  setAiApiKey: (key: string) => void
+  setAiConsentGiven: (consent: boolean) => void
   resetToDefaults: () => void
 }
 
@@ -37,6 +48,10 @@ const defaultSettings = {
   zoomSensitivity: 0.05,
   hidePersonalInfo: true,
   persistStudies: true,
+  aiEnabled: false,
+  aiProvider: 'claude' as AIProvider,
+  aiApiKey: '',
+  aiConsentGiven: false,
 }
 
 function loadSettings(): Partial<typeof defaultSettings> {
@@ -108,6 +123,26 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
     setPersistStudies: (persistStudies) => {
       set({ persistStudies })
       saveSettings({ ...get(), persistStudies })
+    },
+
+    setAiEnabled: (aiEnabled) => {
+      set({ aiEnabled })
+      saveSettings({ ...get(), aiEnabled })
+    },
+
+    setAiProvider: (aiProvider) => {
+      set({ aiProvider })
+      saveSettings({ ...get(), aiProvider })
+    },
+
+    setAiApiKey: (aiApiKey) => {
+      set({ aiApiKey })
+      saveSettings({ ...get(), aiApiKey })
+    },
+
+    setAiConsentGiven: (aiConsentGiven) => {
+      set({ aiConsentGiven })
+      saveSettings({ ...get(), aiConsentGiven })
     },
 
     resetToDefaults: () => {
