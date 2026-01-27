@@ -319,31 +319,35 @@ openscans-inference (864MB)
 
 ---
 
-### Phase 4A: Tauri Sidecar Integration (Bundled - Testing)
+### Phase 4A: Tauri Sidecar Integration (Bundled - Testing) ✅ MOSTLY COMPLETE
 **Goal**: Bundle Python executable with Tauri for testing
 
 **Architecture Decision**:
 - Phase 4A: Bundle for testing (900MB installer)
 - Phase 4B: On-demand download for production (50MB installer)
 
-#### 4A.1 Sidecar Configuration
-- [ ] Copy `openscans-inference` to `src-tauri/binaries/`
-- [ ] Add to `tauri.conf.json` as sidecar
-- [ ] Configure resource paths
-- [ ] Test sidecar lifecycle
+#### 4A.1 Sidecar Configuration ✅ COMPLETE
+- [x] Copy `openscans-inference` to `src-tauri/binaries/`
+- [x] Copy `_internal/` dependencies to `src-tauri/_internal/`
+- [x] Add to `tauri.conf.json` as sidecar
+- [x] Configure resource paths (fixed PyInstaller structure)
+- [x] Test sidecar lifecycle
 
-#### 4A.2 Rust Commands
-- [ ] `start_ai_server()` - Spawn Python sidecar
-- [ ] `stop_ai_server()` - Gracefully shutdown
-- [ ] `check_server_status()` - Health check
-- [ ] `detect_vertebrae(file_path)` - Forward to Python API
+#### 4A.2 Rust Commands ✅ COMPLETE
+- [x] `start_ai_server()` - Spawn Python sidecar
+- [x] `stop_ai_server()` - Gracefully shutdown
+- [x] `get_server_status()` - Health check
+- [x] `detect_vertebrae(file_path)` - Forward to Python API
+- [x] Updated for Tauri v2 API compatibility
 
-#### 4A.3 TypeScript Integration
-- [ ] Update `tauriVertebralDetector.ts` to use Tauri commands
+#### 4A.3 TypeScript Integration ⏳ PENDING
+- [ ] Create `tauriVertebralDetector.ts` to use Tauri commands
 - [ ] Handle server startup delays
 - [ ] Error handling and retries
+- [ ] Update detector factory to use Tauri detector in desktop mode
 
-**Deliverable**: Working Tauri app with bundled Python backend (testing only)
+**Deliverable**: ✅ Working Rust backend with Python sidecar (verified)
+⏳ Frontend integration pending
 
 ---
 

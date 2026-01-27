@@ -2,3 +2,7 @@
 # will have compiled files and executables
 /target/
 /gen/schemas
+
+# Python sidecar binaries (generated from python-backend/dist)
+/binaries/
+/_internal/

@@ -17,18 +17,20 @@
 
 ## 📋 Phase 4A Tasks
 
-### 4A.1 Sidecar Setup
-- [ ] Copy Python executable to `src-tauri/binaries/`
-- [ ] Configure `tauri.conf.json` sidecar settings
-- [ ] Set up binary paths and permissions
-- [ ] Test executable detection
+### 4A.1 Sidecar Setup ✅ COMPLETE
+- [x] Copy Python executable to `src-tauri/binaries/`
+- [x] Configure `tauri.conf.json` sidecar settings
+- [x] Set up binary paths and permissions
+- [x] Test executable detection
+- [x] Fix `_internal` directory structure for PyInstaller
 
-### 4A.2 Rust IPC Commands
-- [ ] `start_ai_server()` - Launch Python sidecar
-- [ ] `stop_ai_server()` - Graceful shutdown
-- [ ] `get_server_status()` - Check if running
-- [ ] `detect_vertebrae()` - Forward API call
-- [ ] Error handling for all commands
+### 4A.2 Rust IPC Commands ✅ COMPLETE
+- [x] `start_ai_server()` - Launch Python sidecar
+- [x] `stop_ai_server()` - Graceful shutdown
+- [x] `get_server_status()` - Check if running
+- [x] `detect_vertebrae()` - Forward API call
+- [x] Error handling for all commands
+- [x] Updated to use Tauri v2 API (std::process::Command)
 
 ### 4A.3 Frontend Integration
 - [ ] Update `tauriVertebralDetector.ts`
@@ -36,11 +38,12 @@
 - [ ] Show loading states
 - [ ] Error messages for failures
 
-### 4A.4 Testing
-- [ ] Sidecar starts on app launch
-- [ ] API calls work through Tauri
-- [ ] Server stops on app quit
-- [ ] Handle server crashes gracefully
+### 4A.4 Testing ✅ PARTIAL
+- [x] Sidecar starts on app launch
+- [x] Health check endpoint responds
+- [ ] Full vertebrae detection test (requires real DICOM)
+- [ ] Server stops on app quit (not yet tested)
+- [ ] Handle server crashes gracefully (not yet tested)
 
 ---
 
@@ -145,13 +148,26 @@ open src-tauri/target/release/bundle/dmg/OpenScans_*.dmg
 
 ## 📊 Phase 4A Status
 
-- [ ] **4A.1** Sidecar configuration
-- [ ] **4A.2** Rust IPC commands
+- [x] **4A.1** Sidecar configuration ✅
+- [x] **4A.2** Rust IPC commands ✅
 - [ ] **4A.3** Frontend integration
-- [ ] **4A.4** Testing complete
+- [x] **4A.4** Testing (partial - backend working) ✅
 
 ### Deliverable
-⏳ Working desktop app with bundled AI engine (testing architecture)
+✅ Working Rust backend with Python sidecar
+⏳ Frontend integration pending
+
+### Key Implementation Details
+
+**Critical Fix**: PyInstaller directory structure
+- PyInstaller expects `_internal/` to be a sibling of the executable
+- Initial config had `binaries/_internal/` which failed
+- Solution: Place `_internal/` at `src-tauri/_internal/` and reference in `tauri.conf.json`
+
+**API Changes**: Tauri v2 compatibility
+- Tauri v2 removed `tauri::api::process` module
+- Updated to use standard `std::process::Command`
+- Increased startup wait time from 3s to 10s (Python+FastAPI initialization)
 
 ---
 
