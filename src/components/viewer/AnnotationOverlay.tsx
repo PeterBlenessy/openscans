@@ -4,6 +4,7 @@ import { useViewportStore } from '@/stores/viewportStore'
 import { useStudyStore } from '@/stores/studyStore'
 import { MarkerAnnotation } from '@/types/annotation'
 import { severityStyles } from '@/types/annotation'
+import cornerstone from 'cornerstone-core'
 
 interface AnnotationOverlayProps {
   canvasElement: HTMLDivElement | null
@@ -13,7 +14,7 @@ export function AnnotationOverlay({ canvasElement }: AnnotationOverlayProps) {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const showAnnotations = useViewportStore((state) => state.showAnnotations)
   const currentInstance = useStudyStore((state) => state.currentInstance)
-  const getAnnotationsForInstance = useAnnotationStore((state) => state.getAnnotationsForInstance)
+  const allAnnotations = useAnnotationStore((state) => state.annotations) // Subscribe to annotations array directly
 
   // Track canvas dimensions
   useEffect(() => {
@@ -42,21 +43,26 @@ export function AnnotationOverlay({ canvasElement }: AnnotationOverlayProps) {
       console.log('[AnnotationOverlay] Not showing annotations:', { hasInstance: !!currentInstance, showAnnotations })
       return []
     }
-    const anns = getAnnotationsForInstance(currentInstance.sopInstanceUID)
+    const anns = allAnnotations.filter((ann) => ann.sopInstanceUID === currentInstance.sopInstanceUID)
     console.log(`[AnnotationOverlay] Found ${anns.length} annotations for sopInstanceUID: ${currentInstance.sopInstanceUID}`)
     return anns
-  }, [currentInstance, showAnnotations, getAnnotationsForInstance])
+  }, [currentInstance, showAnnotations, allAnnotations])
 
   if (!canvasElement || !currentInstance || !showAnnotations || annotations.length === 0) {
     console.log('[AnnotationOverlay] Not rendering:', { canvasElement: !!canvasElement, currentInstance: !!currentInstance, showAnnotations, annotationsCount: annotations.length })
     return null
   }
 
-  console.log(`[AnnotationOverlay] Rendering ${annotations.length} annotations with scale ${scaleX.toFixed(2)}x${scaleY.toFixed(2)}`)
+  // Wait for dimensions to be set by ResizeObserver
+  if (dimensions.width === 0 || dimensions.height === 0) {
+    console.log('[AnnotationOverlay] Waiting for dimensions...')
+    return null
+  }
 
-  // Calculate scale factors from image coordinates to viewport coordinates
-  const scaleX = dimensions.width / currentInstance.columns
-  const scaleY = dimensions.height / currentInstance.rows
+  console.log('[AnnotationOverlay] Rendering:', {
+    annotationCount: annotations.length,
+    canvasDimensions: `${dimensions.width}x${dimensions.height}`
+  })
 
   return (
     <svg
@@ -71,8 +77,7 @@ export function AnnotationOverlay({ canvasElement }: AnnotationOverlayProps) {
             <MarkerRenderer
               key={annotation.id}
               annotation={annotation}
-              scaleX={scaleX}
-              scaleY={scaleY}
+              canvasElement={canvasElement}
             />
           )
         }
@@ -84,16 +89,19 @@ export function AnnotationOverlay({ canvasElement }: AnnotationOverlayProps) {
 
 interface MarkerRendererProps {
   annotation: MarkerAnnotation
-  scaleX: number
-  scaleY: number
+  canvasElement: HTMLDivElement
 }
 
-function MarkerRenderer({ annotation, scaleX, scaleY }: MarkerRendererProps) {
+function MarkerRenderer({ annotation, canvasElement }: MarkerRendererProps) {
   const style = severityStyles[annotation.severity]
 
-  // Convert image coordinates to viewport coordinates
-  const viewportX = annotation.position.x * scaleX
-  const viewportY = annotation.position.y * scaleY
+  // Convert image pixel coordinates to canvas coordinates using Cornerstone
+  // This properly handles viewport transformations (scale, translation, rotation)
+  const imageCoords = { x: annotation.position.x, y: annotation.position.y }
+  const canvasCoords = cornerstone.pixelToCanvas(canvasElement, imageCoords)
+
+  const viewportX = canvasCoords.x
+  const viewportY = canvasCoords.y
 
   const radius = 8
   const labelOffsetX = 12

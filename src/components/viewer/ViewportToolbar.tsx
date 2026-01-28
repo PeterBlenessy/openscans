@@ -112,6 +112,12 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
 
     try {
       setDetecting(true)
+      console.log('[ViewportToolbar] currentInstance:', {
+        sopInstanceUID: currentInstance.sopInstanceUID,
+        columns: currentInstance.columns,
+        rows: currentInstance.rows,
+        metadata: currentInstance.metadata
+      })
       deleteAnnotationsForInstance(currentInstance.sopInstanceUID, true)
       const result = await detector.detectVertebrae(currentInstance)
       console.log(`[ViewportToolbar] Adding ${result.annotations.length} annotations for sopInstanceUID: ${currentInstance.sopInstanceUID}`)
