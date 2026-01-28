@@ -105,32 +105,14 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
 
     if (aiEnabled && aiProvider === 'claude' && claudeDetector.isConfigured()) {
       detector = claudeDetector
-      console.log('[ViewportToolbar] Using Claude Vision API for detection')
-    } else if (aiEnabled) {
-      console.warn('[ViewportToolbar] AI enabled but not configured, using mock detector')
     }
 
     try {
       setDetecting(true)
-      console.log('[ViewportToolbar] currentInstance:', {
-        sopInstanceUID: currentInstance.sopInstanceUID,
-        columns: currentInstance.columns,
-        rows: currentInstance.rows,
-        metadata: currentInstance.metadata
-      })
       deleteAnnotationsForInstance(currentInstance.sopInstanceUID, true)
       const result = await detector.detectVertebrae(currentInstance)
-      console.log(`[ViewportToolbar] Adding ${result.annotations.length} annotations for sopInstanceUID: ${currentInstance.sopInstanceUID}`)
-      console.log(`[ViewportToolbar] First annotation:`, result.annotations[0])
       addAnnotations(result.annotations)
-      console.log(`AI detection completed in ${result.processingTimeMs.toFixed(0)}ms with ${result.confidence.toFixed(2)} confidence`)
-      console.log(`Detected ${result.annotations.length} vertebrae`)
-
-      // Debug: check if annotations are in store
-      const storedAnnotations = useAnnotationStore.getState().annotations
-      console.log(`[ViewportToolbar] Total annotations in store: ${storedAnnotations.length}`)
-      console.log(`[ViewportToolbar] Annotations for this instance:`, storedAnnotations.filter(a => a.sopInstanceUID === currentInstance.sopInstanceUID))
-
+      console.log(`AI detection: ${result.annotations.length} vertebrae detected in ${result.processingTimeMs.toFixed(0)}ms (confidence: ${(result.confidence * 100).toFixed(0)}%)`)
       setDetecting(false)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -138,6 +120,7 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
       setDetecting(false, errorMessage)
     }
   }
+
 
   return (
     <div className={`flex items-center gap-1 bg-[#1a1a1a]/90 backdrop-blur-sm rounded-lg p-1.5 shadow-lg border border-[#2a2a2a] ${className}`}>

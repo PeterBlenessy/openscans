@@ -177,10 +177,12 @@ export function FavoritesPanel() {
                         {favorite.modality || 'Unknown'} • {formatSeriesDescription(favorite.seriesDescription) || `Series ${favorite.seriesNumber}`} • {favorite.instanceNumber}
                       </div>
                     </div>
-                    <button
+                    <div
                       onClick={(e) => handleRemoveFavorite(favorite.sopInstanceUID, e)}
-                      className={`opacity-0 group-hover:opacity-100 p-1 rounded transition-all ${theme === 'dark' ? 'hover:bg-red-900/30' : 'hover:bg-red-100'}`}
+                      className={`opacity-0 group-hover:opacity-100 p-1 rounded transition-all cursor-pointer ${theme === 'dark' ? 'hover:bg-red-900/30' : 'hover:bg-red-100'}`}
                       title="Remove"
+                      role="button"
+                      tabIndex={0}
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -190,7 +192,7 @@ export function FavoritesPanel() {
                       >
                         <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
                       </svg>
-                    </button>
+                    </div>
                   </div>
                 </button>
               )
@@ -297,10 +299,12 @@ function FavoriteThumbnail({ favorite, isActive, onClick, onRemove, theme }: Fav
       <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs py-0.5 text-center">
         {favorite.instanceNumber}
       </div>
-      <button
+      <div
         onClick={onRemove}
-        className={`absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-1 rounded transition-all ${theme === 'dark' ? 'hover:bg-red-900/30' : 'hover:bg-red-100'}`}
+        className={`absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-1 rounded transition-all cursor-pointer ${theme === 'dark' ? 'hover:bg-red-900/30' : 'hover:bg-red-100'}`}
         title="Remove"
+        role="button"
+        tabIndex={0}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -310,7 +314,7 @@ function FavoriteThumbnail({ favorite, isActive, onClick, onRemove, theme }: Fav
         >
           <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
         </svg>
-      </button>
+      </div>
     </button>
   )
 }

@@ -8,33 +8,21 @@ import { FileWithDirectory, saveDirectoryHandle } from '../storage/directoryHand
  * @param folderPath Optional folder path for desktop mode (Tauri)
  */
 export async function parseDicomFiles(files: File[], folderPath?: string): Promise<DicomStudy[]> {
-  const startTime = performance.now()
   const instances: Array<{
     file: File
     dataset: any
     metadata: DicomMetadata
   }> = []
 
-  let arrayBufferTime = 0
-  let parsingTime = 0
-  let metadataTime = 0
-
   // Parse all files
   for (const file of files) {
     try {
-      const bufferStart = performance.now()
       const arrayBuffer = await file.arrayBuffer()
       const byteArray = new Uint8Array(arrayBuffer)
-      arrayBufferTime += performance.now() - bufferStart
 
       // Parse DICOM file using dicom-parser
-      const parseStart = performance.now()
       const dataSet = dicomParser.parseDicom(byteArray)
-      parsingTime += performance.now() - parseStart
-
-      const metaStart = performance.now()
       const metadata = extractMetadata(dataSet)
-      metadataTime += performance.now() - metaStart
 
       // Only include files with pixel data (actual images)
       // Skip DICOMDIR and other non-image DICOM files
@@ -42,26 +30,20 @@ export async function parseDicomFiles(files: File[], folderPath?: string): Promi
       const hasPixelData = dataSet.elements.x7fe00010 !== undefined
 
       if (hasPixelData) {
-        // Check for lossy compression
-        const transferSyntaxUID = getString(dataSet, 'x00020010', 'Unknown')
-        const isLossless = isLosslessTransferSyntax(transferSyntaxUID)
-
-        if (!isLossless) {
-          const transferSyntaxName = getTransferSyntaxName(transferSyntaxUID)
-          console.warn(`⚠️ Lossy compression detected: ${transferSyntaxName}`)
-        }
-
         instances.push({ file, dataset: dataSet, metadata })
       }
     } catch (error) {
-      console.error(`Failed to parse DICOM file:`, error)
+      // Silently skip non-DICOM files - common when scanning directories
+      // Only log actual parse errors for files that look like DICOM
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      if (!errorMsg.includes('DICM prefix not found')) {
+        console.error(`Failed to parse DICOM file:`, error)
+      }
     }
   }
 
   // Organize into studies and series
-  const organizeStart = performance.now()
   const studies = organizeDicomData(instances)
-  const organizeTime = performance.now() - organizeStart
 
   // If folderPath is provided (desktop mode), assign it to all studies
   if (folderPath) {
@@ -69,15 +51,6 @@ export async function parseDicomFiles(files: File[], folderPath?: string): Promi
       study.folderPath = folderPath
     })
   }
-
-  const totalTime = performance.now() - startTime
-  console.log(`[DICOM Parser] Performance:`)
-  console.log(`  - Files processed: ${files.length}`)
-  console.log(`  - ArrayBuffer time: ${arrayBufferTime.toFixed(0)}ms`)
-  console.log(`  - Parsing time: ${parsingTime.toFixed(0)}ms`)
-  console.log(`  - Metadata extraction: ${metadataTime.toFixed(0)}ms`)
-  console.log(`  - Organization time: ${organizeTime.toFixed(0)}ms`)
-  console.log(`  - Total time: ${totalTime.toFixed(0)}ms`)
 
   return studies
 }

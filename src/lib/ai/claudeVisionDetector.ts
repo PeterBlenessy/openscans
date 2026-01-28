@@ -20,7 +20,13 @@ interface ClaudeVertebraResponse {
 
 /**
  * Claude Vision API-based vertebral detector
- * Uses Claude 3.5 Sonnet for medical image analysis
+ *
+ * Uses Claude Opus 4.5 for medical image analysis. This is a general-purpose
+ * vision model that can identify vertebral structures but lacks the precision
+ * of specialized medical imaging models like MONAI or TotalSegmentator.
+ *
+ * Detected markers can be manually adjusted by dragging them to correct positions.
+ * For production use, consider integrating specialized medical imaging models.
  */
 export class ClaudeVisionDetector {
   private client: Anthropic | null = null
@@ -48,13 +54,12 @@ export class ClaudeVisionDetector {
    * Convert DICOM image to base64 PNG using the active viewport canvas
    * Returns base64 data, canvas dimensions, and actual DICOM image dimensions from Cornerstone
    */
-  private async dicomToBase64Png(instance: DicomInstance): Promise<{
+  private async dicomToBase64Png(): Promise<{
     data: string
     canvasWidth: number
     canvasHeight: number
     imageColumns: number
     imageRows: number
-    viewportElement: HTMLElement
   }> {
     try {
       // Find the active viewport element
@@ -82,36 +87,115 @@ export class ClaudeVisionDetector {
 
       const image = enabledElement.image
       const viewport = enabledElement.viewport
-      const imageColumns = image.width
-      const imageRows = image.height
 
-      console.log(`[ClaudeDetector] Capturing canvas (${canvas.width}x${canvas.height})`)
-      console.log(`[ClaudeDetector] DICOM image dimensions: ${imageColumns}x${imageRows}`)
-      console.log(`[ClaudeDetector] Viewport:`, {
-        scale: viewport.scale,
-        translation: viewport.translation,
-        hflip: viewport.hflip,
-        vflip: viewport.vflip,
-        rotation: viewport.rotation
-      })
+      // Check both Cornerstone's image object and raw DICOM metadata
+      const cornerstoneWidth = image.width
+      const cornerstoneHeight = image.height
+      const imageColumns = image.columns || cornerstoneWidth
+      const imageRows = image.rows || cornerstoneHeight
 
-      // Convert to PNG and extract base64 data
-      const dataUrl = canvas.toDataURL('image/png', 1.0)
-      const base64Data = dataUrl.split(',')[1]
+      // CRITICAL: Render at IMAGE dimensions, not canvas dimensions
+      // This ensures Claude's coordinates are directly in DICOM image pixel space
+      // cornerstone.pixelToCanvas() expects image coordinates and handles all transformations
+      const renderWidth = imageColumns
+      const renderHeight = imageRows
 
-      if (!base64Data || base64Data.length === 0) {
-        throw new Error('Canvas produced empty base64 data')
-      }
+      // Create temporary canvas at original resolution
+      const renderCanvas = document.createElement('canvas')
+      renderCanvas.width = renderWidth
+      renderCanvas.height = renderHeight
 
-      console.log(`[ClaudeDetector] Converted canvas to PNG (${base64Data.length} chars)`)
+      // Render DICOM image to canvas using Cornerstone
+      const renderElement = document.createElement('div')
+      renderElement.style.width = `${renderWidth}px`
+      renderElement.style.height = `${renderHeight}px`
+      renderElement.style.position = 'absolute'
+      renderElement.style.left = '-9999px'
+      document.body.appendChild(renderElement)
 
-      return {
-        data: base64Data,
-        canvasWidth: canvas.width,
-        canvasHeight: canvas.height,
-        imageColumns,
-        imageRows,
-        viewportElement
+      try {
+        cornerstone.enable(renderElement)
+
+        // Display the same image with same viewport settings at original resolution
+        await cornerstone.displayImage(renderElement, image)
+
+        // Apply same viewport settings for window/level and inversion
+        // CRITICAL: Do NOT copy hflip/vflip/rotation/scale/translation
+        // We want Claude to analyze the CANONICAL image (no transformations)
+        // Then pixelToCanvas() will apply the user's transformations when rendering
+        const renderViewport = cornerstone.getViewport(renderElement)
+        renderViewport.voi = viewport.voi  // Window/level - affects brightness
+        renderViewport.invert = viewport.invert  // Invert grayscale
+        renderViewport.pixelReplication = viewport.pixelReplication
+        renderViewport.modalityLUT = viewport.modalityLUT
+        renderViewport.voiLUT = viewport.voiLUT
+        // Reset all geometric transformations to get canonical view
+        renderViewport.hflip = false
+        renderViewport.vflip = false
+        renderViewport.rotation = 0
+        renderViewport.scale = 1.0
+        renderViewport.translation = { x: 0, y: 0 }
+        cornerstone.setViewport(renderElement, renderViewport)
+
+        // Force a render update to ensure canvas is drawn
+        cornerstone.updateImage(renderElement)
+
+        // Wait a bit for rendering to complete
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        // Get the canvas
+        const renderCanvasElement = renderElement.querySelector('canvas') as HTMLCanvasElement
+        if (!renderCanvasElement) {
+          throw new Error('Failed to create render canvas')
+        }
+
+        // Verify canvas has content
+        const ctx = renderCanvasElement.getContext('2d')
+        if (!ctx) {
+          throw new Error('Failed to get canvas 2D context')
+        }
+
+        const imageData = ctx.getImageData(0, 0, renderCanvasElement.width, renderCanvasElement.height)
+        const pixels = imageData.data
+        let hasContent = false
+        for (let i = 0; i < pixels.length; i += 4) {
+          // Check if any pixel is not transparent
+          if (pixels[i + 3] !== 0) {
+            hasContent = true
+            break
+          }
+        }
+
+        if (!hasContent) {
+          throw new Error('Render canvas is empty - rendering failed')
+        }
+
+        // Convert canvas to PNG
+        const dataUrl = renderCanvasElement.toDataURL('image/png', 1.0)
+        const base64Data = dataUrl.split(',')[1]
+
+        if (!base64Data || base64Data.length === 0) {
+          throw new Error('Canvas produced empty base64 data')
+        }
+
+        // Clean up
+        cornerstone.disable(renderElement)
+        document.body.removeChild(renderElement)
+
+        return {
+          data: base64Data,
+          canvasWidth: renderWidth,
+          canvasHeight: renderHeight,
+          imageColumns,
+          imageRows
+        }
+      } catch (error) {
+        // Clean up on error
+        try {
+          cornerstone.disable(renderElement)
+          document.body.removeChild(renderElement)
+        } catch {}
+        throw error
       }
     } catch (error) {
       console.error('Failed to convert DICOM to PNG:', error)
@@ -131,14 +215,13 @@ export class ClaudeVisionDetector {
 
     try {
       // Convert DICOM to base64 PNG and get dimensions
-      console.log('[ClaudeDetector] Converting DICOM to PNG...')
-      const { data: imageData, canvasWidth, canvasHeight, imageColumns, imageRows, viewportElement } = await this.dicomToBase64Png(instance)
+      const { data: imageData, canvasWidth, canvasHeight, imageColumns, imageRows } = await this.dicomToBase64Png()
 
       // Call Claude API
-      console.log('[ClaudeDetector] Calling Claude Vision API...')
       const message = await this.client!.messages.create({
-        model: 'claude-sonnet-4-5',
+        model: 'claude-opus-4-5',
         max_tokens: 2048,
+        temperature: 0.0, // Deterministic responses - same image = same coordinates every time
         messages: [
           {
             role: 'user',
@@ -153,30 +236,33 @@ export class ClaudeVisionDetector {
               },
               {
                 type: 'text',
-                text: `You are a medical imaging assistant analyzing spinal MRI scans.
+                text: `You are an expert radiologist analyzing spinal MRI scans with high precision.
 
-TASK: Identify each visible vertebra and mark the CENTER of its vertebral body.
+IMAGE DIMENSIONS: ${imageColumns} × ${imageRows} pixels
+COORDINATE SYSTEM: Origin (0,0) is at TOP-LEFT corner. X increases rightward, Y increases downward.
+
+TASK: Identify each visible vertebra and mark the precise CENTER of its vertebral body.
 
 CRITICAL INSTRUCTIONS:
-1. Look carefully at the actual anatomical position of each vertebral body in the image
-2. The spine is CURVED - the x-coordinates must follow the natural curve of the spine, not a straight vertical line
-3. Place the marker at the CENTER of each vertebral body (the rectangular bone structure)
-4. Use precise pixel coordinates based on what you actually see in the image
+1. Carefully examine the ACTUAL anatomical position of each vertebral body in the image
+2. The spine follows a natural CURVE - each vertebra has a unique x-coordinate following this curvature
+3. Place the marker at the geometric CENTER of each vertebral body (the main rectangular bone structure)
+4. Use EXACT pixel coordinates based on what you see - measure the center point precisely
+5. The coordinate system: x=0 is the LEFT edge, y=0 is the TOP edge of the image
+6. X coordinates range from 0 to ${imageColumns-1}, Y coordinates range from 0 to ${imageRows-1}
 
 For each vertebra you identify:
 - label: Anatomical name (C1-C7, T1-T12, L1-L5, S1)
-- position: The ACTUAL center point of that vertebral body in pixel coordinates (x=0 is left edge, y=0 is top edge)
-- confidence: How certain you are (0.0-1.0)
+- position: The precise center point in pixel coordinates, measuring from top-left corner (0,0)
+- confidence: Your certainty level (0.0-1.0)
 
-IMPORTANT: Do NOT use generic center-line positions. Each vertebra has its own unique x,y position following the spine's curve.
+IMPORTANT:
+- Do NOT place all markers on a vertical centerline
+- Each vertebra sits at a different horizontal position along the spine's curve
+- Measure pixel coordinates precisely - accuracy is critical for medical annotation
 
 Return ONLY this JSON format, no other text:
-{
-  "vertebrae": [
-    {"label": "L1", "position": {"x": 245, "y": 120}, "confidence": 0.92},
-    {"label": "L2", "position": {"x": 238, "y": 165}, "confidence": 0.94}
-  ]
-}
+{"vertebrae": [{"label": "L1", "position": {"x": 245, "y": 120}, "confidence": 0.92}, {"label": "L2", "position": {"x": 238, "y": 165}, "confidence": 0.94}]}
 
 If no vertebrae are visible, return: {"vertebrae": []}`,
               },
@@ -185,35 +271,40 @@ If no vertebrae are visible, return: {"vertebrae": []}`,
         ],
       })
 
-      console.log('[ClaudeDetector] Received response from Claude')
-
       // Parse response
       const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
-      console.log('[ClaudeDetector] Response:', responseText)
 
-      // Extract JSON from response (handle markdown code blocks)
+      // Extract JSON from response (handle markdown code blocks and surrounding text)
       let jsonText = responseText.trim()
-      if (jsonText.startsWith('```json')) {
-        jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?$/g, '')
-      } else if (jsonText.startsWith('```')) {
-        jsonText = jsonText.replace(/```\n?/g, '').replace(/```\n?$/g, '')
+
+      // Try to find JSON in markdown code block first
+      const jsonBlockMatch = jsonText.match(/```json\s*\n([\s\S]*?)\n```/)
+      if (jsonBlockMatch) {
+        jsonText = jsonBlockMatch[1]
+      } else {
+        // Try generic code block
+        const codeBlockMatch = jsonText.match(/```\s*\n([\s\S]*?)\n```/)
+        if (codeBlockMatch) {
+          jsonText = codeBlockMatch[1]
+        } else {
+          // Try to find JSON object directly (look for { ... })
+          const jsonMatch = jsonText.match(/\{[\s\S]*"vertebrae"[\s\S]*\}/)
+          if (jsonMatch) {
+            jsonText = jsonMatch[0]
+          }
+        }
       }
 
       const claudeResponse: ClaudeVertebraResponse = JSON.parse(jsonText)
 
-      console.log('[ClaudeDetector] Coordinate conversion:', {
-        canvas: `${canvasWidth}x${canvasHeight}`,
-        dicom: `${imageColumns}x${imageRows}`
-      })
+      // NOTE: Claude Vision API coordinates require manual adjustment for medical-grade accuracy.
+      // The general-purpose vision model identifies vertebrae but lacks the precision of
+      // specialized medical imaging models like MONAI or TotalSegmentator.
+      // Users can drag markers to correct positions after AI detection.
 
-      // Convert Claude's canvas coordinates to DICOM image coordinates using Cornerstone
-      // This properly handles viewport transformations (scale, translation, rotation)
       const annotations: MarkerAnnotation[] = claudeResponse.vertebrae.map((vertebra, index) => {
-        // Use Cornerstone's canvasToPixel to convert canvas coords to image pixel coords
-        const canvasCoords = { x: vertebra.position.x, y: vertebra.position.y }
-        const imageCoords = cornerstone.canvasToPixel(viewportElement as HTMLElement, canvasCoords)
-
-        console.log(`[ClaudeDetector] ${vertebra.label}: canvas(${vertebra.position.x},${vertebra.position.y}) -> image(${imageCoords.x.toFixed(1)},${imageCoords.y.toFixed(1)})`)
+        const imageX = vertebra.position.x
+        const imageY = vertebra.position.y
 
         return {
           id: `ai-claude-${instance.sopInstanceUID}-${vertebra.label}-${Date.now()}-${index}`,
@@ -224,12 +315,12 @@ If no vertebrae are visible, return: {"vertebrae": []}`,
           severity: 'normal',
           description: `AI-detected ${vertebra.label} vertebra (confidence: ${(vertebra.confidence * 100).toFixed(1)}%)`,
           createdAt: new Date().toISOString(),
-          createdBy: 'Claude-Sonnet-4.5',
+          createdBy: 'Claude-Opus-4.5',
           autoGenerated: true,
-          modelVersion: 'claude-sonnet-4-5',
+          modelVersion: 'claude-opus-4-5',
           position: {
-            x: imageCoords.x,
-            y: imageCoords.y
+            x: imageX,
+            y: imageY
           },
           label: vertebra.label,
         }

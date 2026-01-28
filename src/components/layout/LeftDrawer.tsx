@@ -96,10 +96,6 @@ export function LeftDrawer({ isOpen, setIsOpen, onLoadNewFiles, onOpenSettings, 
           return
         }
 
-        const totalTime = performance.now() - startTime
-        console.log(`[LeftDrawer] Recent study reload: read=${readTime.toFixed(0)}ms, parse=${parseTime.toFixed(0)}ms, total=${totalTime.toFixed(0)}ms`)
-        console.log(`[LeftDrawer] Loaded ${loadedStudies.length} studies from folder path`)
-
         // Cache the parsed studies for future use
         cacheStudies(entry.folderPath, loadedStudies)
 
@@ -109,10 +105,8 @@ export function LeftDrawer({ isOpen, setIsOpen, onLoadNewFiles, onOpenSettings, 
         // Find and set the current study to the one the user clicked
         const targetStudy = loadedStudies.find((s) => s.studyInstanceUID === entry.studyInstanceUID)
         if (targetStudy) {
-          console.log(`[LeftDrawer] Found target study: ${targetStudy.series.length} series`)
           setCurrentStudy(targetStudy.studyInstanceUID)
         } else {
-          console.log(`[LeftDrawer] Target study not found, using first study`)
           // If the exact study isn't found, just set the first one
           setCurrentStudy(loadedStudies[0].studyInstanceUID)
         }
@@ -178,8 +172,6 @@ export function LeftDrawer({ isOpen, setIsOpen, onLoadNewFiles, onOpenSettings, 
           return
         }
 
-        console.log(`[LeftDrawer] Loaded ${loadedStudies.length} studies from directory`)
-
         // Cache the parsed studies for future use
         cacheStudies(entry.directoryHandleId, loadedStudies)
 
@@ -189,10 +181,8 @@ export function LeftDrawer({ isOpen, setIsOpen, onLoadNewFiles, onOpenSettings, 
         // Find and set the current study to the one the user clicked
         const targetStudy = loadedStudies.find((s) => s.studyInstanceUID === entry.studyInstanceUID)
         if (targetStudy) {
-          console.log(`[LeftDrawer] Found target study: ${targetStudy.series.length} series`)
           setCurrentStudy(targetStudy.studyInstanceUID)
         } else {
-          console.log(`[LeftDrawer] Target study not found, using first study`)
           // If the exact study isn't found, just set the first one
           setCurrentStudy(loadedStudies[0].studyInstanceUID)
         }

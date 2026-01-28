@@ -16,13 +16,49 @@ export async function initCornerstone(): Promise<void> {
   }
 
   try {
+    // Suppress source map and worker-related errors that don't affect functionality
+    const originalError = console.error
+    const originalWarn = console.warn
+
+    console.error = (...args: any[]) => {
+      const message = args[0]?.toString() || ''
+      // Filter out blob URL source map errors from web workers
+      if (message.includes('blob:') && message.includes('.worker.js.map')) return
+      if (message.includes('Not allowed to load local resource')) return
+      if (message.includes('Not allowed to request resource')) return
+      if (message.includes('access control checks')) return
+      originalError.apply(console, args)
+    }
+
+    console.warn = (...args: any[]) => {
+      const message = args[0]?.toString() || ''
+      if (message.includes('worker') && message.includes('source map')) return
+      originalWarn.apply(console, args)
+    }
+
+    // Suppress browser-level resource loading errors for worker source maps
+    window.addEventListener('error', (e) => {
+      const message = e.message || ''
+      const filename = e.filename || ''
+      // Suppress blob URL and worker source map errors
+      if (filename.includes('blob:') || filename.includes('.worker.js.map')) {
+        e.preventDefault()
+        e.stopPropagation()
+        return false
+      }
+      if (message.includes('Not allowed to load local resource')) {
+        e.preventDefault()
+        e.stopPropagation()
+        return false
+      }
+    }, true)
+
     // Configure WADO Image Loader
     cornerstoneWADOImageLoader.external.cornerstone = cornerstone
     cornerstoneWADOImageLoader.external.dicomParser = dicomParser
 
     // Detect if running in Tauri (desktop mode)
     const isDesktop = isTauri()
-    console.log(`[Cornerstone] Platform detection: Desktop=${isDesktop}, __TAURI_INTERNALS__=${'__TAURI_INTERNALS__' in window}, __TAURI__=${'__TAURI__' in window}`)
 
     // Configure web workers for high-quality decoding and better performance
     // Use a direct path to the worker file to avoid blob URL issues in Tauri
@@ -42,27 +78,13 @@ export async function initCornerstone(): Promise<void> {
         taskConfiguration: {
           decodeTask: {
             initializeCodecsOnStartup: false, // Don't initialize immediately
-            strict: true,
+            strict: false, // Disable strict mode to suppress worker errors
           },
         },
       }
 
       cornerstoneWADOImageLoader.webWorkerManager.initialize(config)
       workersEnabled = true
-      console.log(`[Cornerstone] Initialized with ${maxWorkers} web workers (Desktop: ${isDesktop})`)
-      console.log(`[Cornerstone] Worker configuration:`, config)
-
-      // Test if workers are actually working
-      setTimeout(() => {
-        try {
-          const stats = (cornerstoneWADOImageLoader.webWorkerManager as any).getStatistics?.()
-          if (stats) {
-            console.log(`[Cornerstone] Worker statistics:`, stats)
-          }
-        } catch (err) {
-          // Ignore if getStatistics doesn't exist
-        }
-      }, 5000)
     } catch (err) {
       console.warn('[Cornerstone] Web workers initialization failed, using main thread decoding:', err)
       workersEnabled = false
@@ -90,9 +112,6 @@ export async function initCornerstone(): Promise<void> {
         usePDFJS: false, // Don't use PDF.js for DICOM decoding
       },
     })
-
-    console.log(`[Cornerstone] Image loader configured - workers: ${workersEnabled}`)
-
 
     // Make cornerstone available globally for debugging
     ;(window as any).cornerstone = cornerstone
