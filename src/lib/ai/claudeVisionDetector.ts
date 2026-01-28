@@ -48,16 +48,23 @@ export class ClaudeVisionDetector {
    * Convert DICOM image to base64 PNG
    */
   private async dicomToBase64Png(instance: DicomInstance): Promise<string> {
-    // Get the image from Cornerstone
+    // Create element and add to DOM (required for Cornerstone to render canvas)
     const element = document.createElement('div')
     element.style.width = `${instance.columns}px`
     element.style.height = `${instance.rows}px`
+    element.style.position = 'absolute'
+    element.style.left = '-9999px'
+    element.style.top = '-9999px'
+    document.body.appendChild(element)
 
     try {
       // Enable and load image
       cornerstone.enable(element)
       const image = await cornerstone.loadImage(instance.imageId)
       cornerstone.displayImage(element, image)
+
+      // Wait for render to complete
+      await new Promise(resolve => setTimeout(resolve, 100))
 
       // Get canvas and convert to base64
       const canvas = element.querySelector('canvas')
@@ -69,11 +76,24 @@ export class ClaudeVisionDetector {
       const dataUrl = canvas.toDataURL('image/png')
       const base64Data = dataUrl.split(',')[1]
 
+      if (!base64Data || base64Data.length === 0) {
+        throw new Error('Failed to extract base64 data from canvas')
+      }
+
       // Cleanup
       cornerstone.disable(element)
+      document.body.removeChild(element)
 
       return base64Data
     } catch (error) {
+      // Cleanup on error
+      try {
+        cornerstone.disable(element)
+      } catch {}
+      try {
+        document.body.removeChild(element)
+      } catch {}
+
       console.error('Failed to convert DICOM to PNG:', error)
       throw error
     }
