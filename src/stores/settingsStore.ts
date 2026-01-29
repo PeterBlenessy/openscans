@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 export type Theme = 'dark' | 'light'
 export type ScrollDirection = 'natural' | 'inverted'
-export type AIProvider = 'claude' | 'openai' | 'none'
+export type AIProvider = 'claude' | 'gemini' | 'openai' | 'none'
 
 export interface SettingsState {
   // Appearance
@@ -22,7 +22,8 @@ export interface SettingsState {
   // AI Detection
   aiEnabled: boolean // Enable AI vertebrae detection
   aiProvider: AIProvider // Which API to use
-  aiApiKey: string // API key (stored in localStorage - not secure for production)
+  aiApiKey: string // Claude API key (stored in localStorage - not secure for production)
+  geminiApiKey: string // Gemini API key (stored separately so users can switch without re-entering)
   aiConsentGiven: boolean // User has consented to sending images to external API
 
   // Actions
@@ -35,6 +36,7 @@ export interface SettingsState {
   setAiEnabled: (enabled: boolean) => void
   setAiProvider: (provider: AIProvider) => void
   setAiApiKey: (key: string) => void
+  setGeminiApiKey: (key: string) => void
   setAiConsentGiven: (consent: boolean) => void
   resetToDefaults: () => void
 }
@@ -51,6 +53,7 @@ const defaultSettings = {
   aiEnabled: false,
   aiProvider: 'claude' as AIProvider,
   aiApiKey: '',
+  geminiApiKey: '',
   aiConsentGiven: false,
 }
 
@@ -138,6 +141,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
     setAiApiKey: (aiApiKey) => {
       set({ aiApiKey })
       saveSettings({ ...get(), aiApiKey })
+    },
+
+    setGeminiApiKey: (geminiApiKey) => {
+      set({ geminiApiKey })
+      saveSettings({ ...get(), geminiApiKey })
     },
 
     setAiConsentGiven: (aiConsentGiven) => {

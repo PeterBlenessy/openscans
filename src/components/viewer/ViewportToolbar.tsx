@@ -5,6 +5,7 @@ import { useAnnotationStore } from '@/stores/annotationStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { mockDetector } from '@/lib/ai/mockVertebralDetector'
 import { claudeDetector } from '@/lib/ai/claudeVisionDetector'
+import { geminiDetector } from '@/lib/ai/geminiVisionDetector'
 
 interface ViewportToolbarProps {
   className?: string
@@ -32,10 +33,14 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
   const aiEnabled = useSettingsStore((state) => state.aiEnabled)
   const aiProvider = useSettingsStore((state) => state.aiProvider)
   const aiApiKey = useSettingsStore((state) => state.aiApiKey)
+  const geminiApiKey = useSettingsStore((state) => state.geminiApiKey)
 
-  // Initialize Claude detector with API key
+  // Initialize AI detectors with API keys
   if (aiEnabled && aiProvider === 'claude' && aiApiKey) {
     claudeDetector.setApiKey(aiApiKey)
+  }
+  if (aiEnabled && aiProvider === 'gemini' && geminiApiKey) {
+    geminiDetector.setApiKey(geminiApiKey)
   }
 
   // Subscribe to favorites array to trigger re-render on changes
@@ -101,10 +106,12 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
     if (!currentInstance || isDetecting) return
 
     // Choose detector based on settings
-    let detector = mockDetector // Default to mock
+    let detector: { detectVertebrae: typeof mockDetector.detectVertebrae } = mockDetector
 
     if (aiEnabled && aiProvider === 'claude' && claudeDetector.isConfigured()) {
       detector = claudeDetector
+    } else if (aiEnabled && aiProvider === 'gemini' && geminiDetector.isConfigured()) {
+      detector = geminiDetector
     }
 
     try {

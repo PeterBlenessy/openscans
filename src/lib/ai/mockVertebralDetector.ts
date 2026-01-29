@@ -1,11 +1,8 @@
 import { DicomInstance } from '@/types'
 import { MarkerAnnotation } from '@/types/annotation'
+import { DetectionResult } from './types'
 
-export interface DetectionResult {
-  annotations: MarkerAnnotation[]
-  confidence: number
-  processingTimeMs: number
-}
+export type { DetectionResult }
 
 /**
  * Mock vertebrae detector for MVP development.
