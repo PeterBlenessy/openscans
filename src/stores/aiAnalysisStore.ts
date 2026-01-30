@@ -14,6 +14,7 @@ interface AiAnalysisState {
   analyses: AiAnalysis[]
   selectedAnalysisId: string | null
   isAnalyzing: boolean
+  analysisError: string | null
   isModalVisible: boolean
 
   // Actions
@@ -21,7 +22,7 @@ interface AiAnalysisState {
   deleteAnalysis: (id: string) => void
   deleteAnalysisForInstance: (sopInstanceUID: string) => void
   getAnalysisForInstance: (sopInstanceUID: string) => AiAnalysis | undefined
-  setAnalyzing: (analyzing: boolean) => void
+  setAnalyzing: (analyzing: boolean, error?: string | null) => void
   showModal: (analysisId: string) => void
   hideModal: () => void
   reset: () => void
@@ -31,6 +32,7 @@ const initialState = {
   analyses: [],
   selectedAnalysisId: null,
   isAnalyzing: false,
+  analysisError: null,
   isModalVisible: false,
 }
 
@@ -60,7 +62,7 @@ export const useAiAnalysisStore = create<AiAnalysisState>((set, get) => ({
     return get().analyses.find((a) => a.sopInstanceUID === sopInstanceUID)
   },
 
-  setAnalyzing: (analyzing) => set({ isAnalyzing: analyzing }),
+  setAnalyzing: (analyzing, error = null) => set({ isAnalyzing: analyzing, analysisError: error }),
 
   showModal: (analysisId) => set({ selectedAnalysisId: analysisId, isModalVisible: true }),
 

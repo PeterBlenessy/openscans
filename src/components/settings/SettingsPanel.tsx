@@ -16,6 +16,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
   const aiEnabled = useSettingsStore((state) => state.aiEnabled)
   const aiProvider = useSettingsStore((state) => state.aiProvider)
   const aiApiKey = useSettingsStore((state) => state.aiApiKey)
+  const geminiApiKey = useSettingsStore((state) => state.geminiApiKey)
   const aiConsentGiven = useSettingsStore((state) => state.aiConsentGiven)
 
   const setTheme = useSettingsStore((state) => state.setTheme)
@@ -27,6 +28,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
   const setAiEnabled = useSettingsStore((state) => state.setAiEnabled)
   const setAiProvider = useSettingsStore((state) => state.setAiProvider)
   const setAiApiKey = useSettingsStore((state) => state.setAiApiKey)
+  const setGeminiApiKey = useSettingsStore((state) => state.setGeminiApiKey)
   const setAiConsentGiven = useSettingsStore((state) => state.setAiConsentGiven)
   const resetToDefaults = useSettingsStore((state) => state.resetToDefaults)
 
@@ -153,7 +155,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
 
           {/* AI Detection Section */}
           <SettingsSection title="AI Detection" isDark={isDark}>
-            <SettingsRow label="Enable AI Detection" description="Use Claude Vision API for vertebrae detection" isDark={isDark}>
+            <SettingsRow label="Enable AI Detection" description="Use AI vision models for vertebrae detection" isDark={isDark}>
               <ToggleSwitch
                 checked={aiEnabled}
                 onChange={(enabled) => {
@@ -161,7 +163,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                     // Show consent prompt
                     const consent = confirm(
                       'AI Detection Privacy Notice:\n\n' +
-                      'When enabled, DICOM images will be sent to external AI services (Claude API) for analysis. ' +
+                      'When enabled, DICOM images will be sent to external AI services (Claude or Gemini API) for analysis. ' +
                       'Images are sent without patient metadata, but the pixel data itself leaves your device.\n\n' +
                       'This is NOT HIPAA-compliant by default. Only use with de-identified images or in non-clinical settings.\n\n' +
                       'Do you consent to sending image data to external AI services?'
@@ -187,19 +189,46 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                     className={`border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a] text-white focus:ring-[#3a3a3a]' : 'bg-gray-100 border-gray-300 text-gray-900 focus:ring-gray-400'}`}
                   >
                     <option value="claude">Claude (Anthropic)</option>
+                    <option value="gemini">Gemini (Google)</option>
                     <option value="openai">OpenAI (Coming Soon)</option>
                     <option value="none">None (Mock Only)</option>
                   </select>
                 </SettingsRow>
 
-                {aiProvider !== 'none' && (
-                  <SettingsRow label="API Key" description={aiProvider === 'claude' ? 'Your Anthropic API key' : 'Your OpenAI API key'} isDark={isDark}>
+                {aiProvider === 'claude' && (
+                  <SettingsRow label="API Key" description="Your Anthropic API key" isDark={isDark}>
                     <div className="flex gap-2 items-center">
                       <input
                         type={showApiKey ? 'text' : 'password'}
                         value={aiApiKey}
                         onChange={(e) => setAiApiKey(e.target.value)}
                         placeholder="sk-ant-..."
+                        className={`flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a] text-white focus:ring-[#3a3a3a] placeholder-gray-600' : 'bg-gray-100 border-gray-300 text-gray-900 focus:ring-gray-400 placeholder-gray-400'}`}
+                      />
+                      <button
+                        onClick={() => setShowApiKey(!showApiKey)}
+                        className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-[#2a2a2a]' : 'hover:bg-gray-200'}`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                          {showApiKey ? (
+                            <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+                          ) : (
+                            <path fillRule="evenodd" d="M3.28 2.22a.75.75 0 00-1.06 1.06l14.5 14.5a.75.75 0 101.06-1.06l-1.745-1.745a10.029 10.029 0 003.3-4.38 1.651 1.651 0 000-1.185A10.004 10.004 0 009.999 3a9.956 9.956 0 00-4.744 1.194L3.28 2.22zM7.752 6.69l1.092 1.092a2.5 2.5 0 013.374 3.373l1.091 1.092a4 4 0 00-5.557-5.557z" clipRule="evenodd" />
+                          )}
+                        </svg>
+                      </button>
+                    </div>
+                  </SettingsRow>
+                )}
+
+                {aiProvider === 'gemini' && (
+                  <SettingsRow label="API Key" description="Your Google AI API key" isDark={isDark}>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type={showApiKey ? 'text' : 'password'}
+                        value={geminiApiKey}
+                        onChange={(e) => setGeminiApiKey(e.target.value)}
+                        placeholder="AIza..."
                         className={`flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a] text-white focus:ring-[#3a3a3a] placeholder-gray-600' : 'bg-gray-100 border-gray-300 text-gray-900 focus:ring-gray-400 placeholder-gray-400'}`}
                       />
                       <button

@@ -6,6 +6,7 @@ import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { mockDetector } from '@/lib/ai/mockVertebralDetector'
 import { claudeDetector } from '@/lib/ai/claudeVisionDetector'
+import { geminiDetector } from '@/lib/ai/geminiVisionDetector'
 
 interface ViewportToolbarProps {
   className?: string
@@ -38,10 +39,14 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
   const aiEnabled = useSettingsStore((state) => state.aiEnabled)
   const aiProvider = useSettingsStore((state) => state.aiProvider)
   const aiApiKey = useSettingsStore((state) => state.aiApiKey)
+  const geminiApiKey = useSettingsStore((state) => state.geminiApiKey)
 
-  // Initialize Claude detector with API key
+  // Initialize AI detectors with API keys
   if (aiEnabled && aiProvider === 'claude' && aiApiKey) {
     claudeDetector.setApiKey(aiApiKey)
+  }
+  if (aiEnabled && aiProvider === 'gemini' && geminiApiKey) {
+    geminiDetector.setApiKey(geminiApiKey)
   }
 
   // Subscribe to favorites array to trigger re-render on changes
@@ -107,10 +112,12 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
     if (!currentInstance || isDetecting) return
 
     // Choose detector based on settings
-    let detector = mockDetector // Default to mock
+    let detector: { detectVertebrae: typeof mockDetector.detectVertebrae } = mockDetector
 
     if (aiEnabled && aiProvider === 'claude' && claudeDetector.isConfigured()) {
       detector = claudeDetector
+    } else if (aiEnabled && aiProvider === 'gemini' && geminiDetector.isConfigured()) {
+      detector = geminiDetector
     }
 
     try {
@@ -138,23 +145,35 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
       return
     }
 
-    // Require Claude configuration for analysis
-    if (!aiEnabled || aiProvider !== 'claude' || !claudeDetector.isConfigured()) {
-      alert('Please configure Claude AI in settings to use radiology analysis.')
+    // Require an AI provider to be configured
+    if (!aiEnabled || aiProvider === 'none') {
+      alert('Please enable and configure an AI provider in settings to use radiology analysis.')
+      return
+    }
+
+    // Choose the appropriate detector for analysis
+    let analyzer: { analyzeImage: typeof claudeDetector.analyzeImage } | null = null
+    if (aiProvider === 'claude' && claudeDetector.isConfigured()) {
+      analyzer = claudeDetector
+    } else if (aiProvider === 'gemini' && geminiDetector.isConfigured()) {
+      analyzer = geminiDetector
+    }
+
+    if (!analyzer) {
+      alert(`Please configure your ${aiProvider === 'claude' ? 'Anthropic' : 'Google AI'} API key in settings.`)
       return
     }
 
     try {
       setAnalyzing(true)
-      const result = await claudeDetector.analyzeImage(currentInstance)
+      const result = await analyzer.analyzeImage(currentInstance)
       addAnalysis(result.analysis)
       console.log(`AI analysis: Generated in ${result.processingTimeMs.toFixed(0)}ms`)
       setAnalyzing(false)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       console.error('AI analysis failed:', error)
-      alert(`AI analysis failed: ${errorMessage}`)
-      setAnalyzing(false)
+      setAnalyzing(false, errorMessage)
     }
   }
 
