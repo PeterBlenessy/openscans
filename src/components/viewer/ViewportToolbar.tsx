@@ -145,6 +145,13 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
       return
     }
 
+    // Get current study UID
+    const studyUID = currentStudy?.studyInstanceUID
+    if (!studyUID) {
+      console.error('No study loaded')
+      return
+    }
+
     // Require an AI provider to be configured
     if (!aiEnabled || aiProvider === 'none') {
       alert('Please enable and configure an AI provider in settings to use radiology analysis.')
@@ -167,7 +174,8 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
     try {
       setAnalyzing(true)
       const result = await analyzer.analyzeImage(currentInstance)
-      addAnalysis(result.analysis)
+      // Add studyInstanceUID to the analysis
+      addAnalysis({ ...result.analysis, studyInstanceUID: studyUID })
       console.log(`AI analysis: Generated in ${result.processingTimeMs.toFixed(0)}ms`)
       setAnalyzing(false)
     } catch (error) {

@@ -121,6 +121,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
     setHidePersonalInfo: (hidePersonalInfo) => {
       set({ hidePersonalInfo })
       saveSettings({ ...get(), hidePersonalInfo })
+      // Privacy setting only affects UI display of patient info, not AI data storage
     },
 
     setPersistStudies: (persistStudies) => {

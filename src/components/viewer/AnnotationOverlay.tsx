@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useAnnotationStore } from '@/stores/annotationStore'
 import { useViewportStore } from '@/stores/viewportStore'
 import { useStudyStore } from '@/stores/studyStore'
@@ -14,7 +14,7 @@ export function AnnotationOverlay({ canvasElement }: AnnotationOverlayProps) {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const showAnnotations = useViewportStore((state) => state.showAnnotations)
   const currentInstance = useStudyStore((state) => state.currentInstance)
-  const allAnnotations = useAnnotationStore((state) => state.annotations) // Subscribe to annotations array directly
+  const allAnnotations = useAnnotationStore((state) => state.annotations)
 
   // Track canvas dimensions
   useEffect(() => {
@@ -98,6 +98,9 @@ function MarkerRenderer({ annotation, canvasElement }: MarkerRendererProps) {
   const labelOffsetX = 12
   const labelOffsetY = 5
 
+  // Visual indicator: different border color for manually adjusted markers
+  const borderColor = annotation.manuallyAdjusted ? '#3b82f6' : style.color // blue for adjusted, original color otherwise
+
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -113,7 +116,7 @@ function MarkerRenderer({ annotation, canvasElement }: MarkerRendererProps) {
     })
   }
 
-  const handleMouseUp = (e: React.MouseEvent) => {
+  const handleMouseUp = () => {
     if (!isDragging) return
 
     // Convert final canvas position back to image coordinates
@@ -153,8 +156,8 @@ function MarkerRenderer({ annotation, canvasElement }: MarkerRendererProps) {
         r={radius}
         fill={style.color}
         fillOpacity={style.fillOpacity}
-        stroke={style.color}
-        strokeWidth={style.lineWidth}
+        stroke={borderColor}
+        strokeWidth={annotation.manuallyAdjusted ? 3 : style.lineWidth}
       />
 
       {/* Label */}

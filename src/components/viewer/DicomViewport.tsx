@@ -36,6 +36,7 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
   const zoomTimeoutRef = useRef<number | null>(null)
 
   const currentInstance = useStudyStore((state) => state.currentInstance)
+  const currentStudy = useStudyStore((state) => state.currentStudy)
   const settings = useViewportStore((state) => state.settings)
   const setWindowLevel = useViewportStore((state) => state.setWindowLevel)
   const setModality = useViewportStore((state) => state.setModality)
@@ -211,6 +212,12 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
     const handleAiAnalysis = async () => {
       if (!currentInstance || isAnalyzing) return
 
+      const studyUID = currentStudy?.studyInstanceUID
+      if (!studyUID) {
+        console.error('No study loaded')
+        return
+      }
+
       // Require Claude configuration for analysis
       const aiSettings = useSettingsStore.getState()
       if (!aiSettings.aiEnabled || aiSettings.aiProvider !== 'claude') {
@@ -223,7 +230,7 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
         // Import dynamically to avoid circular dependency
         const { claudeDetector } = await import('@/lib/ai/claudeVisionDetector')
         const result = await claudeDetector.analyzeImage(currentInstance)
-        addAnalysis(result.analysis)
+        addAnalysis({ ...result.analysis, studyInstanceUID: studyUID })
         console.log(`AI analysis completed in ${result.processingTimeMs.toFixed(0)}ms`)
         setAnalyzing(false)
       } catch (error) {

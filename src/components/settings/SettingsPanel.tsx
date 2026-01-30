@@ -265,7 +265,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
           </SettingsSection>
 
           {/* Data Section */}
-          <SettingsSection title="Data" isDark={isDark}>
+          <SettingsSection title="Data Management" isDark={isDark}>
             <SettingsRow label="Persist Studies" description="Remember recently opened studies and reload them after refresh" isDark={isDark}>
               <ToggleSwitch
                 checked={persistStudies}
@@ -273,6 +273,29 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                 isDark={isDark}
               />
             </SettingsRow>
+
+            {/* Clear AI Data Button */}
+            <div className={`p-3 rounded-lg border ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a]' : 'bg-gray-50 border-gray-200'}`}>
+              <p className={`text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                Clear AI Data
+              </p>
+              <p className="text-xs text-gray-500 mb-3">
+                Remove all stored AI analyses and annotations from localStorage
+              </p>
+              <button
+                onClick={() => {
+                  if (confirm('Clear all stored AI analyses and annotations? This cannot be undone.')) {
+                    localStorage.removeItem('openscans-ai-analyses')
+                    localStorage.removeItem('openscans-annotations')
+                    // Reload page to clear in-memory state
+                    window.location.reload()
+                  }
+                }}
+                className={`px-3 py-2 text-sm rounded transition-colors ${isDark ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}`}
+              >
+                Clear All AI Data
+              </button>
+            </div>
           </SettingsSection>
         </div>
 

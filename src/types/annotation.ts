@@ -20,6 +20,8 @@ export interface MarkerAnnotation extends BaseAnnotation {
   type: 'marker'
   position: Point2D
   label?: string
+  originalPosition?: Point2D  // Track original AI-generated position
+  manuallyAdjusted?: boolean  // Flag if user has moved marker
 }
 
 export interface MeasurementAnnotation extends BaseAnnotation {
