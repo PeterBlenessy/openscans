@@ -342,29 +342,29 @@ export function AiAnalysisModal() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4">
           {viewMode === 'rendered' ? (
             <div
               id="ai-analysis-rendered-content"
               className="prose prose-invert max-w-none
                 prose-headings:text-white prose-headings:font-bold
-                prose-h1:text-2xl prose-h1:mb-4 prose-h1:mt-0 prose-h1:pb-2 prose-h1:border-b prose-h1:border-[#333]
-                prose-h2:text-xl prose-h2:mt-8 prose-h2:mb-4 prose-h2:font-semibold
-                prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-3 prose-h3:font-semibold
-                prose-h4:text-base prose-h4:mt-5 prose-h4:mb-2 prose-h4:font-medium
-                prose-p:text-gray-200 prose-p:leading-7 prose-p:my-4 prose-p:text-base
+                prose-h1:text-lg prose-h1:mb-2 prose-h1:mt-0 prose-h1:pb-1.5 prose-h1:border-b prose-h1:border-[#333]
+                prose-h2:text-base prose-h2:mt-4 prose-h2:mb-2 prose-h2:font-semibold
+                prose-h3:text-sm prose-h3:mt-3 prose-h3:mb-1.5 prose-h3:font-semibold
+                prose-h4:text-sm prose-h4:mt-2.5 prose-h4:mb-1 prose-h4:font-medium
+                prose-p:text-gray-200 prose-p:leading-5 prose-p:my-2 prose-p:text-sm
                 prose-strong:text-white prose-strong:font-bold
-                prose-li:text-gray-200 prose-li:my-2 prose-li:leading-7
-                prose-ul:my-4 prose-ul:space-y-2 prose-ul:pl-6
-                prose-ol:my-4 prose-ol:space-y-2 prose-ol:pl-6
+                prose-li:text-gray-200 prose-li:my-0.5 prose-li:leading-5 prose-li:text-sm
+                prose-ul:my-2 prose-ul:space-y-0.5 prose-ul:pl-5
+                prose-ol:my-2 prose-ol:space-y-0.5 prose-ol:pl-5
                 prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline
-                prose-code:text-pink-400 prose-code:bg-[#0a0a0a] prose-code:px-2 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-mono
-                prose-pre:bg-[#0a0a0a] prose-pre:border prose-pre:border-[#2a2a2a] prose-pre:rounded-lg prose-pre:p-4 prose-pre:my-4
-                prose-hr:border-[#333] prose-hr:my-8
-                prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:pl-4 prose-blockquote:text-gray-300 prose-blockquote:italic prose-blockquote:my-4
-                prose-table:text-sm prose-table:my-4
-                prose-th:text-white prose-th:bg-[#0a0a0a] prose-th:font-semibold prose-th:p-3
-                prose-td:text-gray-200 prose-td:border-[#333] prose-td:p-3
+                prose-code:text-pink-400 prose-code:bg-[#0a0a0a] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:font-mono
+                prose-pre:bg-[#0a0a0a] prose-pre:border prose-pre:border-[#2a2a2a] prose-pre:rounded-lg prose-pre:p-3 prose-pre:my-2 prose-pre:text-xs
+                prose-hr:border-[#333] prose-hr:my-4
+                prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:pl-3 prose-blockquote:text-gray-300 prose-blockquote:italic prose-blockquote:my-2 prose-blockquote:text-sm
+                prose-table:text-xs prose-table:my-2
+                prose-th:text-white prose-th:bg-[#0a0a0a] prose-th:font-semibold prose-th:p-2
+                prose-td:text-gray-200 prose-td:border-[#333] prose-td:p-2
                 prose-th:border-[#333]
               "
             >
@@ -374,7 +374,7 @@ export function AiAnalysisModal() {
             </div>
           ) : (
             <div className="prose prose-invert prose-sm max-w-none">
-              <div className="whitespace-pre-wrap text-gray-300 leading-relaxed font-mono text-xs">
+              <div className="whitespace-pre-wrap text-gray-300 leading-tight font-mono text-xs">
                 {currentAnalysis.findings}
               </div>
             </div>
