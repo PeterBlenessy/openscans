@@ -369,10 +369,10 @@ function App() {
       <HelpDialog show={showHelp} onClose={() => setShowHelp(false)} />
 
       {/* Header */}
-      <header className={`px-6 py-4 flex items-center justify-between border-b flex-shrink-0 ${theme === 'dark' ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
+      <header className={`px-6 py-2.5 flex items-center justify-between border-b flex-shrink-0 ${theme === 'dark' ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
         <div>
-          <h1 className="text-2xl font-bold">OpenScans</h1>
-          <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+          <h1 className="text-xl font-bold">OpenScans</h1>
+          <p className={`text-xs mt-0 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
             Privacy-first DICOM viewer
           </p>
         </div>
