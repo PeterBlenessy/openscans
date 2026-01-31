@@ -3,6 +3,7 @@ import { useFavoritesStore, FavoriteImage } from '@/stores/favoritesStore'
 import { useStudyStore } from '@/stores/studyStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
+import { useAnnotationStore } from '@/stores/annotationStore'
 import { cornerstone } from '@/lib/cornerstone/initCornerstone'
 import { BatchExportDialog } from './BatchExportDialog'
 import { formatSeriesDescription } from '@/lib/utils/formatSeriesDescription'
@@ -197,6 +198,9 @@ export function FavoritesPanel() {
           <div className="space-y-1 max-h-64 overflow-y-auto">
             {allMarkedImages.map((favorite) => {
               const isActive = currentInstance?.sopInstanceUID === favorite.sopInstanceUID
+              const isFavorite = favorites.some(f => f.sopInstanceUID === favorite.sopInstanceUID)
+              const hasAnalysis = analyses.some(a => a.sopInstanceUID === favorite.sopInstanceUID)
+              const hasAnnotations = useAnnotationStore.getState().annotations.some(a => a.sopInstanceUID === favorite.sopInstanceUID)
 
               return (
                 <button
@@ -218,21 +222,46 @@ export function FavoritesPanel() {
                         {favorite.modality || 'Unknown'} • {formatSeriesDescription(favorite.seriesDescription) || `Series ${favorite.seriesNumber}`} • {favorite.instanceNumber}
                       </div>
                     </div>
-                    <div
-                      onClick={(e) => handleRemoveFavorite(favorite.sopInstanceUID, e)}
-                      className={`opacity-0 group-hover:opacity-100 p-1 rounded transition-all cursor-pointer ${theme === 'dark' ? 'hover:bg-red-900/30' : 'hover:bg-red-100'}`}
-                      title="Remove"
-                      role="button"
-                      tabIndex={0}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        className={`w-3.5 h-3.5 ${theme === 'dark' ? 'text-red-400' : 'text-red-500'}`}
+                    <div className="flex items-center gap-1">
+                      {/* Indicators */}
+                      {isFavorite && (
+                        <div className={`p-0.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} title="Favorited">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                            <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                      {hasAnalysis && (
+                        <div className={`p-0.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} title="Has AI analysis">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                            <path fillRule="evenodd" d="M4.5 2A1.5 1.5 0 003 3.5v13A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5V7.621a1.5 1.5 0 00-.44-1.06l-4.12-4.122A1.5 1.5 0 0011.378 2H4.5zm2.25 8.5a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5zm0 3a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                      {hasAnnotations && (
+                        <div className={`p-0.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} title="Has markers">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                            <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+                            <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      )}
+                      <div
+                        onClick={(e) => handleRemoveFavorite(favorite.sopInstanceUID, e)}
+                        className={`opacity-0 group-hover:opacity-100 p-1 rounded transition-all cursor-pointer ${theme === 'dark' ? 'hover:bg-red-900/30' : 'hover:bg-red-100'}`}
+                        title="Remove"
+                        role="button"
+                        tabIndex={0}
                       >
-                        <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-                      </svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          className={`w-3.5 h-3.5 ${theme === 'dark' ? 'text-red-400' : 'text-red-500'}`}
+                        >
+                          <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                        </svg>
+                      </div>
                     </div>
                   </div>
                 </button>
@@ -280,6 +309,12 @@ interface FavoriteThumbnailProps {
 function FavoriteThumbnail({ favorite, isActive, onClick, onRemove, theme }: FavoriteThumbnailProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const loadedRef = useRef(false)
+  const favorites = useFavoritesStore((state) => state.favorites)
+  const analyses = useAiAnalysisStore((state) => state.analyses)
+
+  const isFavorite = favorites.some(f => f.sopInstanceUID === favorite.sopInstanceUID)
+  const hasAnalysis = analyses.some(a => a.sopInstanceUID === favorite.sopInstanceUID)
+  const hasAnnotations = useAnnotationStore.getState().annotations.some(a => a.sopInstanceUID === favorite.sopInstanceUID)
 
   useEffect(() => {
     if (!canvasRef.current || loadedRef.current) return
@@ -340,9 +375,50 @@ function FavoriteThumbnail({ favorite, isActive, onClick, onRemove, theme }: Fav
       <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs py-0.5 text-center">
         {favorite.instanceNumber}
       </div>
+      {/* Star icon for favorites */}
+      {isFavorite && (
+        <div className="absolute top-1 right-1 p-0.5 rounded bg-black/40 group-hover:opacity-0 transition-opacity" title="Favorited">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className="w-4 h-4 text-white drop-shadow-[0_0_3px_rgba(0,0,0,0.8)]"
+          >
+            <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401z" clipRule="evenodd" />
+          </svg>
+        </div>
+      )}
+      {/* AI Analysis indicator */}
+      {hasAnalysis && (
+        <div className="absolute top-1 left-1 p-0.5 rounded bg-black/40" title="Has AI analysis">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className="w-3.5 h-3.5 text-gray-400 drop-shadow-[0_0_3px_rgba(0,0,0,0.8)]"
+          >
+            <path fillRule="evenodd" d="M4.5 2A1.5 1.5 0 003 3.5v13A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5V7.621a1.5 1.5 0 00-.44-1.06l-4.12-4.122A1.5 1.5 0 0011.378 2H4.5zm2.25 8.5a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5zm0 3a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5z" clipRule="evenodd" />
+          </svg>
+        </div>
+      )}
+      {/* Detector markers indicator */}
+      {hasAnnotations && (
+        <div className="absolute bottom-1 left-1 p-0.5 rounded bg-black/60" title="Has markers">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className="w-3.5 h-3.5 text-white drop-shadow-[0_0_3px_rgba(0,0,0,0.8)]"
+          >
+            <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+            <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+          </svg>
+        </div>
+      )}
+      {/* Remove button - shows on hover, replaces star icon position */}
       <div
         onClick={onRemove}
-        className={`absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-1 rounded transition-all cursor-pointer ${theme === 'dark' ? 'hover:bg-red-900/30' : 'hover:bg-red-100'}`}
+        className={`absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-1 rounded transition-all cursor-pointer z-10 ${theme === 'dark' ? 'bg-red-900/70 hover:bg-red-900' : 'bg-red-500/70 hover:bg-red-500'}`}
         title="Remove"
         role="button"
         tabIndex={0}
@@ -351,7 +427,7 @@ function FavoriteThumbnail({ favorite, isActive, onClick, onRemove, theme }: Fav
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 20 20"
           fill="currentColor"
-          className={`w-3.5 h-3.5 ${theme === 'dark' ? 'text-red-400' : 'text-red-500'}`}
+          className="w-3.5 h-3.5 text-white"
         >
           <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
         </svg>
