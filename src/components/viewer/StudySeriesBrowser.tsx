@@ -130,7 +130,6 @@ function SeriesItem({ series, isSelected, onClick }: SeriesItemProps) {
       }`}
     >
       <div className="flex items-start gap-2">
-        <span className="text-gray-400 text-xs mt-0.5 flex-shrink-0">📊</span>
         <div className="flex-1 min-w-0">
           <div className="text-sm truncate">
             {formatSeriesDescription(series.seriesDescription) || `Series ${series.seriesNumber}`}
