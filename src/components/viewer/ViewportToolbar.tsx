@@ -438,43 +438,23 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
       {/* AI Vertebrae Detection */}
       <ToolbarButton
         onClick={handleAiDetection}
-        title={isDetecting ? "Detecting..." : "AI vertebrae detection (M)"}
+        title="AI vertebrae detection (M)"
         disabled={!currentInstance || isDetecting || isAnalyzing}
-        active={isDetecting}
         data-testid="ai-detection-button"
-        icon={
-          isDetecting ? (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 animate-spin">
-              <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39z" clipRule="evenodd" />
-            </svg>
-          ) : (
-            <Target className="w-4 h-4" />
-          )
-        }
+        icon={<Target className="w-4 h-4" />}
       />
 
       {/* AI Radiology Analysis */}
       <ToolbarButton
         onClick={handleAiAnalysis}
         title={
-          isAnalyzing
-            ? "Analyzing..."
-            : currentInstance && getAnalysisForInstance(currentInstance.sopInstanceUID)
+          currentInstance && getAnalysisForInstance(currentInstance.sopInstanceUID)
             ? "View AI analysis (N)"
             : "AI radiology analysis (N)"
         }
         disabled={!currentInstance || isDetecting || isAnalyzing}
-        active={isAnalyzing}
         data-testid="ai-analysis-button"
-        icon={
-          isAnalyzing ? (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 animate-spin">
-              <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39z" clipRule="evenodd" />
-            </svg>
-          ) : (
-            <FileText className="w-4 h-4" />
-          )
-        }
+        icon={<FileText className="w-4 h-4" />}
       />
     </div>
   )
