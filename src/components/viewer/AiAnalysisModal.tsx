@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { jsPDF } from 'jspdf'
 import { FileText } from 'lucide-react'
+import { Modal } from '@/components/ui/Modal'
 import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
 import { useStudyStore } from '@/stores/studyStore'
 import { useErrorHandler } from '@/hooks/useErrorHandler'
@@ -214,137 +215,124 @@ export function AiAnalysisModal() {
   if (!isModalVisible || !selectedAnalysisId || !currentAnalysis) return null
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={hideModal}
-    >
-      <div
-        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-2xl max-w-3xl w-full max-h-[80vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#2a2a2a]">
-          <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-white" />
-            <h2 className="text-lg font-semibold text-white">AI Radiology Analysis</h2>
-            {/* View mode toggle */}
-            {/* Button styling pattern: Active state uses gray background (bg-[#2a2a2a]) with white text, NOT blue.
-                This matches the app toolbar styling in App.tsx header. Hover uses blue accent color for icons. */}
-            <div className="flex ml-3 bg-[#0a0a0a] rounded overflow-hidden border border-[#333]">
-              <button
-                onClick={() => setViewMode('rendered')}
-                className={`px-2.5 py-1 text-xs font-medium transition-colors ${
-                  viewMode === 'rendered'
-                    ? 'bg-[#2a2a2a] text-white'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1a1a]'
-                }`}
+    <Modal
+      show={isModalVisible}
+      onClose={hideModal}
+      title="AI Radiology Analysis"
+      icon={<FileText />}
+      headerLeftActions={
+        /* View mode toggle */
+        /* Button styling pattern: Active state uses gray background (bg-[#2a2a2a]) with white text, NOT blue.
+           This matches the app toolbar styling in App.tsx header. Hover uses blue accent color for icons. */
+        <div className="flex ml-3 bg-[#0a0a0a] rounded overflow-hidden border border-[#333]">
+          <button
+            onClick={() => setViewMode('rendered')}
+            className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+              viewMode === 'rendered'
+                ? 'bg-[#2a2a2a] text-white'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1a1a]'
+            }`}
+          >
+            Rendered
+          </button>
+          <button
+            onClick={() => setViewMode('raw')}
+            className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+              viewMode === 'raw'
+                ? 'bg-[#2a2a2a] text-white'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1a1a]'
+            }`}
+          >
+            Raw
+          </button>
+        </div>
+      }
+      headerRightActions={
+        <>
+          {/* Print button */}
+          <button
+            onClick={handlePrint}
+            title="Print analysis"
+            className="p-1.5 text-gray-400 hover:text-white hover:bg-[#2a2a2a] rounded transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="w-4 h-4"
+            >
+              <path
+                fillRule="evenodd"
+                d="M5 2.75C5 1.784 5.784 1 6.75 1h6.5c.966 0 1.75.784 1.75 1.75v3.552c.377.046.752.097 1.126.153A2.212 2.212 0 0118 8.653v4.097A2.25 2.25 0 0115.75 15h-.55a.75.75 0 000-1.5h.55a.75.75 0 00.75-.75V8.653a.712.712 0 00-.615-.711 47.965 47.965 0 00-11.77 0 .712.712 0 00-.615.711v4.097c0 .414.336.75.75.75h.55a.75.75 0 000 1.5h-.55A2.25 2.25 0 012 12.75V8.653c0-1.082.775-2.034 1.874-2.198.374-.056.749-.107 1.126-.153V2.75zm1.5 0v3.36a49.323 49.323 0 017 0V2.75a.25.25 0 00-.25-.25h-6.5a.25.25 0 00-.25.25zM14 13a.75.75 0 00-.75-.75h-6.5a.75.75 0 00-.75.75v4.25c0 .414.336.75.75.75h6.5a.75.75 0 00.75-.75V13zm-1.5.75v2.75h-5v-2.75h5z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+          {/* Copy button */}
+          <button
+            onClick={handleCopy}
+            title={copied ? 'Copied!' : 'Copy to clipboard'}
+            className={`p-1.5 hover:bg-[#2a2a2a] rounded transition-colors ${
+              copied ? 'text-white' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            {copied ? (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="w-4 h-4"
               >
-                Rendered
-              </button>
-              <button
-                onClick={() => setViewMode('raw')}
-                className={`px-2.5 py-1 text-xs font-medium transition-colors ${
-                  viewMode === 'raw'
-                    ? 'bg-[#2a2a2a] text-white'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-[#1a1a1a]'
-                }`}
+                <path
+                  fillRule="evenodd"
+                  d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="w-4 h-4"
               >
-                Raw
-              </button>
-            </div>
+                <path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12A1.5 1.5 0 0117 6.622V12.5a1.5 1.5 0 01-1.5 1.5h-1v-3.379a3 3 0 00-.879-2.121L10.5 5.379A3 3 0 008.379 4.5H7v-1z" />
+                <path d="M4.5 6A1.5 1.5 0 003 7.5v9A1.5 1.5 0 004.5 18h7a1.5 1.5 0 001.5-1.5v-5.879a1.5 1.5 0 00-.44-1.06L9.44 6.439A1.5 1.5 0 008.378 6H4.5z" />
+              </svg>
+            )}
+          </button>
+          {/* Delete button */}
+          <button
+            onClick={handleDelete}
+            title="Delete analysis"
+            className="p-1.5 text-gray-400 hover:text-white hover:bg-[#2a2a2a] rounded transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="w-4 h-4"
+            >
+              <path
+                fillRule="evenodd"
+                d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+        </>
+      }
+      footer={
+        <div className="text-xs text-gray-500 flex items-center justify-between">
+          <div>
+            Generated by <span className="text-gray-400 font-medium">{currentAnalysis.createdBy}</span>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Print button */}
-            <button
-              onClick={handlePrint}
-              title="Print analysis"
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-[#2a2a2a] rounded transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="w-4 h-4"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M5 2.75C5 1.784 5.784 1 6.75 1h6.5c.966 0 1.75.784 1.75 1.75v3.552c.377.046.752.097 1.126.153A2.212 2.212 0 0118 8.653v4.097A2.25 2.25 0 0115.75 15h-.55a.75.75 0 000-1.5h.55a.75.75 0 00.75-.75V8.653a.712.712 0 00-.615-.711 47.965 47.965 0 00-11.77 0 .712.712 0 00-.615.711v4.097c0 .414.336.75.75.75h.55a.75.75 0 000 1.5h-.55A2.25 2.25 0 012 12.75V8.653c0-1.082.775-2.034 1.874-2.198.374-.056.749-.107 1.126-.153V2.75zm1.5 0v3.36a49.323 49.323 0 017 0V2.75a.25.25 0 00-.25-.25h-6.5a.25.25 0 00-.25.25zM14 13a.75.75 0 00-.75-.75h-6.5a.75.75 0 00-.75.75v4.25c0 .414.336.75.75.75h6.5a.75.75 0 00.75-.75V13zm-1.5.75v2.75h-5v-2.75h5z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
-            {/* Copy button */}
-            <button
-              onClick={handleCopy}
-              title={copied ? 'Copied!' : 'Copy to clipboard'}
-              className={`p-1.5 hover:bg-[#2a2a2a] rounded transition-colors ${
-                copied ? 'text-white' : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              {copied ? (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className="w-4 h-4"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className="w-4 h-4"
-                >
-                  <path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12A1.5 1.5 0 0117 6.622V12.5a1.5 1.5 0 01-1.5 1.5h-1v-3.379a3 3 0 00-.879-2.121L10.5 5.379A3 3 0 008.379 4.5H7v-1z" />
-                  <path d="M4.5 6A1.5 1.5 0 003 7.5v9A1.5 1.5 0 004.5 18h7a1.5 1.5 0 001.5-1.5v-5.879a1.5 1.5 0 00-.44-1.06L9.44 6.439A1.5 1.5 0 008.378 6H4.5z" />
-                </svg>
-              )}
-            </button>
-            {/* Delete button */}
-            <button
-              onClick={handleDelete}
-              title="Delete analysis"
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-[#2a2a2a] rounded transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="w-4 h-4"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
-            {/* Close button */}
-            <button
-              onClick={hideModal}
-              title="Close"
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-[#2a2a2a] rounded transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="w-4 h-4"
-              >
-                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-              </svg>
-            </button>
+          <div>
+            {new Date(currentAnalysis.createdAt).toLocaleString()}
           </div>
         </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4">
+      }
+    >
           {viewMode === 'rendered' ? (
             <div
               id="ai-analysis-rendered-content"
@@ -381,18 +369,6 @@ export function AiAnalysisModal() {
               </div>
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-[#2a2a2a] text-xs text-gray-500 flex items-center justify-between">
-          <div>
-            Generated by <span className="text-gray-400 font-medium">{currentAnalysis.createdBy}</span>
-          </div>
-          <div>
-            {new Date(currentAnalysis.createdAt).toLocaleString()}
-          </div>
-        </div>
-      </div>
-    </div>
+    </Modal>
   )
 }

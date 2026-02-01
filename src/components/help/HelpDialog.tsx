@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { Modal } from '@/components/ui/Modal'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { themeClasses } from '@/lib/utils'
 
@@ -9,58 +9,19 @@ interface HelpDialogProps {
 
 export function HelpDialog({ show, onClose }: HelpDialogProps) {
   const theme = useSettingsStore((state) => state.theme)
-  // Close on Escape key
-  useEffect(() => {
-    if (!show) return
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-      }
-    }
-
-    window.addEventListener('keydown', handleEscape)
-    return () => window.removeEventListener('keydown', handleEscape)
-  }, [show, onClose])
-
-  if (!show) return null
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={onClose}
+    <Modal
+      show={show}
+      onClose={onClose}
+      title="OpenScans Help"
+      icon={
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.061-1.061 3 3 0 112.871 5.026v.345a.75.75 0 01-1.5 0v-.5c0-.72.57-1.172 1.081-1.287A1.5 1.5 0 108.94 6.94zM10 15a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+        </svg>
+      }
     >
-      <div
-        className={`${themeClasses.bg(theme)} ${themeClasses.border(theme)} rounded-lg shadow-2xl max-w-3xl w-full max-h-[80vh] flex flex-col`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className={`flex items-center justify-between p-4 border-b ${themeClasses.border(theme)}`}>
-          <div className="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 ${themeClasses.text(theme)}`}>
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.061-1.061 3 3 0 112.871 5.026v.345a.75.75 0 01-1.5 0v-.5c0-.72.57-1.172 1.081-1.287A1.5 1.5 0 108.94 6.94zM10 15a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-            </svg>
-            <h2 className={`text-lg font-semibold ${themeClasses.text(theme)}`}>OpenScans Help</h2>
-          </div>
-          <button
-            onClick={onClose}
-            title="Close"
-            className={`p-1.5 ${themeClasses.textSecondary(theme)} ${themeClasses.hoverText(theme)} ${themeClasses.hoverBgSecondary(theme)} rounded transition-colors`}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="w-4 h-4"
-            >
-              <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className={`space-y-3 ${themeClasses.textSecondary(theme)}`}>
+      <div className={`space-y-3 ${themeClasses.textSecondary(theme)}`}>
           {/* About */}
           <section>
             <h3 className={`text-base font-semibold ${themeClasses.text(theme)} mb-1.5`}>About</h3>
@@ -252,9 +213,7 @@ export function HelpDialog({ show, onClose }: HelpDialogProps) {
               use the keyboard icon to view all available shortcuts.
             </p>
           </section>
-          </div>
-        </div>
       </div>
-    </div>
+    </Modal>
   )
 }
