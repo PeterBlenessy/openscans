@@ -28,12 +28,31 @@ export function AiAnalysisModal() {
     ? analyses.find((a) => a.sopInstanceUID === currentInstance.sopInstanceUID)
     : null
 
-  const handleDelete = () => {
-    if (!currentAnalysis) return
-    if (confirm('Are you sure you want to delete this AI analysis?')) {
-      deleteAnalysis(currentAnalysis.id)
+  const handleDelete = useCallback(async (event?: React.MouseEvent) => {
+    // Prevent any default behavior or event bubbling
+    if (event) {
+      event.preventDefault()
+      event.stopPropagation()
     }
-  }
+
+    if (!currentAnalysis) return
+
+    // Store the ID before showing confirmation
+    const analysisIdToDelete = currentAnalysis.id
+
+    // CRITICAL: In Tauri desktop, window.confirm() returns a Promise
+    // We must await it to get the actual boolean response
+    const confirmed = await window.confirm('Are you sure you want to delete this AI analysis?')
+
+    if (!confirmed) {
+      // User cancelled - do nothing
+      return
+    }
+
+    // Only reached if user clicked OK
+    deleteAnalysis(analysisIdToDelete)
+    hideModal()
+  }, [currentAnalysis, deleteAnalysis, hideModal])
 
 
   const handleCopy = useCallback(async () => {
