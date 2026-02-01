@@ -1,6 +1,6 @@
-import { saveAs } from 'file-saver'
 import { captureViewportCanvas, canvasToBlob } from './imageCapture'
 import { generateFilename } from './fileNaming'
+import { saveFile } from './fileSaver'
 import { ExportOptions, ExportResult } from './types'
 import { DicomInstance } from '@/types'
 
@@ -79,8 +79,8 @@ export async function exportImage(
       options.includePatientID
     )
 
-    // Download file
-    saveAs(blob, filename)
+    // Save file
+    await saveFile(blob, filename)
 
     return {
       success: true,

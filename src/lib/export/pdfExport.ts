@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf'
-import { saveAs } from 'file-saver'
 import { captureViewportCanvas, canvasToBlob } from './imageCapture'
 import { generateFilename } from './fileNaming'
+import { saveFile } from './fileSaver'
 import { ExportOptions, ExportResult } from './types'
 import { DicomInstance } from '@/types'
 import { ViewportSettings } from '@/types'
@@ -93,9 +93,9 @@ export async function exportPDF(
     // Generate filename
     const filename = generateFilename(currentInstance, 'pdf', options.includePatientID)
 
-    // Convert to blob and download
+    // Convert to blob and save
     const blob = pdf.output('blob')
-    saveAs(blob, filename)
+    await saveFile(blob, filename)
 
     return {
       success: true,
