@@ -3,8 +3,8 @@ import { useAnnotationStore } from '@/stores/annotationStore'
 import { useViewportStore } from '@/stores/viewportStore'
 import { useStudyStore } from '@/stores/studyStore'
 import { MarkerAnnotation } from '@/types/annotation'
-import { severityStyles } from '@/types/annotation'
 import { annotationColors } from '@/lib/colors'
+// @ts-expect-error - cornerstone-core doesn't have TypeScript definitions
 import cornerstone from 'cornerstone-core'
 
 interface AnnotationOverlayProps {
@@ -85,7 +85,6 @@ interface MarkerRendererProps {
 }
 
 function MarkerRenderer({ annotation, canvasElement }: MarkerRendererProps) {
-  const style = severityStyles[annotation.severity]
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const updateAnnotation = useAnnotationStore((state) => state.updateAnnotation)

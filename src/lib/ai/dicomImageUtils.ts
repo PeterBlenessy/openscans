@@ -1,3 +1,4 @@
+// @ts-expect-error - cornerstone-core doesn't have TypeScript definitions
 import cornerstone from 'cornerstone-core'
 import { DicomImageData } from './types'
 

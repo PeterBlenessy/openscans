@@ -25,7 +25,7 @@ export async function pickDirectory(): Promise<FileSystemDirectoryHandle | strin
     if (result) {
       try {
         // Import scope module to grant access
-        const { BaseDirectory, create } = await import('@tauri-apps/plugin-fs')
+        await import('@tauri-apps/plugin-fs')
         // Note: In Tauri v2, user-selected directories via dialog should automatically
         // have scope access, but we'll keep this as a fallback
       } catch (err) {

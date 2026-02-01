@@ -43,7 +43,7 @@ function saveRecentStudies(studies: RecentStudyEntry[]) {
   }
 }
 
-export const useRecentStudiesStore = create<RecentStudiesState>((set, get) => ({
+export const useRecentStudiesStore = create<RecentStudiesState>((set, _get) => ({
   recentStudies: loadRecentStudies(),
 
   addRecentStudy: (entry) => {

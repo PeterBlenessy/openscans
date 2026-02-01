@@ -168,7 +168,7 @@ export function AiAnalysisModal() {
 
       if (isTauri()) {
         // In Tauri, save to Downloads directory
-        const { writeFile, BaseDirectory } = await import('@tauri-apps/plugin-fs')
+        const { writeFile } = await import('@tauri-apps/plugin-fs')
         const { save } = await import('@tauri-apps/plugin-dialog')
 
         // Convert blob to Uint8Array

@@ -93,6 +93,7 @@ export async function checkDirectoryPermission(
   handle: FileSystemDirectoryHandle
 ): Promise<boolean> {
   try {
+    // @ts-expect-error - queryPermission is experimental File System API
     const permission = await handle.queryPermission({ mode: 'read' })
     return permission === 'granted'
   } catch (error) {
@@ -108,6 +109,7 @@ export async function requestDirectoryPermission(
   handle: FileSystemDirectoryHandle
 ): Promise<boolean> {
   try {
+    // @ts-expect-error - requestPermission is experimental File System API
     const permission = await handle.requestPermission({ mode: 'read' })
     return permission === 'granted'
   } catch (error) {
@@ -161,6 +163,7 @@ export async function readDicomFilesFromDirectory(
   const files: File[] = []
 
   async function processDirectory(dirHandle: FileSystemDirectoryHandle) {
+    // @ts-expect-error - values() is experimental File System API
     for await (const entry of dirHandle.values()) {
       if (entry.kind === 'file') {
         const file = await entry.getFile()
@@ -192,6 +195,7 @@ export async function readDicomFilesWithDirectories(
   const filesWithDirs: FileWithDirectory[] = []
 
   async function processDirectory(dirHandle: FileSystemDirectoryHandle) {
+    // @ts-expect-error - values() is experimental File System API
     for await (const entry of dirHandle.values()) {
       if (entry.kind === 'file') {
         const file = await entry.getFile()
