@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useDicomLoader } from '@/hooks/useDicomLoader'
+import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { cn } from '@/lib/utils'
 import { pickDirectory, readFilesFromDirectory, isDirectoryPickerSupported } from '@/lib/utils/filePicker'
 
@@ -13,6 +14,7 @@ export function FileDropzone({ className, onFilesLoaded }: FileDropzoneProps) {
   const [localError, setLocalError] = useState<string | null>(null)
   const [localLoading, setLocalLoading] = useState(false)
   const { loadFiles, isLoading, error } = useDicomLoader()
+  const { handleError } = useErrorHandler()
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -128,7 +130,11 @@ export function FileDropzone({ className, onFilesLoaded }: FileDropzoneProps) {
 
       // Check if directory picker is supported
       if (!isDirectoryPickerSupported()) {
-        alert('Your browser does not support folder selection. Please use Chrome or Edge.')
+        handleError(
+          'Your browser does not support folder selection. Please use Chrome or Edge.',
+          'File Picker',
+          'warning'
+        )
         return
       }
 
@@ -148,7 +154,7 @@ export function FileDropzone({ className, onFilesLoaded }: FileDropzoneProps) {
       const allFiles = await readFilesFromDirectory(result)
 
       if (allFiles.length === 0) {
-        alert('No files found in the selected folder.')
+        handleError('No files found in the selected folder.', 'File Picker', 'warning')
         setLocalLoading(false)
         return
       }
