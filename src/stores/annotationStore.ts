@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { Annotation } from '@/types/annotation'
-import { useSettingsStore } from './settingsStore'
 
 /**
  * Annotation store state interface.

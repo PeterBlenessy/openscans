@@ -9,7 +9,6 @@ import { useSettingsStore } from '@/stores/settingsStore'
 import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { mockDetector } from '@/lib/ai/mockVertebralDetector'
 import { initDetector, getApiKeyForProvider } from '@/lib/ai/aiDetectorManager'
-import { uiColors } from '@/lib/colors'
 
 interface ViewportToolbarProps {
   className?: string

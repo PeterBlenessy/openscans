@@ -16,7 +16,6 @@ import { useRecentStudiesStore } from './stores/recentStudiesStore'
 import { useSettingsStore } from './stores/settingsStore'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useLoadStudy } from './hooks/useLoadStudy'
-import { formatSeriesDescription } from './lib/utils/formatSeriesDescription'
 import { getCachedStudies } from './lib/storage/studyCache'
 
 function App() {

@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { useSettingsStore } from './settingsStore'
 
 /**
  * AI radiology analysis result.
