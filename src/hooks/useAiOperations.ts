@@ -3,6 +3,7 @@ import { DicomInstance, DicomStudy } from '../types'
 import { Annotation } from '../types/annotation'
 import { useSettingsStore } from '../stores/settingsStore'
 import { mockDetector } from '../lib/ai/mockVertebralDetector'
+import { initDetector, getApiKeyForProvider } from '../lib/ai/aiDetectorManager'
 
 interface UseAiOperationsOptions {
   currentInstance: DicomInstance | null
@@ -71,6 +72,7 @@ export function useAiOperations(options: UseAiOperationsOptions): UseAiOperation
   /**
    * Triggers AI vertebra detection on the current instance.
    * Deletes existing AI-generated annotations before running detection.
+   * Uses the configured AI provider or falls back to mock detector.
    */
   const handleAiDetection = useCallback(async () => {
     if (!currentInstance || isDetecting) return
@@ -78,7 +80,25 @@ export function useAiOperations(options: UseAiOperationsOptions): UseAiOperation
     try {
       setDetecting(true)
       deleteAnnotationsForInstance(currentInstance.sopInstanceUID, true)
-      const result = await mockDetector.detectVertebrae(currentInstance)
+
+      // Get AI settings
+      const aiSettings = useSettingsStore.getState()
+      let detector = mockDetector
+
+      // Try to use configured AI provider
+      if (aiSettings.aiEnabled && aiSettings.aiProvider !== 'none') {
+        const apiKey = getApiKeyForProvider(aiSettings.aiProvider, {
+          aiApiKey: aiSettings.aiApiKey,
+          geminiApiKey: aiSettings.geminiApiKey,
+          openaiApiKey: aiSettings.openaiApiKey,
+        })
+        const aiDetector = await initDetector(aiSettings.aiProvider, apiKey)
+        if (aiDetector && aiDetector.isConfigured()) {
+          detector = aiDetector
+        }
+      }
+
+      const result = await detector.detectVertebrae(currentInstance)
       addAnnotations(result.annotations)
       console.log(`AI detection completed in ${result.processingTimeMs.toFixed(0)}ms with ${result.confidence.toFixed(2)} confidence`)
       setDetecting(false)
@@ -91,7 +111,8 @@ export function useAiOperations(options: UseAiOperationsOptions): UseAiOperation
 
   /**
    * Triggers AI radiology analysis on the current instance.
-   * Requires Claude AI to be configured in settings.
+   * Requires an AI provider to be configured in settings.
+   * Supports Claude, Gemini, and OpenAI.
    */
   const handleAiAnalysis = useCallback(async () => {
     if (!currentInstance || isAnalyzing) return
@@ -102,11 +123,11 @@ export function useAiOperations(options: UseAiOperationsOptions): UseAiOperation
       return
     }
 
-    // Require Claude configuration for analysis
+    // Require AI provider configuration for analysis
     const aiSettings = useSettingsStore.getState()
-    if (!aiSettings.aiEnabled || aiSettings.aiProvider !== 'claude') {
+    if (!aiSettings.aiEnabled || aiSettings.aiProvider === 'none') {
       handleError(
-        'Please configure Claude AI in settings to use radiology analysis.',
+        'Please enable and configure an AI provider in settings to use radiology analysis.',
         'AI Analysis',
         'warning'
       )
@@ -115,9 +136,31 @@ export function useAiOperations(options: UseAiOperationsOptions): UseAiOperation
 
     try {
       setAnalyzing(true)
-      // Import dynamically to avoid circular dependency
-      const { claudeDetector } = await import('../lib/ai/claudeVisionDetector')
-      const result = await claudeDetector.analyzeImage(currentInstance)
+
+      // Dynamically load and initialize the AI detector
+      const apiKey = getApiKeyForProvider(aiSettings.aiProvider, {
+        aiApiKey: aiSettings.aiApiKey,
+        geminiApiKey: aiSettings.geminiApiKey,
+        openaiApiKey: aiSettings.openaiApiKey,
+      })
+      const analyzer = await initDetector(aiSettings.aiProvider, apiKey)
+
+      if (!analyzer || !analyzer.isConfigured()) {
+        const providerNames: Record<string, string> = {
+          claude: 'Anthropic',
+          gemini: 'Google AI',
+          openai: 'OpenAI',
+        }
+        handleError(
+          `Please configure your ${providerNames[aiSettings.aiProvider] || aiSettings.aiProvider} API key in settings.`,
+          'AI Analysis',
+          'warning'
+        )
+        setAnalyzing(false)
+        return
+      }
+
+      const result = await analyzer.analyzeImage(currentInstance)
       addAnalysis({ ...result.analysis, studyInstanceUID: studyUID })
       console.log(`AI analysis completed in ${result.processingTimeMs.toFixed(0)}ms`)
       setAnalyzing(false)

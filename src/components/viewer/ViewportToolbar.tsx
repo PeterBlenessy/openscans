@@ -8,9 +8,7 @@ import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { mockDetector } from '@/lib/ai/mockVertebralDetector'
-import { claudeDetector } from '@/lib/ai/claudeVisionDetector'
-import { geminiDetector } from '@/lib/ai/geminiVisionDetector'
-import { openaiDetector } from '@/lib/ai/openaiVisionDetector'
+import { initDetector, getApiKeyForProvider } from '@/lib/ai/aiDetectorManager'
 import { uiColors } from '@/lib/colors'
 
 interface ViewportToolbarProps {
@@ -49,20 +47,11 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
   // AI settings
   const aiEnabled = useSettingsStore((state) => state.aiEnabled)
   const aiProvider = useSettingsStore((state) => state.aiProvider)
-  const aiApiKey = useSettingsStore((state) => state.aiApiKey)
-  const geminiApiKey = useSettingsStore((state) => state.geminiApiKey)
-  const openaiApiKey = useSettingsStore((state) => state.openaiApiKey)
-
-  // Initialize AI detectors with API keys
-  if (aiEnabled && aiProvider === 'claude' && aiApiKey) {
-    claudeDetector.setApiKey(aiApiKey)
-  }
-  if (aiEnabled && aiProvider === 'gemini' && geminiApiKey) {
-    geminiDetector.setApiKey(geminiApiKey)
-  }
-  if (aiEnabled && aiProvider === 'openai' && openaiApiKey) {
-    openaiDetector.setApiKey(openaiApiKey)
-  }
+  const aiSettings = useSettingsStore((state) => ({
+    aiApiKey: state.aiApiKey,
+    geminiApiKey: state.geminiApiKey,
+    openaiApiKey: state.openaiApiKey,
+  }))
 
   // Subscribe to favorites array to trigger re-render on changes
   const isCurrentFavorite = useFavoritesStore((state) =>
@@ -126,20 +115,21 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
   const handleAiDetection = async () => {
     if (!currentInstance || isDetecting) return
 
-    // Choose detector based on settings
-    let detector: { detectVertebrae: typeof mockDetector.detectVertebrae } = mockDetector
-
-    if (aiEnabled && aiProvider === 'claude' && claudeDetector.isConfigured()) {
-      detector = claudeDetector
-    } else if (aiEnabled && aiProvider === 'gemini' && geminiDetector.isConfigured()) {
-      detector = geminiDetector
-    } else if (aiEnabled && aiProvider === 'openai' && openaiDetector.isConfigured()) {
-      detector = openaiDetector
-    }
-
     try {
       setDetecting(true)
       deleteAnnotationsForInstance(currentInstance.sopInstanceUID, true)
+
+      // Use AI detector if enabled, otherwise use mock detector
+      let detector: { detectVertebrae: typeof mockDetector.detectVertebrae } = mockDetector
+
+      if (aiEnabled && aiProvider !== 'none') {
+        const apiKey = getApiKeyForProvider(aiProvider, aiSettings)
+        const aiDetector = await initDetector(aiProvider, apiKey)
+        if (aiDetector && aiDetector.isConfigured()) {
+          detector = aiDetector
+        }
+      }
+
       const result = await detector.detectVertebrae(currentInstance)
       addAnnotations(result.annotations)
       console.log(`AI detection: ${result.annotations.length} vertebrae detected in ${result.processingTimeMs.toFixed(0)}ms (confidence: ${(result.confidence * 100).toFixed(0)}%)`)
@@ -207,32 +197,28 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
       return
     }
 
-    // Choose the appropriate detector for analysis
-    let analyzer: { analyzeImage: typeof claudeDetector.analyzeImage } | null = null
-    if (aiProvider === 'claude' && claudeDetector.isConfigured()) {
-      analyzer = claudeDetector
-    } else if (aiProvider === 'gemini' && geminiDetector.isConfigured()) {
-      analyzer = geminiDetector
-    } else if (aiProvider === 'openai' && openaiDetector.isConfigured()) {
-      analyzer = openaiDetector
-    }
-
-    if (!analyzer) {
-      const providerNames: Record<string, string> = {
-        claude: 'Anthropic',
-        gemini: 'Google AI',
-        openai: 'OpenAI',
-      }
-      handleError(
-        `Please configure your ${providerNames[aiProvider] || aiProvider} API key in settings.`,
-        'AI Analysis',
-        'warning'
-      )
-      return
-    }
-
     try {
       setAnalyzing(true)
+
+      // Dynamically load and initialize the AI detector
+      const apiKey = getApiKeyForProvider(aiProvider, aiSettings)
+      const analyzer = await initDetector(aiProvider, apiKey)
+
+      if (!analyzer || !analyzer.isConfigured()) {
+        const providerNames: Record<string, string> = {
+          claude: 'Anthropic',
+          gemini: 'Google AI',
+          openai: 'OpenAI',
+        }
+        handleError(
+          `Please configure your ${providerNames[aiProvider] || aiProvider} API key in settings.`,
+          'AI Analysis',
+          'warning'
+        )
+        setAnalyzing(false)
+        return
+      }
+
       const result = await analyzer.analyzeImage(currentInstance)
       // Add studyInstanceUID to the analysis
       addAnalysis({ ...result.analysis, studyInstanceUID: studyUID })
