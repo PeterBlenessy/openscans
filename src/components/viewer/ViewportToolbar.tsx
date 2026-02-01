@@ -6,6 +6,7 @@ import { useFavoritesStore, FavoriteImage } from '@/stores/favoritesStore'
 import { useAnnotationStore } from '@/stores/annotationStore'
 import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { mockDetector } from '@/lib/ai/mockVertebralDetector'
 import { claudeDetector } from '@/lib/ai/claudeVisionDetector'
 import { geminiDetector } from '@/lib/ai/geminiVisionDetector'
@@ -41,6 +42,8 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
   const isAnalyzing = useAiAnalysisStore((state) => state.isAnalyzing)
   const setAnalyzing = useAiAnalysisStore((state) => state.setAnalyzing)
   const getAnalysisForInstance = useAiAnalysisStore((state) => state.getAnalysisForInstance)
+
+  const { handleError } = useErrorHandler()
   const showModal = useAiAnalysisStore((state) => state.showModal)
 
   // AI settings
@@ -196,7 +199,11 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
 
     // Require an AI provider to be configured
     if (!aiEnabled || aiProvider === 'none') {
-      alert('Please enable and configure an AI provider in settings to use radiology analysis.')
+      handleError(
+        'Please enable and configure an AI provider in settings to use radiology analysis.',
+        'AI Analysis',
+        'warning'
+      )
       return
     }
 
@@ -211,8 +218,16 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
     }
 
     if (!analyzer) {
-      const providerNames: Record<string, string> = { claude: 'Anthropic', gemini: 'Google AI', openai: 'OpenAI' }
-      alert(`Please configure your ${providerNames[aiProvider] || aiProvider} API key in settings.`)
+      const providerNames: Record<string, string> = {
+        claude: 'Anthropic',
+        gemini: 'Google AI',
+        openai: 'OpenAI',
+      }
+      handleError(
+        `Please configure your ${providerNames[aiProvider] || aiProvider} API key in settings.`,
+        'AI Analysis',
+        'warning'
+      )
       return
     }
 

@@ -1,16 +1,11 @@
-import { useState } from 'react'
 import { useRecentStudiesStore, RecentStudyEntry } from '@/stores/recentStudiesStore'
 import { useStudyStore } from '@/stores/studyStore'
 import { useSettingsStore } from '@/stores/settingsStore'
-import {
-  getDirectoryHandle,
-  checkDirectoryPermission,
-  requestDirectoryPermission,
-  readDicomFilesWithDirectories,
-} from '@/lib/storage/directoryHandleStorage'
-import { parseDicomFilesWithDirectories } from '@/lib/dicom/parser'
-import { getCachedStudies, cacheStudies } from '@/lib/storage/studyCache'
+import { getCachedStudies } from '@/lib/storage/studyCache'
+import { useLoadStudy } from '@/hooks/useLoadStudy'
+import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { LeftDrawerIconBar } from './LeftDrawerIconBar'
+import { themeClasses } from '@/lib/utils'
 
 export type LeftDrawerState = 'expanded' | 'minimized' | 'hidden'
 
@@ -35,12 +30,15 @@ export function LeftDrawer({ state, onLoadNewFiles, onOpenSettings, onOpenKeyboa
   const setTheme = useSettingsStore((state) => state.setTheme)
   const hidePersonalInfo = useSettingsStore((state) => state.hidePersonalInfo)
 
-  const [isLoading, setIsLoading] = useState(false)
+  const { loadStudy, isLoading } = useLoadStudy()
+  const { handleError } = useErrorHandler()
 
   const handleStudyClick = async (entry: RecentStudyEntry) => {
-    console.log(`[LeftDrawer] Clicked study: ${entry.studyInstanceUID}, current studies in store: ${studies.length}`)
+    console.log(
+      `[LeftDrawer] Clicked study: ${entry.studyInstanceUID}, current studies in store: ${studies.length}`
+    )
 
-    // Check if this study is still loaded
+    // Check if this study is already loaded
     const study = studies.find((s) => s.studyInstanceUID === entry.studyInstanceUID)
     if (study) {
       console.log(`[LeftDrawer] ⚡ Study already in store, switching instantly!`)
@@ -50,151 +48,37 @@ export function LeftDrawer({ state, onLoadNewFiles, onOpenSettings, onOpenKeyboa
 
     console.log(`[LeftDrawer] Study not in store, need to reload`)
 
-    // Try to reload from folderPath (desktop mode) or directoryHandleId (web mode)
-    if (entry.folderPath) {
-      // Desktop mode - check cache first to avoid re-reading files
-      const cachedStudies = getCachedStudies(entry.folderPath)
-
+    // Check cache for instant load
+    const cacheKey = entry.folderPath || entry.directoryHandleId
+    if (cacheKey) {
+      const cachedStudies = getCachedStudies(cacheKey)
       if (cachedStudies) {
-        console.log(`[LeftDrawer] ⚡ Loading ${cachedStudies.length} studies from cache (instant!)`)
+        console.log(
+          `[LeftDrawer] ⚡ Loading ${cachedStudies.length} studies from cache (instant!)`
+        )
         setStudies(cachedStudies)
 
         // Find and set the current study
-        const targetStudy = cachedStudies.find((s) => s.studyInstanceUID === entry.studyInstanceUID)
+        const targetStudy = cachedStudies.find(
+          (s) => s.studyInstanceUID === entry.studyInstanceUID
+        )
         if (targetStudy) {
           setCurrentStudy(targetStudy.studyInstanceUID)
         } else {
           setCurrentStudy(cachedStudies[0].studyInstanceUID)
         }
         return
-      }
-
-      // Not in cache - reload from folder path
-      try {
-        setIsLoading(true)
-        const startTime = performance.now()
-
-        // Import platform-specific file utilities
-        const { readFilesFromDirectory } = await import('@/lib/utils/filePicker')
-        const { parseDicomFiles } = await import('@/lib/dicom/parser')
-
-        // Read all files from the folder path
-        const readStart = performance.now()
-        const allFiles = await readFilesFromDirectory(entry.folderPath)
-        const readTime = performance.now() - readStart
-
-        if (allFiles.length === 0) {
-          alert('No DICOM files found in the folder.')
-          return
-        }
-
-        // Parse and load the files
-        const parseStart = performance.now()
-        const loadedStudies = await parseDicomFiles(allFiles, entry.folderPath)
-        const parseTime = performance.now() - parseStart
-
-        if (loadedStudies.length === 0) {
-          alert('No valid DICOM studies found in the folder.')
-          return
-        }
-
-        // Cache the parsed studies for future use
-        cacheStudies(entry.folderPath, loadedStudies)
-
-        // Set ALL the studies from this directory
-        setStudies(loadedStudies)
-
-        // Find and set the current study to the one the user clicked
-        const targetStudy = loadedStudies.find((s) => s.studyInstanceUID === entry.studyInstanceUID)
-        if (targetStudy) {
-          setCurrentStudy(targetStudy.studyInstanceUID)
-        } else {
-          // If the exact study isn't found, just set the first one
-          setCurrentStudy(loadedStudies[0].studyInstanceUID)
-        }
-      } catch (error) {
-        console.error('Failed to reload study from folder path:', error)
-        alert('Failed to reload the study. Please try loading the files again.')
-      } finally {
-        setIsLoading(false)
-      }
-    } else if (entry.directoryHandleId) {
-      // Web mode - check cache first
-      const cachedStudies = getCachedStudies(entry.directoryHandleId)
-
-      if (cachedStudies) {
-        console.log(`[LeftDrawer] ⚡ Loading ${cachedStudies.length} studies from cache (instant!)`)
-        setStudies(cachedStudies)
-
-        // Find and set the current study
-        const targetStudy = cachedStudies.find((s) => s.studyInstanceUID === entry.studyInstanceUID)
-        if (targetStudy) {
-          setCurrentStudy(targetStudy.studyInstanceUID)
-        } else {
-          setCurrentStudy(cachedStudies[0].studyInstanceUID)
-        }
-        return
-      }
-
-      // Not in cache - reload from directory handle
-      try {
-        setIsLoading(true)
-
-        // Get the directory handle from IndexedDB
-        const dirHandle = await getDirectoryHandle(entry.directoryHandleId)
-        if (!dirHandle) {
-          alert('Could not find the directory reference. The folder may have been moved or deleted.')
-          return
-        }
-
-        // Check if we have permission
-        let hasPermission = await checkDirectoryPermission(dirHandle)
-
-        // If not, request permission
-        if (!hasPermission) {
-          hasPermission = await requestDirectoryPermission(dirHandle)
-          if (!hasPermission) {
-            alert('Permission denied to access the folder.')
-            return
-          }
-        }
-
-        // Read DICOM files with directory tracking
-        const filesWithDirs = await readDicomFilesWithDirectories(dirHandle)
-        if (filesWithDirs.length === 0) {
-          alert('No DICOM files found in the folder.')
-          return
-        }
-
-        // Parse and load the files with directory tracking
-        // Pass the root directory handle so all studies get the correct parent directory reference
-        const loadedStudies = await parseDicomFilesWithDirectories(filesWithDirs, dirHandle)
-        if (loadedStudies.length === 0) {
-          alert('No valid DICOM studies found in the folder.')
-          return
-        }
-
-        // Cache the parsed studies for future use
-        cacheStudies(entry.directoryHandleId, loadedStudies)
-
-        // Set ALL the studies from this directory
-        setStudies(loadedStudies)
-
-        // Find and set the current study to the one the user clicked
-        const targetStudy = loadedStudies.find((s) => s.studyInstanceUID === entry.studyInstanceUID)
-        if (targetStudy) {
-          setCurrentStudy(targetStudy.studyInstanceUID)
-        } else {
-          // If the exact study isn't found, just set the first one
-          setCurrentStudy(loadedStudies[0].studyInstanceUID)
-        }
-      } catch (error) {
-        console.error('Failed to reload study:', error)
-        alert('Failed to reload the study. Please try loading the files again.')
-      } finally {
-        setIsLoading(false)
       }
     }
+
+    // Not in cache - reload from disk/handle using hook
+    await loadStudy(entry, {
+      targetStudyUID: entry.studyInstanceUID,
+      requestPermission: true,
+      onError: (error) => {
+        handleError(error, 'Study Loader', 'error')
+      },
+    })
   }
 
   const formatDate = (timestamp: number) => {
@@ -221,19 +105,19 @@ export function LeftDrawer({ state, onLoadNewFiles, onOpenSettings, onOpenKeyboa
 
   // Expanded state - render full drawer
   return (
-    <aside className={`w-64 border-r flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${theme === 'dark' ? 'bg-[#121212] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
+    <aside className={`w-64 border-r flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${theme === 'dark' ? 'bg-[#121212]' : 'bg-white'} ${themeClasses.border(theme)}`}>
       <>
         {/* Recent Studies */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className={`text-sm font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+              <h3 className={`text-sm font-medium uppercase tracking-wider ${themeClasses.textSecondary(theme)}`}>
                 Recent Studies
               </h3>
               {recentStudies.length > 0 && (
                 <button
                   onClick={clearRecentStudies}
-                  className={`text-xs transition-colors ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+                  className={`text-xs transition-colors ${themeClasses.textTertiary(theme)} ${theme === 'dark' ? 'hover:text-gray-300' : 'hover:text-gray-600'}`}
                   title="Clear all"
                 >
                   Clear
@@ -306,11 +190,11 @@ export function LeftDrawer({ state, onLoadNewFiles, onOpenSettings, onOpenKeyboa
         </div>
 
         {/* Bottom Section - Settings & Actions */}
-        <div className={`border-t p-4 space-y-2 ${theme === 'dark' ? 'border-[#2a2a2a]' : 'border-gray-200'}`}>
+        <div className={`border-t p-4 space-y-2 ${themeClasses.border(theme)}`}>
           {/* Load New Files */}
           <button
             onClick={onLoadNewFiles}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${theme === 'dark' ? 'bg-[#1a1a1a] hover:bg-[#2a2a2a]' : 'bg-gray-100 hover:bg-gray-200'}`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${themeClasses.bg(theme)} ${theme === 'dark' ? 'hover:bg-[#2a2a2a]' : 'hover:bg-gray-200'}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
               <path d="M9.25 13.25a.75.75 0 001.5 0V4.636l2.955 3.129a.75.75 0 001.09-1.03l-4.25-4.5a.75.75 0 00-1.09 0l-4.25 4.5a.75.75 0 101.09 1.03L9.25 4.636v8.614z" />
@@ -322,7 +206,7 @@ export function LeftDrawer({ state, onLoadNewFiles, onOpenSettings, onOpenKeyboa
           {/* Theme Toggle */}
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${theme === 'dark' ? 'hover:bg-[#1a1a1a]' : 'hover:bg-gray-100'}`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${themeClasses.hoverBg(theme)}`}
           >
             {theme === 'dark' ? (
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -341,7 +225,7 @@ export function LeftDrawer({ state, onLoadNewFiles, onOpenSettings, onOpenKeyboa
           {/* Settings Button */}
           <button
             onClick={onOpenSettings}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${theme === 'dark' ? 'hover:bg-[#1a1a1a]' : 'hover:bg-gray-100'}`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${themeClasses.hoverBg(theme)}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
               <path fillRule="evenodd" d="M7.84 1.804A1 1 0 018.82 1h2.36a1 1 0 01.98.804l.331 1.652a6.993 6.993 0 011.929 1.115l1.598-.54a1 1 0 011.186.447l1.18 2.044a1 1 0 01-.205 1.251l-1.267 1.113a7.047 7.047 0 010 2.228l1.267 1.113a1 1 0 01.206 1.25l-1.18 2.045a1 1 0 01-1.187.447l-1.598-.54a6.993 6.993 0 01-1.929 1.115l-.33 1.652a1 1 0 01-.98.804H8.82a1 1 0 01-.98-.804l-.331-1.652a6.993 6.993 0 01-1.929-1.115l-1.598.54a1 1 0 01-1.186-.447l-1.18-2.044a1 1 0 01.205-1.251l1.267-1.114a7.05 7.05 0 010-2.227L1.821 7.773a1 1 0 01-.206-1.25l1.18-2.045a1 1 0 011.187-.447l1.598.54A6.993 6.993 0 017.51 3.456l.33-1.652zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
@@ -352,7 +236,7 @@ export function LeftDrawer({ state, onLoadNewFiles, onOpenSettings, onOpenKeyboa
           {/* Keyboard Shortcuts Button */}
           <button
             onClick={onOpenKeyboardShortcuts}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${theme === 'dark' ? 'hover:bg-[#1a1a1a]' : 'hover:bg-gray-100'}`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${themeClasses.hoverBg(theme)}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
               <path d="M7 3.5C7 2.67 7.67 2 8.5 2h1C10.33 2 11 2.67 11 3.5v1c0 .83-.67 1.5-1.5 1.5h-1C7.67 6 7 5.33 7 4.5v-1zm6 0C13 2.67 13.67 2 14.5 2h1c.83 0 1.5.67 1.5 1.5v1c0 .83-.67 1.5-1.5 1.5h-1C13.67 6 13 5.33 13 4.5v-1zM7 9.5C7 8.67 7.67 8 8.5 8h1C10.33 8 11 8.67 11 9.5v1c0 .83-.67 1.5-1.5 1.5h-1C7.67 12 7 11.33 7 10.5v-1zm6 0C13 8.67 13.67 8 14.5 8h1c.83 0 1.5.67 1.5 1.5v1c0 .83-.67 1.5-1.5 1.5h-1c-.83 0-1.5-.67-1.5-1.5v-1zM2 15.5C2 14.67 2.67 14 3.5 14h17c.83 0 1.5.67 1.5 1.5v1c0 .83-.67 1.5-1.5 1.5h-17C2.67 18 2 17.33 2 16.5v-1zm5-6C7 8.67 7.67 8 8.5 8h7c.83 0 1.5.67 1.5 1.5v1c0 .83-.67 1.5-1.5 1.5h-7C7.67 12 7 11.33 7 10.5v-1z"/>
@@ -363,7 +247,7 @@ export function LeftDrawer({ state, onLoadNewFiles, onOpenSettings, onOpenKeyboa
           {/* Help Button */}
           <button
             onClick={onOpenHelp}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${theme === 'dark' ? 'hover:bg-[#1a1a1a]' : 'hover:bg-gray-100'}`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left ${themeClasses.hoverBg(theme)}`}
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.061-1.061 3 3 0 112.871 5.026v.345a.75.75 0 01-1.5 0v-.5c0-.72.57-1.172 1.081-1.287A1.5 1.5 0 108.94 6.94zM10 15a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />

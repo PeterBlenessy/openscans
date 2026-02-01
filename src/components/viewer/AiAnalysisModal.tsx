@@ -5,6 +5,7 @@ import { jsPDF } from 'jspdf'
 import { FileText } from 'lucide-react'
 import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
 import { useStudyStore } from '@/stores/studyStore'
+import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { isTauri } from '@/lib/utils/platform'
 
 export function AiAnalysisModal() {
@@ -17,6 +18,8 @@ export function AiAnalysisModal() {
 
   const [viewMode, setViewMode] = useState<'rendered' | 'raw'>('rendered')
   const [copied, setCopied] = useState(false)
+
+  const { handleError } = useErrorHandler()
 
   // Get the analysis for the current image
   const currentAnalysis = currentInstance
@@ -182,7 +185,7 @@ export function AiAnalysisModal() {
 
         if (filePath) {
           await writeFile(filePath, uint8Array)
-          alert(`PDF saved to: ${filePath}`)
+          handleError(`PDF saved to: ${filePath}`, 'PDF Export', 'info')
         }
       } else {
         // In browser, open PDF in new tab
@@ -202,8 +205,7 @@ export function AiAnalysisModal() {
         }
       }
     } catch (err) {
-      console.error('PDF generation failed:', err)
-      alert('Failed to generate PDF. Please try again.')
+      handleError(err as Error, 'PDF Export', 'error')
     }
   }, [currentAnalysis, viewMode])
 
