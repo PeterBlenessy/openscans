@@ -90,6 +90,16 @@ function MarkerRenderer({ annotation, canvasElement }: MarkerRendererProps) {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const updateAnnotation = useAnnotationStore((state) => state.updateAnnotation)
 
+  // Check if an image is loaded before trying to convert coordinates
+  try {
+    const image = cornerstone.getImage(canvasElement)
+    if (!image) {
+      return null // No image loaded yet
+    }
+  } catch (err) {
+    return null // Element not enabled or no image
+  }
+
   // Convert image pixel coordinates to canvas coordinates using Cornerstone
   // This properly handles viewport transformations (scale, translation, rotation)
   const imageCoords = { x: annotation.position.x, y: annotation.position.y }
