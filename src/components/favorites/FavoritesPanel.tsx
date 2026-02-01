@@ -248,7 +248,7 @@ interface FavoriteThumbnailProps {
   theme: 'dark' | 'light'
 }
 
-function FavoriteThumbnail({ favorite, isActive, onClick, theme }: FavoriteThumbnailProps) {
+function FavoriteThumbnail({ favorite, isActive, onClick, theme: _theme }: FavoriteThumbnailProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const loadedRef = useRef(false)
   const favorites = useFavoritesStore((state) => state.favorites)

@@ -1,4 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// @ts-expect-error - cornerstone-core doesn't have TypeScript definitions
 import * as cornerstone from 'cornerstone-core'
+// @ts-expect-error - cornerstone-tools doesn't have TypeScript definitions
 import * as cornerstoneTools from 'cornerstone-tools'
 import cornerstoneWADOImageLoader from 'cornerstone-wado-image-loader'
 import dicomParser from 'dicom-parser'
@@ -96,12 +99,15 @@ export async function initCornerstone(): Promise<void> {
     cornerstone.imageCache.setMaximumSizeBytes(imageCacheSize)
 
     // Register the WADO image loader with Cornerstone for both schemes
+    // @ts-expect-error - WADO loader types are incomplete
     cornerstone.registerImageLoader('wadouri', cornerstoneWADOImageLoader.wadouri.loadImage)
+    // @ts-expect-error - WADO loader types are incomplete
     cornerstone.registerImageLoader('dicomfile', cornerstoneWADOImageLoader.wadouri.loadImage)
 
     // Configure WADO Image Loader for maximum quality
+    // @ts-expect-error - WADO loader types are incomplete
     cornerstoneWADOImageLoader.configure({
-      beforeSend: function(xhr: any) {
+      beforeSend: function(_xhr: any) {
         // No need for authentication for local files
       },
       strict: false, // Don't fail on DICOM spec violations

@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 /**
  * Mock for Cornerstone.js
  *
@@ -107,11 +110,11 @@ export const cornerstone = {
   }),
 
   disable: vi.fn((element: HTMLElement) => {
-    enabledElements.delete(element)
+    enabledElements.delete(_element)
   }),
 
   getEnabledElement: vi.fn((element: HTMLElement) => {
-    const enabled = enabledElements.get(element)
+    const enabled = enabledElements.get(_element)
     if (!enabled) {
       throw new Error('Element is not enabled')
     }
@@ -120,16 +123,16 @@ export const cornerstone = {
 
   // Image loading
   loadImage: vi.fn((imageId: string) => {
-    return Promise.resolve(createMockImage(imageId))
+    return Promise.resolve(createMockImage(_imageId))
   }),
 
   loadAndCacheImage: vi.fn((imageId: string) => {
-    return Promise.resolve(createMockImage(imageId))
+    return Promise.resolve(createMockImage(_imageId))
   }),
 
   // Image display
   displayImage: vi.fn((element: HTMLElement, image: MockImage) => {
-    const enabled = enabledElements.get(element)
+    const enabled = enabledElements.get(_element)
     if (enabled) {
       enabled.image = image
     }
@@ -137,19 +140,19 @@ export const cornerstone = {
 
   // Viewport management
   getViewport: vi.fn((element: HTMLElement): MockViewport => {
-    const enabled = enabledElements.get(element)
+    const enabled = enabledElements.get(_element)
     return enabled?.viewport || createMockViewport()
   }),
 
   setViewport: vi.fn((element: HTMLElement, viewport: Partial<MockViewport>) => {
-    const enabled = enabledElements.get(element)
+    const enabled = enabledElements.get(_element)
     if (enabled) {
       enabled.viewport = { ...enabled.viewport, ...viewport }
     }
   }),
 
   reset: vi.fn((element: HTMLElement) => {
-    const enabled = enabledElements.get(element)
+    const enabled = enabledElements.get(_element)
     if (enabled) {
       enabled.viewport = createMockViewport()
     }

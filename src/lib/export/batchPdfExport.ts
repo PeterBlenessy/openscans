@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf'
-import { saveAs } from 'file-saver'
+import { saveFile } from './fileSaver'
 import { FavoriteImage } from '@/stores/favoritesStore'
 import { cornerstone } from '@/lib/cornerstone/initCornerstone'
 import { ExportResult } from './types'
@@ -163,9 +163,9 @@ export async function exportBatchPDF(
     const timestamp = new Date().toISOString().split('T')[0].replace(/-/g, '')
     const filename = `Favorites_${favorites.length}images_${timestamp}.pdf`
 
-    // Download PDF
+    // Save PDF
     const blob = pdf.output('blob')
-    saveAs(blob, filename)
+    await saveFile(blob, filename)
 
     return {
       success: true,

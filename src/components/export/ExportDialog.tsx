@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Modal } from '@/components/ui/Modal'
 import { useStudyStore } from '@/stores/studyStore'
 import { useViewportStore } from '@/stores/viewportStore'
 import { ExportFormat, ExportScale, ExportOptions } from '@/lib/export/types'
@@ -37,24 +38,6 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
     }
   }, [show])
 
-  // Close on Escape key
-  useEffect(() => {
-    if (!show) return
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-      }
-    }
-
-    window.addEventListener('keydown', handleEscape)
-    return () => window.removeEventListener('keydown', handleEscape)
-  }, [show, onClose])
-
-  if (!show) return null
-
-  const isDark = true // Always use dark theme to match app
-
   // Preview filename
   const filename = previewFilename(currentInstance, format, includePatientID)
 
@@ -62,6 +45,8 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
   const imageWidth = currentInstance?.metadata?.columns || 512
   const imageHeight = currentInstance?.metadata?.rows || 512
   const estimatedSize = estimateFileSize(imageWidth, imageHeight, scale, format)
+
+  const isDark = true // Always use dark theme to match app
 
   // Handle export
   const handleExport = async () => {
@@ -109,32 +94,42 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className={`relative rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden border ${isDark ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
-        {/* Header */}
-        <div className={`flex items-center justify-between p-4 border-b ${isDark ? 'border-[#2a2a2a]' : 'border-gray-200'}`}>
-          <h2 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Export Image
-          </h2>
+    <Modal
+      show={show}
+      onClose={onClose}
+      title="Export Image"
+      maxWidth="max-w-lg"
+      footer={
+        <div className="flex items-center justify-between">
           <button
             onClick={onClose}
-            className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-[#2a2a2a]' : 'hover:bg-gray-100'}`}
+            className="px-4 py-2 text-sm transition-colors text-gray-400 hover:text-white"
+            disabled={isExporting}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-            </svg>
+            Cancel
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={isExporting || !currentInstance}
+            data-testid="export-confirm-button"
+            className="px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2 bg-[#2a2a2a] hover:bg-[#3a3a3a]"
+          >
+            {isExporting ? (
+              <>
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Exporting...
+              </>
+            ) : (
+              'Export'
+            )}
           </button>
         </div>
-
-        {/* Content */}
-        <div className="p-4 overflow-y-auto max-h-[calc(80vh-8rem)]">
+      }
+    >
+      <div>
           {/* Format Selection */}
           <ExportSection title="Format" isDark={isDark}>
             <div className="flex gap-2">
@@ -265,44 +260,14 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
             </p>
           </ExportSection>
 
-          {/* Error Message */}
-          {error && (
-            <div className="mt-4 p-3 rounded-lg bg-red-900/20 border border-red-800/30">
-              <p className="text-sm text-red-400">{error}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className={`flex items-center justify-between p-4 border-t ${isDark ? 'border-[#2a2a2a]' : 'border-gray-200'}`}>
-          <button
-            onClick={onClose}
-            className={`px-4 py-2 text-sm transition-colors ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}
-            disabled={isExporting}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleExport}
-            disabled={isExporting || !currentInstance}
-            data-testid="export-confirm-button"
-            className={`px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${isDark ? 'bg-[#2a2a2a] hover:bg-[#3a3a3a]' : 'bg-gray-700 hover:bg-gray-800'}`}
-          >
-            {isExporting ? (
-              <>
-                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Exporting...
-              </>
-            ) : (
-              'Export'
-            )}
-          </button>
-        </div>
+        {/* Error Message */}
+        {error && (
+          <div className="mt-4 p-3 rounded-lg bg-red-900/20 border border-red-800/30">
+            <p className="text-sm text-red-400">{error}</p>
+          </div>
+        )}
       </div>
-    </div>
+    </Modal>
   )
 }
 

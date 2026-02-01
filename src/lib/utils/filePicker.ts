@@ -11,7 +11,7 @@ import { isTauri } from './platform'
  *
  * @returns Directory handle (web) or directory path (Tauri), or null if cancelled
  */
-export async function pickDirectory(): Promise<FileSystemDirectoryHandle | string | null> {
+export async function pickDirectory(): Promise<FileSystemDirectoryHandle | string | File[] | null> {
   if (isTauri()) {
     // Use Tauri's dialog API
     const { open } = await import('@tauri-apps/plugin-dialog')
@@ -25,7 +25,7 @@ export async function pickDirectory(): Promise<FileSystemDirectoryHandle | strin
     if (result) {
       try {
         // Import scope module to grant access
-        const { BaseDirectory, create } = await import('@tauri-apps/plugin-fs')
+        await import('@tauri-apps/plugin-fs')
         // Note: In Tauri v2, user-selected directories via dialog should automatically
         // have scope access, but we'll keep this as a fallback
       } catch (err) {
@@ -36,22 +36,44 @@ export async function pickDirectory(): Promise<FileSystemDirectoryHandle | strin
     // Returns string path or null if cancelled
     return result as string | null
   } else {
-    // Use browser File System Access API
-    if (!('showDirectoryPicker' in window)) {
-      throw new Error('Browser does not support folder selection. Please use Chrome or Edge.')
-    }
-
-    try {
-      // @ts-ignore - showDirectoryPicker is not in TypeScript types yet
-      const directoryHandle: FileSystemDirectoryHandle = await window.showDirectoryPicker({
-        mode: 'read',
-      })
-      return directoryHandle
-    } catch (err) {
-      if ((err as Error).name === 'AbortError') {
-        return null // User cancelled
+    // Try modern File System Access API first (Chrome, Edge)
+    if ('showDirectoryPicker' in window) {
+      try {
+        // @ts-expect-error - showDirectoryPicker is not in TypeScript types yet
+        const directoryHandle: FileSystemDirectoryHandle = await window.showDirectoryPicker({
+          mode: 'read',
+        })
+        return directoryHandle
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') {
+          return null // User cancelled
+        }
+        throw err
       }
-      throw err
+    } else {
+      // Fallback for Safari: use file input with webkitdirectory
+      return new Promise<File[] | null>((resolve) => {
+        const input = document.createElement('input')
+        input.type = 'file'
+        input.setAttribute('webkitdirectory', '')
+        input.multiple = true
+
+        input.onchange = () => {
+          if (input.files && input.files.length > 0) {
+            resolve(Array.from(input.files))
+          } else {
+            resolve(null)
+          }
+          input.remove()
+        }
+
+        input.oncancel = () => {
+          resolve(null)
+          input.remove()
+        }
+
+        input.click()
+      })
     }
   }
 }
@@ -59,12 +81,18 @@ export async function pickDirectory(): Promise<FileSystemDirectoryHandle | strin
 /**
  * Read all files from a directory (recursive)
  *
- * @param source Directory handle (web) or directory path (Tauri)
+ * @param source Directory handle (web), directory path (Tauri), or File array (Safari)
  * @returns Array of File objects
  */
 export async function readFilesFromDirectory(
-  source: FileSystemDirectoryHandle | string
+  source: FileSystemDirectoryHandle | string | File[]
 ): Promise<File[]> {
+  // Safari fallback: already have File objects
+  if (Array.isArray(source)) {
+    console.log(`[Safari] File reading: ${source.length} files`)
+    return source
+  }
+
   if (typeof source === 'string') {
     // Tauri mode - use FS plugin (much faster than Rust IPC)
     const startTime = performance.now()
@@ -74,9 +102,9 @@ export async function readFilesFromDirectory(
     let fileReadTime = 0
     let blobCreateTime = 0
 
+    // eslint-disable-next-line no-inner-declarations
     async function readDirRecursive(dirPath: string) {
       try {
-        // @ts-ignore - readDir options type
         const entries = await readDir(dirPath)
 
         for (const entry of entries) {
@@ -125,8 +153,9 @@ export async function readFilesFromDirectory(
     const startTime = performance.now()
     const files: File[] = []
 
+    // eslint-disable-next-line no-inner-declarations
     async function readDirRecursive(dirHandle: FileSystemDirectoryHandle) {
-      // @ts-ignore - TypeScript doesn't have entries() in types yet
+      // @ts-expect-error - TypeScript doesn't have entries() in types yet
       for await (const [, handle] of dirHandle.entries()) {
         if (handle.kind === 'file') {
           const file = await (handle as FileSystemFileHandle).getFile()
@@ -148,10 +177,21 @@ export async function readFilesFromDirectory(
 
 /**
  * Check if directory/file picker is supported
+ *
+ * Returns true if:
+ * - Running in Tauri (desktop app)
+ * - Browser supports File System Access API (Chrome, Edge)
+ * - Browser supports webkitdirectory (Safari, Firefox fallback)
  */
 export function isDirectoryPickerSupported(): boolean {
   if (isTauri()) {
     return true // Tauri always supports directory picking
   }
-  return 'showDirectoryPicker' in window
+  // Modern File System Access API (Chrome, Edge)
+  if ('showDirectoryPicker' in window) {
+    return true
+  }
+  // Fallback for Safari and older browsers (webkitdirectory)
+  // All modern browsers support this, even if they don't have File System Access API
+  return true
 }

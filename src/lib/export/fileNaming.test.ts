@@ -10,7 +10,7 @@
  * Target: ~15 assertions, 95%+ coverage
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { generateFilename, previewFilename } from './fileNaming'
 import { createMockInstance } from '@/test/fixtures/dicomData'
 import type { DicomInstance } from '@/types'
@@ -85,7 +85,7 @@ describe('fileNaming - Privacy Compliance', () => {
       expect(filename).toContain('PAT_123_456_HOSPITAL')
       // Check patient ID part doesn't have special chars (excluding hyphens used as separators)
       const patientIdPart = filename.split(' - ')[0]
-      expect(patientIdPart).not.toMatch(/[\/\@]/)
+      expect(patientIdPart).not.toMatch(/[/@]/)
     })
 
     it('should format filename correctly without patient data', () => {
@@ -163,10 +163,13 @@ describe('fileNaming - Privacy Compliance', () => {
       const instance = createMockInstance()
 
       const pngFilename = generateFilename(instance, 'png', false)
+      const jpegFilename = generateFilename(instance, 'jpeg', false)
       const jpgFilename = generateFilename(instance, 'jpg', false)
       const pdfFilename = generateFilename(instance, 'pdf', false)
 
       expect(pngFilename.endsWith('.png')).toBe(true)
+      // Both 'jpeg' and 'jpg' should produce '.jpg' extension
+      expect(jpegFilename.endsWith('.jpg')).toBe(true)
       expect(jpgFilename.endsWith('.jpg')).toBe(true)
       expect(pdfFilename.endsWith('.pdf')).toBe(true)
     })
@@ -217,6 +220,23 @@ describe('fileNaming - Privacy Compliance', () => {
       // When modality defaults to 'DICOM', it's still a valid part
       // Only falls back to timestamp if parts.length === 0
       expect(filename).toBe('DICOM.png')
+    })
+
+    it('should NOT use "Unknown" as patient ID even when includePatientID is true', () => {
+      const instance = createMockInstance({
+        metadata: {
+          patientID: 'Unknown',
+          modality: 'MR',
+          seriesDescription: 'T1 MPRAGE SAG',
+          instanceNumber: 5,
+        },
+      })
+
+      const filename = generateFilename(instance, 'png', true)
+
+      // Should use modality instead of 'Unknown'
+      expect(filename).not.toContain('Unknown')
+      expect(filename.startsWith('MR')).toBe(true)
     })
   })
 

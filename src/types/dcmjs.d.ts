@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 declare module 'dcmjs' {
   export namespace data {
     export class DicomMessage {

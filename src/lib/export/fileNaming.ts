@@ -12,17 +12,20 @@ export function generateFilename(
   extension: string,
   includePatientID: boolean = false
 ): string {
+  // Normalize extension: use .jpg instead of .jpeg for consistency
+  const normalizedExtension = extension === 'jpeg' ? 'jpg' : extension
+
   if (!instance?.metadata) {
     // Fallback if metadata missing
     const timestamp = new Date().getTime()
-    return `DICOM_Export_${timestamp}.${extension}`
+    return `DICOM_Export_${timestamp}.${normalizedExtension}`
   }
 
   const { metadata } = instance
   const parts: string[] = []
 
-  // Privacy-first: Use PatientID only if explicitly enabled
-  if (includePatientID && metadata.patientID) {
+  // Privacy-first: Use PatientID only if explicitly enabled and meaningful
+  if (includePatientID && metadata.patientID && metadata.patientID !== 'Unknown') {
     parts.push(metadata.patientID.replace(/[^a-zA-Z0-9]/g, '_'))
   } else {
     // Default: Use modality (no patient data)
@@ -45,10 +48,10 @@ export function generateFilename(
   // If we have no metadata parts, use timestamp
   if (parts.length === 0) {
     const timestamp = new Date().getTime()
-    return `DICOM_Export_${timestamp}.${extension}`
+    return `DICOM_Export_${timestamp}.${normalizedExtension}`
   }
 
-  return `${parts.join(' - ')}.${extension}`
+  return `${parts.join(' - ')}.${normalizedExtension}`
 }
 
 /**

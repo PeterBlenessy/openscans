@@ -50,7 +50,8 @@ describe('viewportStore', () => {
       showMetadata: true,
     }
 
-    // @ts-ignore - accessing internal state
+    // @ts-expect-error - accessing internal state
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     useViewportStore.setState(initialState as any)
   })
 

@@ -62,7 +62,7 @@ export function formatSeriesDescription(description: string | undefined): string
   if (!description) return 'Unknown Series'
 
   // Replace underscores with spaces
-  let formatted = description.replace(/_/g, ' ')
+  const formatted = description.replace(/_/g, ' ')
 
   // Split into words
   const words = formatted.split(' ')

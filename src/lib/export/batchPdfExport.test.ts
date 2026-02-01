@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Unit tests for batch PDF export
  *
@@ -11,9 +12,9 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { exportBatchPDF, type GridLayout } from './batchPdfExport'
+import { exportBatchPDF } from './batchPdfExport'
 import type { FavoriteImage } from '@/stores/favoritesStore'
-import { createMockInstance } from '@/test/fixtures/dicomData'
+import { createMockInstance as _createMockInstance } from '@/test/fixtures/dicomData'
 
 // Mock jsPDF (reuse from pdfExport tests)
 const mockPdfInstance = {
@@ -78,6 +79,7 @@ const createMockCanvas = () => {
       height,
     })),
     putImageData: vi.fn(),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any
 
   const canvas = {
@@ -85,6 +87,7 @@ const createMockCanvas = () => {
     height: 0,
     getContext: vi.fn(() => mockContext),
     toDataURL: vi.fn(() => 'data:image/jpeg;base64,mockImageData'),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any
 
   return canvas

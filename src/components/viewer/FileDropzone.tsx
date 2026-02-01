@@ -1,5 +1,7 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useCallback, useState } from 'react'
 import { useDicomLoader } from '@/hooks/useDicomLoader'
+import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { cn } from '@/lib/utils'
 import { pickDirectory, readFilesFromDirectory, isDirectoryPickerSupported } from '@/lib/utils/filePicker'
 
@@ -13,6 +15,7 @@ export function FileDropzone({ className, onFilesLoaded }: FileDropzoneProps) {
   const [localError, setLocalError] = useState<string | null>(null)
   const [localLoading, setLocalLoading] = useState(false)
   const { loadFiles, isLoading, error } = useDicomLoader()
+  const { handleError } = useErrorHandler()
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -69,12 +72,14 @@ export function FileDropzone({ className, onFilesLoaded }: FileDropzoneProps) {
   )
 
   // Helper function to recursively get all files from a directory
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async function getAllFilesFromDirectory(dirEntry: any): Promise<File[]> {
     const files: File[] = []
     const reader = dirEntry.createReader()
 
     return new Promise((resolve) => {
       const readEntries = () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         reader.readEntries(async (entries: any[]) => {
           if (entries.length === 0) {
             resolve(files)
@@ -128,7 +133,11 @@ export function FileDropzone({ className, onFilesLoaded }: FileDropzoneProps) {
 
       // Check if directory picker is supported
       if (!isDirectoryPickerSupported()) {
-        alert('Your browser does not support folder selection. Please use Chrome or Edge.')
+        handleError(
+          'Your browser does not support folder selection. Please use Chrome or Edge.',
+          'File Picker',
+          'warning'
+        )
         return
       }
 
@@ -148,14 +157,33 @@ export function FileDropzone({ className, onFilesLoaded }: FileDropzoneProps) {
       const allFiles = await readFilesFromDirectory(result)
 
       if (allFiles.length === 0) {
-        alert('No files found in the selected folder.')
+        handleError('No files found in the selected folder.', 'File Picker', 'warning')
         setLocalLoading(false)
         return
       }
 
       // Filter to DICOM files and load them
-      // Pass folder path if in desktop mode (result is a string)
-      const folderPath = typeof result === 'string' ? result : undefined
+      // Pass folder path for caching:
+      // - Tauri (string): use the actual folder path
+      // - Web with File System Access API (FileSystemDirectoryHandle): undefined (uses handle ID instead)
+      // - Web with webkitdirectory (File[]): extract folder name from webkitRelativePath
+      let folderPath: string | undefined
+      if (typeof result === 'string') {
+        // Tauri mode
+        folderPath = result
+      } else if (Array.isArray(result) && result.length > 0) {
+        // Safari/Firefox webkitdirectory mode - extract folder name from first file
+        // webkitRelativePath looks like "FolderName/subfolder/file.dcm"
+        const firstFile = result[0] as File & { webkitRelativePath?: string }
+        if (firstFile.webkitRelativePath) {
+          // Extract the root folder name
+          const pathParts = firstFile.webkitRelativePath.split('/')
+          if (pathParts.length > 0) {
+            folderPath = `webkit:${pathParts[0]}` // Prefix to distinguish from real paths
+          }
+        }
+      }
+
       await loadFiles(allFiles, folderPath)
 
       console.log(`Successfully loaded files from directory`)

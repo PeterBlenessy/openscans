@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 declare module 'cornerstone-wado-image-loader' {
   export const external: {
     cornerstone: any

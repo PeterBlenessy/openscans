@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Unit tests for studyStore
  *
@@ -14,14 +15,15 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { useStudyStore } from './studyStore'
 import {
   createMockStudy,
-  createMockSeries,
-  createMockInstance,
-  createMockMultiStudyDataset,
+  _createMockSeries,
+  _createMockInstance,
+  _createMockMultiStudyDataset,
 } from '@/test/fixtures/dicomData'
 
 describe('studyStore', () => {
   // Reset store before each test
   beforeEach(() => {
+    localStorage.clear() // Clear view state persistence
     useStudyStore.getState().reset()
   })
 
@@ -224,7 +226,7 @@ describe('studyStore', () => {
       expect(useStudyStore.getState().currentStudy?.studyInstanceUID).toBe('study-uid-1')
 
       // Switch to series in study2 (cross-study lookup)
-      const targetSeries = study2.series[0]
+      const _targetSeries = study2.series[0]
       useStudyStore.getState().setCurrentSeries('series-study2-1')
 
       const state = useStudyStore.getState()

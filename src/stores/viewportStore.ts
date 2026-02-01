@@ -1,37 +1,82 @@
 import { create } from 'zustand'
 import { ViewportSettings, Tool } from '@/types'
 
-// Window/Level settings specific to each modality
+/**
+ * Window/Level settings specific to each imaging modality.
+ *
+ * Stores both user-adjusted values and original DICOM metadata values.
+ * This allows resetting to DICOM defaults per image while preserving user
+ * preferences across different images of the same modality.
+ */
 interface ModalityWindowLevel {
+  /** Current window center value (user-adjusted or default) */
   windowCenter: number
+  /** Current window width value (user-adjusted or default) */
   windowWidth: number
-  dicomDefault?: { windowCenter: number; windowWidth: number }  // Original DICOM values for reset
+  /** Original DICOM metadata values for the current image (used by reset button) */
+  dicomDefault?: { windowCenter: number; windowWidth: number }
 }
 
+/**
+ * Viewport store state interface.
+ *
+ * Manages all viewport display settings including:
+ * - Modality-specific window/level (brightness/contrast)
+ * - Geometric transformations (zoom, pan, rotation, flip)
+ * - Tool activation and overlay visibility
+ * - AI detection state
+ *
+ * Key features:
+ * - Per-modality window/level memory (CT, MR, CR, etc.)
+ * - DICOM metadata-aware defaults with user override capability
+ * - Independent reset behavior per modality
+ */
 interface ViewportState {
+  /** Current viewport display settings (W/L, zoom, pan, etc.) */
   settings: ViewportSettings
-  currentModality: string  // Track current modality (MR, CT, CR, etc.)
-  modalitySettings: Record<string, ModalityWindowLevel>  // W/L per modality
+  /** Current imaging modality (MR, CT, CR, DX, etc.) */
+  currentModality: string
+  /** Window/Level settings per modality (preserves user adjustments) */
+  modalitySettings: Record<string, ModalityWindowLevel>
+  /** Currently active tool name */
   activeTool: string
+  /** Available tools and their modes */
   tools: Tool[]
+  /** Whether annotations are visible */
   showAnnotations: boolean
+  /** Whether DICOM metadata panel is visible */
   showMetadata: boolean
+  /** Whether AI detection is in progress */
   isDetecting: boolean
+  /** Error message from AI detection, null if no error */
   detectionError: string | null
 
   // Actions
+  /** Set window/level for current modality */
   setWindowLevel: (center: number, width: number) => void
+  /** Switch modality and apply its settings */
   setModality: (modality: string, defaultCenter?: number, defaultWidth?: number) => void
+  /** Set zoom level */
   setZoom: (zoom: number) => void
+  /** Set pan offset */
   setPan: (x: number, y: number) => void
+  /** Set rotation angle in degrees */
   setRotation: (rotation: number) => void
+  /** Toggle image inversion (negative) */
   setInvert: (invert: boolean) => void
+  /** Toggle horizontal flip */
   setFlipHorizontal: (flip: boolean) => void
+  /** Toggle vertical flip */
   setFlipVertical: (flip: boolean) => void
+  /** Activate a specific tool */
   setActiveTool: (toolName: string) => void
+  /** Toggle annotation overlay visibility */
   toggleAnnotations: () => void
+  /** Toggle metadata panel visibility */
   toggleMetadata: () => void
+  /** Set AI detection state */
   setDetecting: (detecting: boolean, error?: string | null) => void
+  /** Reset settings to defaults (DICOM defaults if available) */
   resetSettings: () => void
 }
 
@@ -67,6 +112,52 @@ const defaultTools: Tool[] = [
   { name: 'StackScroll', mode: 'active' },
 ]
 
+/**
+ * Zustand store for managing DICOM viewport display settings.
+ *
+ * This store manages modality-specific window/level settings with intelligent defaults:
+ *
+ * 1. **Hard-coded defaults**: Each modality (CT, MR, CR, etc.) has typical W/L ranges
+ * 2. **DICOM metadata**: Images can provide their own W/L in metadata
+ * 3. **User adjustments**: User can customize W/L, which persists per modality
+ *
+ * The priority is:
+ * - Display: User adjustments > DICOM defaults > Hard-coded defaults
+ * - Reset: DICOM defaults > Hard-coded defaults
+ *
+ * When switching between images:
+ * - Same modality: User adjustments are preserved
+ * - Different modality: Switches to that modality's settings
+ * - New image with DICOM W/L: Updates only if user hasn't customized
+ *
+ * @example
+ * ```tsx
+ * // Select state
+ * const settings = useViewportStore((state) => state.settings)
+ * const zoom = useViewportStore((state) => state.settings.zoom)
+ *
+ * // Call actions
+ * const { setWindowLevel, setZoom, resetSettings } = useViewportStore()
+ * setWindowLevel(400, 800)
+ * setZoom(1.5)
+ * resetSettings() // Reset to DICOM defaults or hard-coded defaults
+ * ```
+ *
+ * @example
+ * ```tsx
+ * // Switch modality with DICOM metadata
+ * const { setModality } = useViewportStore()
+ *
+ * // Load new CT image with DICOM W/L
+ * setModality('CT', 40, 400) // Uses DICOM values if user hasn't customized
+ *
+ * // User adjusts window/level
+ * setWindowLevel(100, 500) // Saves to CT modality settings
+ *
+ * // Load another CT image with different DICOM W/L
+ * setModality('CT', 50, 350) // Preserves user's 100/500, ignores new DICOM values
+ * ```
+ */
 export const useViewportStore = create<ViewportState>((set) => ({
   settings: defaultSettings,
   currentModality: 'MR',  // Default to MR
@@ -78,8 +169,23 @@ export const useViewportStore = create<ViewportState>((set) => ({
   isDetecting: false,
   detectionError: null,
 
-  // Update W/L for the current modality and apply to viewport
-  // IMPORTANT: Preserve dicomDefault when updating user adjustments
+  /**
+   * Update window/level for the current modality.
+   *
+   * This saves the W/L to the current modality's settings, so switching
+   * to a different modality and back will restore these values.
+   *
+   * IMPORTANT: Preserves dicomDefault so reset button works correctly.
+   *
+   * @param center - Window center value
+   * @param width - Window width value
+   *
+   * @example
+   * ```ts
+   * // User drags to adjust brightness/contrast
+   * setWindowLevel(400, 800)
+   * ```
+   */
   setWindowLevel: (center, width) =>
     set((state) => ({
       modalitySettings: {
@@ -97,8 +203,30 @@ export const useViewportStore = create<ViewportState>((set) => ({
       },
     })),
 
-  // Switch to a different modality and apply its stored W/L settings
-  // If defaultCenter/defaultWidth provided (from DICOM metadata), use those to initialize
+  /**
+   * Switch to a different modality and apply its stored W/L settings.
+   *
+   * This is called when loading a new image. The behavior is:
+   *
+   * 1. If no DICOM W/L provided: Use stored modality settings or hard-coded defaults
+   * 2. If DICOM W/L provided AND user hasn't customized: Use DICOM values
+   * 3. If DICOM W/L provided BUT user has customized: Keep user values, but update reset target
+   *
+   * "User has customized" means: Current W/L differs from both hard-coded defaults AND previous DICOM defaults
+   *
+   * @param modality - Modality code (MR, CT, CR, DX, etc.)
+   * @param defaultCenter - Optional window center from DICOM metadata
+   * @param defaultWidth - Optional window width from DICOM metadata
+   *
+   * @example
+   * ```ts
+   * // Load new image without DICOM W/L
+   * setModality('CT') // Uses stored CT settings or hard-coded defaults
+   *
+   * // Load new image with DICOM W/L
+   * setModality('MR', 600, 1200) // Uses DICOM values if user hasn't customized
+   * ```
+   */
   setModality: (modality, defaultCenter, defaultWidth) =>
     set((state) => {
       // Get stored settings for this modality, or use defaults
@@ -198,8 +326,26 @@ export const useViewportStore = create<ViewportState>((set) => ({
   setDetecting: (detecting, error = null) =>
     set({ isDetecting: detecting, detectionError: error }),
 
-  // Reset to current modality's default values
-  // Priority: 1) Current image's DICOM metadata, 2) Hard-coded modality defaults
+  /**
+   * Reset viewport settings to defaults.
+   *
+   * Resets all geometric transforms (zoom, pan, rotation, flip) to defaults.
+   * For window/level, resets to the best available defaults:
+   *
+   * Priority:
+   * 1. Current image's DICOM metadata W/L (if available)
+   * 2. Hard-coded modality defaults (CT: 40/400, MR: 600/1200, etc.)
+   *
+   * This allows the reset button to restore image-specific DICOM values
+   * rather than generic defaults when possible.
+   *
+   * @example
+   * ```ts
+   * // User has zoomed, panned, and adjusted W/L
+   * resetSettings()
+   * // Result: zoom=1, pan={0,0}, W/L restored to DICOM or modality defaults
+   * ```
+   */
   resetSettings: () =>
     set((state) => {
       const currentModalitySettings = state.modalitySettings[state.currentModality]

@@ -6,11 +6,9 @@ import { useFavoritesStore, FavoriteImage } from '@/stores/favoritesStore'
 import { useAnnotationStore } from '@/stores/annotationStore'
 import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { mockDetector } from '@/lib/ai/mockVertebralDetector'
-import { claudeDetector } from '@/lib/ai/claudeVisionDetector'
-import { geminiDetector } from '@/lib/ai/geminiVisionDetector'
-import { openaiDetector } from '@/lib/ai/openaiVisionDetector'
-import { uiColors } from '@/lib/colors'
+import { initDetector, getApiKeyForProvider } from '@/lib/ai/aiDetectorManager'
 
 interface ViewportToolbarProps {
   className?: string
@@ -41,25 +39,18 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
   const isAnalyzing = useAiAnalysisStore((state) => state.isAnalyzing)
   const setAnalyzing = useAiAnalysisStore((state) => state.setAnalyzing)
   const getAnalysisForInstance = useAiAnalysisStore((state) => state.getAnalysisForInstance)
+
+  const { handleError } = useErrorHandler()
   const showModal = useAiAnalysisStore((state) => state.showModal)
 
   // AI settings
   const aiEnabled = useSettingsStore((state) => state.aiEnabled)
   const aiProvider = useSettingsStore((state) => state.aiProvider)
-  const aiApiKey = useSettingsStore((state) => state.aiApiKey)
-  const geminiApiKey = useSettingsStore((state) => state.geminiApiKey)
-  const openaiApiKey = useSettingsStore((state) => state.openaiApiKey)
-
-  // Initialize AI detectors with API keys
-  if (aiEnabled && aiProvider === 'claude' && aiApiKey) {
-    claudeDetector.setApiKey(aiApiKey)
-  }
-  if (aiEnabled && aiProvider === 'gemini' && geminiApiKey) {
-    geminiDetector.setApiKey(geminiApiKey)
-  }
-  if (aiEnabled && aiProvider === 'openai' && openaiApiKey) {
-    openaiDetector.setApiKey(openaiApiKey)
-  }
+  const aiSettings = useSettingsStore((state) => ({
+    aiApiKey: state.aiApiKey,
+    geminiApiKey: state.geminiApiKey,
+    openaiApiKey: state.openaiApiKey,
+  }))
 
   // Subscribe to favorites array to trigger re-render on changes
   const isCurrentFavorite = useFavoritesStore((state) =>
@@ -123,20 +114,21 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
   const handleAiDetection = async () => {
     if (!currentInstance || isDetecting) return
 
-    // Choose detector based on settings
-    let detector: { detectVertebrae: typeof mockDetector.detectVertebrae } = mockDetector
-
-    if (aiEnabled && aiProvider === 'claude' && claudeDetector.isConfigured()) {
-      detector = claudeDetector
-    } else if (aiEnabled && aiProvider === 'gemini' && geminiDetector.isConfigured()) {
-      detector = geminiDetector
-    } else if (aiEnabled && aiProvider === 'openai' && openaiDetector.isConfigured()) {
-      detector = openaiDetector
-    }
-
     try {
       setDetecting(true)
       deleteAnnotationsForInstance(currentInstance.sopInstanceUID, true)
+
+      // Use AI detector if enabled, otherwise use mock detector
+      let detector: { detectVertebrae: typeof mockDetector.detectVertebrae } = mockDetector
+
+      if (aiEnabled && aiProvider !== 'none') {
+        const apiKey = getApiKeyForProvider(aiProvider, aiSettings)
+        const aiDetector = await initDetector(aiProvider, apiKey)
+        if (aiDetector && aiDetector.isConfigured()) {
+          detector = aiDetector
+        }
+      }
+
       const result = await detector.detectVertebrae(currentInstance)
       addAnnotations(result.annotations)
       console.log(`AI detection: ${result.annotations.length} vertebrae detected in ${result.processingTimeMs.toFixed(0)}ms (confidence: ${(result.confidence * 100).toFixed(0)}%)`)
@@ -196,28 +188,36 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
 
     // Require an AI provider to be configured
     if (!aiEnabled || aiProvider === 'none') {
-      alert('Please enable and configure an AI provider in settings to use radiology analysis.')
-      return
-    }
-
-    // Choose the appropriate detector for analysis
-    let analyzer: { analyzeImage: typeof claudeDetector.analyzeImage } | null = null
-    if (aiProvider === 'claude' && claudeDetector.isConfigured()) {
-      analyzer = claudeDetector
-    } else if (aiProvider === 'gemini' && geminiDetector.isConfigured()) {
-      analyzer = geminiDetector
-    } else if (aiProvider === 'openai' && openaiDetector.isConfigured()) {
-      analyzer = openaiDetector
-    }
-
-    if (!analyzer) {
-      const providerNames: Record<string, string> = { claude: 'Anthropic', gemini: 'Google AI', openai: 'OpenAI' }
-      alert(`Please configure your ${providerNames[aiProvider] || aiProvider} API key in settings.`)
+      handleError(
+        'Please enable and configure an AI provider in settings to use radiology analysis.',
+        'AI Analysis',
+        'warning'
+      )
       return
     }
 
     try {
       setAnalyzing(true)
+
+      // Dynamically load and initialize the AI detector
+      const apiKey = getApiKeyForProvider(aiProvider, aiSettings)
+      const analyzer = await initDetector(aiProvider, apiKey)
+
+      if (!analyzer || !analyzer.isConfigured()) {
+        const providerNames: Record<string, string> = {
+          claude: 'Anthropic',
+          gemini: 'Google AI',
+          openai: 'OpenAI',
+        }
+        handleError(
+          `Please configure your ${providerNames[aiProvider] || aiProvider} API key in settings.`,
+          'AI Analysis',
+          'warning'
+        )
+        setAnalyzing(false)
+        return
+      }
+
       const result = await analyzer.analyzeImage(currentInstance)
       // Add studyInstanceUID to the analysis
       addAnalysis({ ...result.analysis, studyInstanceUID: studyUID })
@@ -438,43 +438,23 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
       {/* AI Vertebrae Detection */}
       <ToolbarButton
         onClick={handleAiDetection}
-        title={isDetecting ? "Detecting..." : "AI vertebrae detection (M)"}
+        title="AI vertebrae detection (M)"
         disabled={!currentInstance || isDetecting || isAnalyzing}
-        active={isDetecting}
         data-testid="ai-detection-button"
-        icon={
-          isDetecting ? (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 animate-spin">
-              <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39z" clipRule="evenodd" />
-            </svg>
-          ) : (
-            <Target className="w-4 h-4" />
-          )
-        }
+        icon={<Target className="w-4 h-4" />}
       />
 
       {/* AI Radiology Analysis */}
       <ToolbarButton
         onClick={handleAiAnalysis}
         title={
-          isAnalyzing
-            ? "Analyzing..."
-            : currentInstance && getAnalysisForInstance(currentInstance.sopInstanceUID)
+          currentInstance && getAnalysisForInstance(currentInstance.sopInstanceUID)
             ? "View AI analysis (N)"
             : "AI radiology analysis (N)"
         }
         disabled={!currentInstance || isDetecting || isAnalyzing}
-        active={isAnalyzing}
         data-testid="ai-analysis-button"
-        icon={
-          isAnalyzing ? (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 animate-spin">
-              <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39z" clipRule="evenodd" />
-            </svg>
-          ) : (
-            <FileText className="w-4 h-4" />
-          )
-        }
+        icon={<FileText className="w-4 h-4" />}
       />
     </div>
   )

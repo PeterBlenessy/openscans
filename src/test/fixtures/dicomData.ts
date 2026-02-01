@@ -45,20 +45,25 @@ export function createMockSeries(
   numInstances = 3,
   overrides: Partial<DicomSeries> = {}
 ): DicomSeries {
+  // Generate default seriesInstanceUID that can be overridden
+  const defaultSeriesUID = '1.2.840.113619.2.1.2.2.2.20240101.120000'
+  const seriesUID = overrides.seriesInstanceUID || defaultSeriesUID
+
   const instances: DicomInstance[] = []
 
   for (let i = 0; i < numInstances; i++) {
     instances.push(
       createMockInstance({
         instanceNumber: i + 1,
-        sopInstanceUID: `1.2.840.113619.2.1.3.3.3.20240101.120000.${i + 1}`,
+        // Use series UID in instance UID to ensure uniqueness across series
+        sopInstanceUID: `${seriesUID}.${i + 1}`,
         imageId: `dicomweb://mock/instance/${i + 1}`,
       })
     )
   }
 
   return {
-    seriesInstanceUID: '1.2.840.113619.2.1.2.2.2.20240101.120000',
+    seriesInstanceUID: defaultSeriesUID,
     seriesNumber: 1,
     seriesDescription: 'T1 MPRAGE SAG',
     modality: 'MR',
@@ -75,12 +80,17 @@ export function createMockStudy(
   instancesPerSeries = 3,
   overrides: Partial<DicomStudy> = {}
 ): DicomStudy {
+  // Generate default study UID that can be overridden
+  const defaultStudyUID = '1.2.840.113619.2.1.1.1.1.20240101'
+  const studyUID = overrides.studyInstanceUID || defaultStudyUID
+
   const series: DicomSeries[] = []
 
   for (let i = 0; i < numSeries; i++) {
     series.push(
       createMockSeries(instancesPerSeries, {
-        seriesInstanceUID: `1.2.840.113619.2.1.2.2.2.20240101.${i + 1}`,
+        // Include study UID in series UID to ensure uniqueness across studies
+        seriesInstanceUID: `${studyUID}.series.${i + 1}`,
         seriesNumber: i + 1,
         seriesDescription: `Series ${i + 1}`,
       })
@@ -88,7 +98,7 @@ export function createMockStudy(
   }
 
   return {
-    studyInstanceUID: '1.2.840.113619.2.1.1.1.1.20240101',
+    studyInstanceUID: defaultStudyUID,
     studyDate: '20240101',
     studyTime: '120000',
     studyDescription: 'Brain MRI',

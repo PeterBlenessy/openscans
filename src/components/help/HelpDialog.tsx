@@ -1,4 +1,6 @@
-import { useEffect } from 'react'
+import { Modal } from '@/components/ui/Modal'
+import { useSettingsStore } from '@/stores/settingsStore'
+import { themeClasses } from '@/lib/utils'
 
 interface HelpDialogProps {
   show: boolean
@@ -6,61 +8,23 @@ interface HelpDialogProps {
 }
 
 export function HelpDialog({ show, onClose }: HelpDialogProps) {
-  // Close on Escape key
-  useEffect(() => {
-    if (!show) return
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-      }
-    }
-
-    window.addEventListener('keydown', handleEscape)
-    return () => window.removeEventListener('keydown', handleEscape)
-  }, [show, onClose])
-
-  if (!show) return null
+  const theme = useSettingsStore((state) => state.theme)
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={onClose}
+    <Modal
+      show={show}
+      onClose={onClose}
+      title="OpenScans Help"
+      icon={
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.061-1.061 3 3 0 112.871 5.026v.345a.75.75 0 01-1.5 0v-.5c0-.72.57-1.172 1.081-1.287A1.5 1.5 0 108.94 6.94zM10 15a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+        </svg>
+      }
     >
-      <div
-        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-2xl max-w-3xl w-full max-h-[80vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#2a2a2a]">
-          <div className="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-white">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.061-1.061 3 3 0 112.871 5.026v.345a.75.75 0 01-1.5 0v-.5c0-.72.57-1.172 1.081-1.287A1.5 1.5 0 108.94 6.94zM10 15a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-            </svg>
-            <h2 className="text-lg font-semibold text-white">OpenScans Help</h2>
-          </div>
-          <button
-            onClick={onClose}
-            title="Close"
-            className="p-1.5 text-gray-400 hover:text-white hover:bg-[#2a2a2a] rounded transition-colors"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="w-4 h-4"
-            >
-              <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="space-y-3 text-gray-300">
+      <div className={`space-y-3 ${themeClasses.textSecondary(theme)}`}>
           {/* About */}
           <section>
-            <h3 className="text-base font-semibold text-white mb-1.5">About</h3>
+            <h3 className={`text-base font-semibold ${themeClasses.text(theme)} mb-1.5`}>About</h3>
             <p className="text-sm leading-5 mb-1.5">
               OpenScans is a web-based medical imaging viewer for DICOM files.
               All processing happens locally in your browser - no data is sent to external servers.
@@ -73,7 +37,7 @@ export function HelpDialog({ show, onClose }: HelpDialogProps) {
 
           {/* Getting Started */}
           <section>
-            <h3 className="text-base font-semibold text-white mb-1.5 mt-3">Getting Started</h3>
+            <h3 className={`text-base font-semibold ${themeClasses.text(theme)} mb-1.5 mt-3`}>Getting Started</h3>
             <div className="space-y-2 text-sm">
               <div>
                 <strong className="text-gray-200 block mb-1">Loading Files:</strong>
@@ -100,7 +64,7 @@ export function HelpDialog({ show, onClose }: HelpDialogProps) {
 
           {/* Favorites */}
           <section>
-            <h3 className="text-base font-semibold text-white mb-1.5 mt-3">Favorites</h3>
+            <h3 className={`text-base font-semibold ${themeClasses.text(theme)} mb-1.5 mt-3`}>Favorites</h3>
             <div className="space-y-2 text-sm">
               <p className="leading-5">Mark important images as favorites for quick access and batch export.</p>
               <div>
@@ -120,7 +84,7 @@ export function HelpDialog({ show, onClose }: HelpDialogProps) {
 
           {/* Export */}
           <section>
-            <h3 className="text-base font-semibold text-white mb-1.5 mt-3">Export</h3>
+            <h3 className={`text-base font-semibold ${themeClasses.text(theme)} mb-1.5 mt-3`}>Export</h3>
             <div className="space-y-2 text-sm">
               <p className="leading-5">Export images in various formats with enhanced quality and metadata control.</p>
               <div>
@@ -144,7 +108,7 @@ export function HelpDialog({ show, onClose }: HelpDialogProps) {
 
           {/* Image Presets */}
           <section>
-            <h3 className="text-base font-semibold text-white mb-1.5 mt-3">Image Presets</h3>
+            <h3 className={`text-base font-semibold ${themeClasses.text(theme)} mb-1.5 mt-3`}>Image Presets</h3>
             <div className="space-y-1 text-sm">
               <p className="leading-5">Quick access to common window/level settings for different tissue types:</p>
               <ul className="list-disc list-inside ml-4 space-y-0.5">
@@ -159,7 +123,7 @@ export function HelpDialog({ show, onClose }: HelpDialogProps) {
 
           {/* Abbreviations */}
           <section>
-            <h3 className="text-base font-semibold text-white mb-1.5 mt-3">Series Name Abbreviations</h3>
+            <h3 className={`text-base font-semibold ${themeClasses.text(theme)} mb-1.5 mt-3`}>Series Name Abbreviations</h3>
             <p className="text-sm leading-5 mb-2">
               DICOM series descriptions use abbreviated naming conventions. The viewer automatically
               formats these for readability.
@@ -205,8 +169,8 @@ export function HelpDialog({ show, onClose }: HelpDialogProps) {
                 </div>
               </div>
 
-              <div className="mt-2 p-2 bg-[#0f0f0f] rounded border border-[#2a2a2a]">
-                <p className="text-xs text-gray-400 leading-tight">
+              <div className={`mt-2 p-2 ${themeClasses.bgSecondary(theme)} rounded border ${themeClasses.border(theme)}`}>
+                <p className={`text-xs ${themeClasses.textSecondary(theme)} leading-tight`}>
                   <strong>Example:</strong> "t2_space_sag_iso" becomes "T2 SPACE Sagittal Isotropic"
                 </p>
               </div>
@@ -215,7 +179,7 @@ export function HelpDialog({ show, onClose }: HelpDialogProps) {
 
           {/* Privacy & Security */}
           <section>
-            <h3 className="text-base font-semibold text-white mb-1.5 mt-3">Privacy & Security</h3>
+            <h3 className={`text-base font-semibold ${themeClasses.text(theme)} mb-1.5 mt-3`}>Privacy & Security</h3>
             <div className="space-y-2 text-sm">
               <div>
                 <strong className="text-gray-200 block mb-1">Client-Side Processing:</strong>
@@ -233,8 +197,8 @@ export function HelpDialog({ show, onClose }: HelpDialogProps) {
                 <strong className="text-gray-200 block mb-1">HIPAA-Compliant Logging:</strong>
                 <p>Console logs never contain patient names, IDs, or identifiable information. Only critical errors and compression warnings are logged to maintain privacy while allowing technical debugging.</p>
               </div>
-              <div className="mt-2 p-2 bg-[#0f0f0f] rounded border border-[#2a2a2a]">
-                <p className="text-xs text-gray-400 leading-tight">
+              <div className={`mt-2 p-2 ${themeClasses.bgSecondary(theme)} rounded border ${themeClasses.border(theme)}`}>
+                <p className={`text-xs ${themeClasses.textSecondary(theme)} leading-tight`}>
                   <strong>Safe to Use:</strong> This viewer can be safely used in clinical and research environments that require strict patient data protection. All processing happens locally with zero data transmission.
                 </p>
               </div>
@@ -243,15 +207,13 @@ export function HelpDialog({ show, onClose }: HelpDialogProps) {
 
           {/* Keyboard Shortcuts */}
           <section>
-            <h3 className="text-base font-semibold text-white mb-1.5 mt-3">Keyboard Shortcuts</h3>
+            <h3 className={`text-base font-semibold ${themeClasses.text(theme)} mb-1.5 mt-3`}>Keyboard Shortcuts</h3>
             <p className="text-sm leading-5">
-              Press <kbd className="px-2 py-1 bg-[#0f0f0f] text-gray-100 rounded text-xs font-mono border border-[#2a2a2a]">?</kbd> or
+              Press <kbd className={`px-2 py-1 ${themeClasses.bgSecondary(theme)} ${themeClasses.text(theme)} rounded text-xs font-mono border ${themeClasses.border(theme)}`}>?</kbd> or
               use the keyboard icon to view all available shortcuts.
             </p>
           </section>
-          </div>
-        </div>
       </div>
-    </div>
+    </Modal>
   )
 }

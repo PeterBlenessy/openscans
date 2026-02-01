@@ -1,14 +1,69 @@
 import { jsPDF } from 'jspdf'
-import { saveAs } from 'file-saver'
 import { captureViewportCanvas, canvasToBlob } from './imageCapture'
 import { generateFilename } from './fileNaming'
+import { saveFile } from './fileSaver'
 import { ExportOptions, ExportResult } from './types'
 import { DicomInstance } from '@/types'
 import { ViewportSettings } from '@/types'
 import { formatSeriesDescription } from '../utils/formatSeriesDescription'
 
 /**
- * Export viewport as PDF with metadata
+ * Export the current viewport as a PDF report with comprehensive DICOM metadata.
+ *
+ * Creates a professional 2-page PDF report in A4 landscape format:
+ * - **Page 1**: Metadata cover page with study information, image parameters, and export settings
+ * - **Page 2**: Captured viewport image with optional annotations and window/level indicators
+ *
+ * The PDF workflow:
+ * 1. Creates jsPDF document (A4 landscape for typical DICOM aspect ratios)
+ * 2. Generates metadata cover page with DICOM tags and viewport settings
+ * 3. Captures viewport canvas and embeds as image on page 2
+ * 4. Generates filename based on DICOM metadata
+ * 5. Triggers browser download using FileSaver.js
+ *
+ * Privacy: Patient identifying information is only included if `includePatientID` or
+ * `includePatientName` options are enabled, allowing HIPAA-compliant exports.
+ *
+ * @param element - The enabled Cornerstone viewport element to capture
+ * @param currentInstance - Current DICOM instance for metadata and filename
+ * @param viewportSettings - Current viewport settings (window/level, zoom, etc.) for documentation
+ * @param options - Export configuration (scale, quality, patient info inclusion)
+ * @returns Promise resolving to export result with success status, filename, and optional blob/error
+ *
+ * @example
+ * ```ts
+ * // Export as PDF with metadata, excluding patient information
+ * const result = await exportPDF(
+ *   viewportElement,
+ *   currentInstance,
+ *   viewportSettings,
+ *   {
+ *     format: 'pdf',
+ *     scale: 2,
+ *     includePatientID: false,
+ *     includePatientName: false
+ *   }
+ * )
+ * if (result.success) {
+ *   console.log(`Exported: ${result.filename}`)
+ * }
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Export with full patient information (authorized use only)
+ * const result = await exportPDF(
+ *   viewportElement,
+ *   currentInstance,
+ *   viewportSettings,
+ *   {
+ *     format: 'pdf',
+ *     scale: 1,
+ *     includePatientID: true,
+ *     includePatientName: true
+ *   }
+ * )
+ * ```
  */
 export async function exportPDF(
   element: HTMLDivElement,
@@ -38,9 +93,9 @@ export async function exportPDF(
     // Generate filename
     const filename = generateFilename(currentInstance, 'pdf', options.includePatientID)
 
-    // Convert to blob and download
+    // Convert to blob and save
     const blob = pdf.output('blob')
-    saveAs(blob, filename)
+    await saveFile(blob, filename)
 
     return {
       success: true,

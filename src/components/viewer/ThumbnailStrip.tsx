@@ -186,7 +186,7 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
             ref(el)
           } else if (ref && 'current' in ref) {
             // TypeScript guard - ensure ref is mutable
-            ;(ref as React.MutableRefObject<HTMLDivElement | null>).current = el
+            (ref as React.MutableRefObject<HTMLDivElement | null>).current = el
           }
         }}
         onClick={onClick}

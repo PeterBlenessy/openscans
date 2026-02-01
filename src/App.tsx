@@ -10,19 +10,13 @@ import { FavoritesPanel } from './components/favorites/FavoritesPanel'
 import { LeftDrawer, LeftDrawerState } from './components/layout/LeftDrawer'
 import { ResizeHandle } from './components/layout/ResizeHandle'
 import { SettingsPanel } from './components/settings/SettingsPanel'
+import { ErrorToast } from './components/ErrorToast'
 import { useStudyStore } from './stores/studyStore'
 import { useRecentStudiesStore } from './stores/recentStudiesStore'
 import { useSettingsStore } from './stores/settingsStore'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
-import { formatSeriesDescription } from './lib/utils/formatSeriesDescription'
-import {
-  getDirectoryHandle,
-  checkDirectoryPermission,
-  requestDirectoryPermission,
-  readDicomFilesWithDirectories,
-} from './lib/storage/directoryHandleStorage'
-import { parseDicomFilesWithDirectories } from './lib/dicom/parser'
-import { getCachedStudies, cacheStudies } from './lib/storage/studyCache'
+import { useLoadStudy } from './hooks/useLoadStudy'
+import { getCachedStudies } from './lib/storage/studyCache'
 
 function App() {
   // Force HMR update
@@ -59,6 +53,8 @@ function App() {
   const setCurrentStudy = useStudyStore((state) => state.setCurrentStudy)
   const addRecentStudy = useRecentStudiesStore((state) => state.addRecentStudy)
   const recentStudies = useRecentStudiesStore((state) => state.recentStudies)
+
+  const { loadStudy } = useLoadStudy()
 
   // Collapsible section state with localStorage persistence
   const [sectionState, setSectionState] = useState(() => {
@@ -184,170 +180,79 @@ function App() {
     // Load the study
     const loadMostRecentStudy = async () => {
       try {
-        // Try folderPath first (desktop mode)
-        if (mostRecent.folderPath) {
-          // Check cache first
-          const cachedStudies = getCachedStudies(mostRecent.folderPath)
+        // Check cache first for fast initial load
+        const cacheKey = mostRecent.folderPath || mostRecent.directoryHandleId
+        if (cacheKey) {
+          const cachedStudies = getCachedStudies(cacheKey)
 
           if (cachedStudies) {
             // Load only the target study first for fast initial display
-            const targetStudy = cachedStudies.find((s) => s.studyInstanceUID === mostRecent.studyInstanceUID)
+            const targetStudy = cachedStudies.find(
+              (s) => s.studyInstanceUID === mostRecent.studyInstanceUID
+            )
 
             if (targetStudy) {
               // Set only the target study initially
               setStudies([targetStudy])
-              setCurrentStudy(targetStudy.studyInstanceUID)
+              setCurrentStudy(targetStudy.studyInstanceUID) // This will auto-restore last viewed series/instance
+
               setIsAutoLoading(false)
               setShowDropzone(false)
-              console.log(`[App] ⚡ Loaded target study from cache in ${(performance.now() - startTime).toFixed(0)}ms`)
+              console.log(
+                `[App] ⚡ Loaded target study from cache in ${(performance.now() - startTime).toFixed(0)}ms`
+              )
 
               // Load remaining studies in the background after a short delay
               if (cachedStudies.length > 1) {
                 setTimeout(() => {
                   setStudies(cachedStudies)
-                  console.log(`[App] 📦 Background loaded ${cachedStudies.length - 1} additional studies`)
+                  console.log(
+                    `[App] 📦 Background loaded ${cachedStudies.length - 1} additional studies`
+                  )
                 }, 100)
               }
+              return
             } else {
               // Target study not found, load all studies
               setStudies(cachedStudies)
-              setCurrentStudy(cachedStudies[0].studyInstanceUID)
+              setCurrentStudy(cachedStudies[0].studyInstanceUID) // This will auto-restore last viewed series/instance
+
               setIsAutoLoading(false)
               setShowDropzone(false)
-              console.log(`[App] ⚡ Loaded all studies from cache in ${(performance.now() - startTime).toFixed(0)}ms`)
+              console.log(
+                `[App] ⚡ Loaded all studies from cache in ${(performance.now() - startTime).toFixed(0)}ms`
+              )
+              return
             }
-            return
           }
-
-          // Not in cache - reload from folder path
-          const { readFilesFromDirectory } = await import('@/lib/utils/filePicker')
-          const { parseDicomFiles } = await import('@/lib/dicom/parser')
-
-          const allFiles = await readFilesFromDirectory(mostRecent.folderPath)
-
-          if (allFiles.length === 0) {
-            console.log('[App] No files found in folder, showing dropzone')
-            setIsAutoLoading(false)
-            setShowDropzone(true)
-            return
-          }
-
-          const loadedStudies = await parseDicomFiles(allFiles, mostRecent.folderPath)
-
-          if (loadedStudies.length === 0) {
-            console.log('[App] No valid DICOM studies found, showing dropzone')
-            setIsAutoLoading(false)
-            setShowDropzone(true)
-            return
-          }
-
-          cacheStudies(mostRecent.folderPath, loadedStudies)
-          setStudies(loadedStudies)
-
-          const targetStudy = loadedStudies.find((s) => s.studyInstanceUID === mostRecent.studyInstanceUID)
-          if (targetStudy) {
-            setCurrentStudy(targetStudy.studyInstanceUID)
-          } else {
-            setCurrentStudy(loadedStudies[0].studyInstanceUID)
-          }
-          setIsAutoLoading(false)
-          setShowDropzone(false)
-          console.log(`[App] Loaded ${loadedStudies.length} studies from disk in ${(performance.now() - startTime).toFixed(0)}ms`)
-          return
         }
 
-        // Try directoryHandleId (web mode)
-        if (mostRecent.directoryHandleId) {
-          // Check cache first
-          const cachedStudies = getCachedStudies(mostRecent.directoryHandleId)
-
-          if (cachedStudies) {
-            // Load only the target study first for fast initial display
-            const targetStudy = cachedStudies.find((s) => s.studyInstanceUID === mostRecent.studyInstanceUID)
-
-            if (targetStudy) {
-              // Set only the target study initially
-              setStudies([targetStudy])
-              setCurrentStudy(targetStudy.studyInstanceUID)
-              setIsAutoLoading(false)
-              setShowDropzone(false)
-              console.log(`[App] ⚡ Loaded target study from cache in ${(performance.now() - startTime).toFixed(0)}ms`)
-
-              // Load remaining studies in the background after a short delay
-              if (cachedStudies.length > 1) {
-                setTimeout(() => {
-                  setStudies(cachedStudies)
-                  console.log(`[App] 📦 Background loaded ${cachedStudies.length - 1} additional studies`)
-                }, 100)
-              }
-            } else {
-              // Target study not found, load all studies
-              setStudies(cachedStudies)
-              setCurrentStudy(cachedStudies[0].studyInstanceUID)
-              setIsAutoLoading(false)
-              setShowDropzone(false)
-              console.log(`[App] ⚡ Loaded all studies from cache in ${(performance.now() - startTime).toFixed(0)}ms`)
-            }
-            return
-          }
-
-          // Not in cache - reload from directory handle
-          const dirHandle = await getDirectoryHandle(mostRecent.directoryHandleId)
-          if (!dirHandle) {
-            console.log('[App] Directory handle not found, showing dropzone')
+        // Not in cache - use hook to load from disk/handle
+        const loadedStudies = await loadStudy(mostRecent, {
+          targetStudyUID: mostRecent.studyInstanceUID,
+          requestPermission: false, // Don't request permission on startup
+          onSuccess: (studies) => {
+            // setCurrentStudy is called by loadStudy hook, which will auto-restore last viewed series/instance
+            setIsAutoLoading(false)
+            setShowDropzone(false)
+            console.log(
+              `[App] Loaded ${studies.length} studies in ${(performance.now() - startTime).toFixed(0)}ms`
+            )
+          },
+          onError: (error) => {
+            console.log(`[App] ${error.message}, showing dropzone`)
             setIsAutoLoading(false)
             setShowDropzone(true)
-            return
-          }
+          },
+        })
 
-          // Check permission (don't request on startup, just check)
-          const hasPermission = await checkDirectoryPermission(dirHandle)
-          if (!hasPermission) {
-            console.log('[App] No permission to access directory, showing dropzone')
-            setIsAutoLoading(false)
-            setShowDropzone(true)
-            return
-          }
-
-          const filesWithDirs = await readDicomFilesWithDirectories(dirHandle)
-
-          if (filesWithDirs.length === 0) {
-            console.log('[App] No files found in directory, showing dropzone')
-            setIsAutoLoading(false)
-            setShowDropzone(true)
-            return
-          }
-
-          const loadedStudies = await parseDicomFilesWithDirectories(filesWithDirs, dirHandle)
-
-          if (loadedStudies.length === 0) {
-            console.log('[App] No valid DICOM studies found, showing dropzone')
-            setIsAutoLoading(false)
-            setShowDropzone(true)
-            return
-          }
-
-          cacheStudies(mostRecent.directoryHandleId, loadedStudies)
-          setStudies(loadedStudies)
-
-          const targetStudy = loadedStudies.find((s) => s.studyInstanceUID === mostRecent.studyInstanceUID)
-          if (targetStudy) {
-            setCurrentStudy(targetStudy.studyInstanceUID)
-          } else {
-            setCurrentStudy(loadedStudies[0].studyInstanceUID)
-          }
+        if (!loadedStudies) {
+          // Load failed (error already handled by onError callback)
           setIsAutoLoading(false)
-          setShowDropzone(false)
-          console.log(`[App] Loaded ${loadedStudies.length} studies from disk in ${(performance.now() - startTime).toFixed(0)}ms`)
-          return
+          setShowDropzone(true)
         }
-
-        console.log('[App] No folder path or directory handle, showing dropzone')
-        setIsAutoLoading(false)
-        setShowDropzone(true)
       } catch (error) {
         console.error('[App] Failed to auto-load most recent study:', error)
-        // On error, just show the dropzone
         setIsAutoLoading(false)
         setShowDropzone(true)
       }
@@ -549,6 +454,9 @@ function App() {
         )}
         </main>
       </div>
+
+      {/* Error Toast Notifications */}
+      <ErrorToast />
     </div>
   )
 }

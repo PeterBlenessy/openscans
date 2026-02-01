@@ -13,7 +13,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { exportPDF } from './pdfExport'
 import { createMockInstance } from '@/test/fixtures/dicomData'
-import type { ExportOptions, ExportResult } from './types'
+import type { ExportOptions } from './types'
 import type { ViewportSettings } from '@/types'
 
 // Mock jsPDF
