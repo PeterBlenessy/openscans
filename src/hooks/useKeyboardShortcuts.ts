@@ -2,11 +2,69 @@ import { useEffect } from 'react'
 import { useStudyStore } from '@/stores/studyStore'
 import { useViewportStore } from '@/stores/viewportStore'
 
+/**
+ * Props for useKeyboardShortcuts hook.
+ */
 interface UseKeyboardShortcutsProps {
+  /** Callback to toggle the help modal */
   onToggleHelp?: () => void
+  /** Callback to toggle the left drawer (study/series list) */
   onToggleLeftDrawer?: () => void
 }
 
+/**
+ * Hook for handling global keyboard shortcuts in the DICOM viewer.
+ *
+ * Provides keyboard navigation for:
+ * - Instance navigation (arrow keys, with modifiers for jumps)
+ * - Viewport controls (reset, invert)
+ * - UI toggles (help, drawer)
+ *
+ * Shortcuts are automatically disabled when user is typing in input fields.
+ *
+ * Supported shortcuts:
+ * - **Arrow Up/Down/Left/Right**: Navigate to previous/next instance
+ * - **Cmd/Ctrl + Up**: Jump to first instance
+ * - **Cmd/Ctrl + Down**: Jump to last instance
+ * - **Alt/Option + Left**: Jump back 10 instances
+ * - **Alt/Option + Right**: Jump forward 10 instances
+ * - **R**: Reset viewport settings (zoom, pan, window/level)
+ * - **I**: Toggle image inversion
+ * - **?**: Show help dialog
+ * - **Cmd/Ctrl + \\**: Toggle left drawer
+ *
+ * @param props - Configuration with optional callbacks
+ *
+ * @example
+ * ```tsx
+ * function DicomViewerPage() {
+ *   const [helpOpen, setHelpOpen] = useState(false)
+ *   const [drawerOpen, setDrawerOpen] = useState(true)
+ *
+ *   useKeyboardShortcuts({
+ *     onToggleHelp: () => setHelpOpen(prev => !prev),
+ *     onToggleLeftDrawer: () => setDrawerOpen(prev => !prev),
+ *   })
+ *
+ *   return (
+ *     <div>
+ *       {drawerOpen && <StudyDrawer />}
+ *       <DicomViewport />
+ *       {helpOpen && <HelpDialog />}
+ *     </div>
+ *   )
+ * }
+ * ```
+ *
+ * @example
+ * ```tsx
+ * // Minimal usage without callbacks
+ * function MinimalViewer() {
+ *   useKeyboardShortcuts()
+ *   return <DicomViewport />
+ * }
+ * ```
+ */
 export function useKeyboardShortcuts({ onToggleHelp, onToggleLeftDrawer }: UseKeyboardShortcutsProps = {}) {
   const currentSeries = useStudyStore((state) => state.currentSeries)
   const currentInstanceIndex = useStudyStore((state) => state.currentInstanceIndex)
