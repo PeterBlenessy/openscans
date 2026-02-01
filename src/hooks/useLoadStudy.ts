@@ -1,15 +1,8 @@
 import { useState, useCallback } from 'react'
 import { useStudyStore } from '../stores/studyStore'
 import { RecentStudyEntry } from '../stores/recentStudiesStore'
-import { getCachedStudies, cacheStudies } from '../lib/storage/studyCache'
-import {
-  getDirectoryHandle,
-  checkDirectoryPermission,
-  requestDirectoryPermission,
-  readDicomFilesWithDirectories,
-} from '../lib/storage/directoryHandleStorage'
-import { readFilesFromDirectory } from '../lib/utils/filePicker'
-import { parseDicomFiles, parseDicomFilesWithDirectories } from '../lib/dicom/parser'
+import { dicomStudyService } from '../lib/dicom/DicomStudyService'
+import { getDirectoryHandle } from '../lib/storage/directoryHandleStorage'
 import { DicomStudy } from '../types'
 
 interface LoadStudyOptions {
@@ -70,72 +63,31 @@ export function useLoadStudy(): UseLoadStudyReturn {
       setError(null)
 
       try {
-        const cacheKey = entry.folderPath || entry.directoryHandleId
-        let studies: DicomStudy[] | null = null
+        let studies: DicomStudy[]
 
-        // Try cache first
-        if (cacheKey) {
-          studies = getCachedStudies(cacheKey) || null
-        }
+        // Load from appropriate source
+        if (entry.folderPath) {
+          // Desktop mode - load from folder path with caching
+          studies = await dicomStudyService.loadStudiesFromDirectory(entry.folderPath, {
+            useCache: true,
+          })
+        } else if (entry.directoryHandleId) {
+          // Web mode - load from directory handle
+          const dirHandle = await getDirectoryHandle(entry.directoryHandleId)
 
-        // Load from source if not cached
-        if (!studies) {
-          if (entry.folderPath) {
-            // Desktop mode - load from folder path
-            const allFiles = await readFilesFromDirectory(entry.folderPath)
-
-            if (allFiles.length === 0) {
-              throw new Error('No DICOM files found in the folder')
-            }
-
-            studies = await parseDicomFiles(allFiles, entry.folderPath)
-
-            if (studies.length === 0) {
-              throw new Error('No valid DICOM studies found in the folder')
-            }
-
-            // Cache the loaded studies
-            cacheStudies(entry.folderPath, studies)
-          } else if (entry.directoryHandleId) {
-            // Web mode - load from directory handle
-            const dirHandle = await getDirectoryHandle(entry.directoryHandleId)
-
-            if (!dirHandle) {
-              throw new Error(
-                'Directory handle not found. The folder may have been moved or deleted.'
-              )
-            }
-
-            // Check permission
-            let hasPermission = await checkDirectoryPermission(dirHandle)
-
-            // Request permission if needed and allowed
-            if (!hasPermission && requestPermission) {
-              hasPermission = await requestDirectoryPermission(dirHandle)
-            }
-
-            if (!hasPermission) {
-              throw new Error('Permission denied to access the folder')
-            }
-
-            // Read and parse DICOM files
-            const filesWithDirs = await readDicomFilesWithDirectories(dirHandle)
-
-            if (filesWithDirs.length === 0) {
-              throw new Error('No DICOM files found in the folder')
-            }
-
-            studies = await parseDicomFilesWithDirectories(filesWithDirs, dirHandle)
-
-            if (studies.length === 0) {
-              throw new Error('No valid DICOM studies found in the folder')
-            }
-
-            // Cache the loaded studies
-            cacheStudies(entry.directoryHandleId, studies)
-          } else {
-            throw new Error('Invalid study entry: no folder path or directory handle')
+          if (!dirHandle) {
+            throw new Error(
+              'Directory handle not found. The folder may have been moved or deleted.'
+            )
           }
+
+          studies = await dicomStudyService.loadStudiesFromHandle(dirHandle, {
+            useCache: true,
+            cacheKey: entry.directoryHandleId,
+            requestPermission,
+          })
+        } else {
+          throw new Error('Invalid study entry: no folder path or directory handle')
         }
 
         if (!studies || studies.length === 0) {

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { parseDicomFiles } from '@/lib/dicom/parser'
+import { dicomStudyService } from '@/lib/dicom/DicomStudyService'
 import { useStudyStore } from '@/stores/studyStore'
 import { cacheStudies } from '@/lib/storage/studyCache'
 
@@ -15,7 +15,8 @@ export function useDicomLoader() {
     setStoreError(null)
 
     try {
-      const studies = await parseDicomFiles(files, folderPath)
+      // Use DicomStudyService to load and parse files
+      const studies = await dicomStudyService.loadStudiesFromFiles(files, folderPath)
 
       if (studies.length === 0) {
         throw new Error('No valid DICOM files found in the selected files/folder')
