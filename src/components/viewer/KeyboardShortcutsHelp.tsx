@@ -28,17 +28,21 @@ export function KeyboardShortcutsHelp({ show, onClose }: KeyboardShortcutsHelpPr
       { keys: ['→', '↓'], description: 'Next image' },
       { keys: ['Cmd/Ctrl', '↑'], description: 'First image' },
       { keys: ['Cmd/Ctrl', '↓'], description: 'Last image' },
-      { keys: ['Alt/Opt', '←'], description: 'Jump back 10 images' },
-      { keys: ['Alt/Opt', '→'], description: 'Jump forward 10 images' },
+      { keys: ['Alt/Opt', '←'], description: 'Jump back 10' },
+      { keys: ['Alt/Opt', '→'], description: 'Jump forward 10' },
     ]},
     { category: 'Viewport', items: [
-      { keys: ['R'], description: 'Reset viewport settings' },
-      { keys: ['I'], description: 'Invert image colors' },
+      { keys: ['Drag'], description: 'Window/Level' },
+      { keys: ['Cmd/Ctrl', 'Drag'], description: 'Pan' },
+      { keys: ['Scroll'], description: 'Zoom' },
+      { keys: ['R'], description: 'Reset viewport' },
+      { keys: ['I'], description: 'Invert colors' },
     ]},
-    { category: 'Tools', items: [
-      { keys: ['Drag'], description: 'Adjust contrast/brightness' },
-      { keys: ['Ctrl/Cmd + Drag'], description: 'Pan image' },
-      { keys: ['Scroll Wheel'], description: 'Zoom in/out' },
+    { category: 'Annotations & AI', items: [
+      { keys: ['A'], description: 'Toggle annotations' },
+      { keys: ['F'], description: 'Toggle favorite' },
+      { keys: ['M'], description: 'AI detection' },
+      { keys: ['N'], description: 'AI analysis' },
     ]},
     { category: 'Help', items: [
       { keys: ['?'], description: 'Toggle this help' },
@@ -64,21 +68,21 @@ export function KeyboardShortcutsHelp({ show, onClose }: KeyboardShortcutsHelpPr
           </button>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {shortcuts.map((section) => (
             <div key={section.category}>
-              <h3 className="text-sm font-medium uppercase tracking-wider text-gray-400 mb-3">
+              <h3 className="text-xs font-medium uppercase tracking-wider text-gray-400 mb-2">
                 {section.category}
               </h3>
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {section.items.map((item, index) => (
                   <div key={index} className="flex items-center justify-between gap-4">
-                    <span className="text-sm font-medium text-white">{item.description}</span>
+                    <span className="text-sm text-white">{item.description}</span>
                     <div className="flex gap-1 flex-shrink-0">
                       {item.keys.map((key, keyIndex) => (
                         <kbd
                           key={keyIndex}
-                          className="px-2 py-1 bg-[#0f0f0f] text-gray-100 rounded text-sm font-mono border border-[#2a2a2a]"
+                          className="px-1.5 py-0.5 bg-[#0f0f0f] text-gray-100 rounded text-xs font-mono border border-[#2a2a2a]"
                         >
                           {key}
                         </kbd>

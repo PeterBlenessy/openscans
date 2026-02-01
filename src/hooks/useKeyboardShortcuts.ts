@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { useStudyStore } from '@/stores/studyStore'
 import { useViewportStore } from '@/stores/viewportStore'
+import { useAnnotationStore } from '@/stores/annotationStore'
+import { useFavoritesStore } from '@/stores/favoritesStore'
 
 /**
  * Props for useKeyboardShortcuts hook.
@@ -28,8 +30,12 @@ interface UseKeyboardShortcutsProps {
  * - **Cmd/Ctrl + Down**: Jump to last instance
  * - **Alt/Option + Left**: Jump back 10 instances
  * - **Alt/Option + Right**: Jump forward 10 instances
+ * - **A**: Toggle annotation visibility
+ * - **F**: Toggle favorite for current image
  * - **R**: Reset viewport settings (zoom, pan, window/level)
  * - **I**: Toggle image inversion
+ * - **M**: AI vertebrae detection
+ * - **N**: AI radiology analysis
  * - **?**: Show help dialog
  * - **Cmd/Ctrl + \\**: Toggle left drawer
  *
@@ -66,11 +72,15 @@ interface UseKeyboardShortcutsProps {
  * ```
  */
 export function useKeyboardShortcuts({ onToggleHelp, onToggleLeftDrawer }: UseKeyboardShortcutsProps = {}) {
+  const currentStudy = useStudyStore((state) => state.currentStudy)
   const currentSeries = useStudyStore((state) => state.currentSeries)
+  const currentInstance = useStudyStore((state) => state.currentInstance)
   const currentInstanceIndex = useStudyStore((state) => state.currentInstanceIndex)
   const { nextInstance, previousInstance, setCurrentInstance } = useStudyStore()
-  const { resetSettings, setInvert } = useViewportStore()
+  const { resetSettings, setInvert, setActiveTool } = useViewportStore()
   const settings = useViewportStore((state) => state.settings)
+  const { toggleMarkerVisibility } = useAnnotationStore()
+  const { toggleFavorite } = useFavoritesStore()
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -159,6 +169,43 @@ export function useKeyboardShortcuts({ onToggleHelp, onToggleLeftDrawer }: UseKe
           }
           break
 
+        // Annotations: Toggle visibility (no modifiers)
+        case 'a':
+        case 'A':
+          if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+            e.preventDefault()
+            if (currentInstance) {
+              toggleMarkerVisibility(currentInstance.sopInstanceUID)
+              console.log('[Keyboard] Toggle annotation visibility')
+            }
+          }
+          break
+
+        // Favorites: Toggle current image (no modifiers)
+        case 'f':
+        case 'F':
+          if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+            e.preventDefault()
+            if (currentInstance && currentStudy && currentSeries) {
+              const favoriteImage = {
+                sopInstanceUID: currentInstance.sopInstanceUID,
+                studyInstanceUID: currentStudy.studyInstanceUID,
+                seriesInstanceUID: currentSeries.seriesInstanceUID,
+                instanceNumber: currentInstance.instanceNumber,
+                imageId: currentInstance.imageId,
+                patientName: currentInstance.metadata?.patientName,
+                studyDate: currentInstance.metadata?.studyDate,
+                seriesNumber: currentInstance.metadata?.seriesNumber,
+                seriesDescription: currentInstance.metadata?.seriesDescription,
+                modality: currentInstance.metadata?.modality,
+                favoritedAt: Date.now(),
+              }
+              const wasAdded = toggleFavorite(favoriteImage)
+              console.log(wasAdded ? '[Keyboard] Add to favorites' : '[Keyboard] Remove from favorites')
+            }
+          }
+          break
+
         // Help
         case '?':
           e.preventDefault()
@@ -185,14 +232,19 @@ export function useKeyboardShortcuts({ onToggleHelp, onToggleLeftDrawer }: UseKe
       window.removeEventListener('keydown', handleKeyPress)
     }
   }, [
+    currentStudy,
     currentSeries,
+    currentInstance,
     currentInstanceIndex,
     nextInstance,
     previousInstance,
     setCurrentInstance,
     resetSettings,
     setInvert,
+    setActiveTool,
     settings.invert,
+    toggleMarkerVisibility,
+    toggleFavorite,
     onToggleHelp,
     onToggleLeftDrawer
   ])
