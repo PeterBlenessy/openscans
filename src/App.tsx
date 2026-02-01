@@ -194,7 +194,8 @@ function App() {
             if (targetStudy) {
               // Set only the target study initially
               setStudies([targetStudy])
-              setCurrentStudy(targetStudy.studyInstanceUID)
+              setCurrentStudy(targetStudy.studyInstanceUID) // This will auto-restore last viewed series/instance
+
               setIsAutoLoading(false)
               setShowDropzone(false)
               console.log(
@@ -214,7 +215,8 @@ function App() {
             } else {
               // Target study not found, load all studies
               setStudies(cachedStudies)
-              setCurrentStudy(cachedStudies[0].studyInstanceUID)
+              setCurrentStudy(cachedStudies[0].studyInstanceUID) // This will auto-restore last viewed series/instance
+
               setIsAutoLoading(false)
               setShowDropzone(false)
               console.log(
@@ -230,6 +232,7 @@ function App() {
           targetStudyUID: mostRecent.studyInstanceUID,
           requestPermission: false, // Don't request permission on startup
           onSuccess: (studies) => {
+            // setCurrentStudy is called by loadStudy hook, which will auto-restore last viewed series/instance
             setIsAutoLoading(false)
             setShowDropzone(false)
             console.log(

@@ -156,7 +156,33 @@ export const useStudyStore = create<StudyState>((set, get) => ({
     const study = get().studies.find((s) => s.studyInstanceUID === studyUID)
     if (study) {
       set({ currentStudy: study })
+
       if (study.series.length > 0) {
+        // Try to restore last viewed series/instance from localStorage (per-study storage)
+        try {
+          const allViewStates = JSON.parse(localStorage.getItem('openscans-view-states') || '{}')
+          const viewState = allViewStates[studyUID]
+
+          if (viewState && viewState.seriesInstanceUID) {
+            const series = study.series.find(s => s.seriesInstanceUID === viewState.seriesInstanceUID)
+
+            if (series && viewState.instanceIndex !== undefined) {
+              const validIndex = Math.max(0, Math.min(viewState.instanceIndex, series.instances.length - 1))
+
+              set({
+                currentSeries: series,
+                currentInstanceIndex: validIndex,
+                currentInstance: series.instances[validIndex] || null,
+              })
+              console.log(`[StudyStore] Restored series ${series.seriesNumber}, instance ${validIndex + 1}/${series.instances.length}`)
+              return // Don't select first series if we restored
+            }
+          }
+        } catch (e) {
+          console.error('[StudyStore] Failed to restore view state:', e)
+        }
+
+        // No saved state or restore failed - select first series
         get().setCurrentSeries(study.series[0].seriesInstanceUID)
       }
     }
@@ -203,6 +229,18 @@ export const useStudyStore = create<StudyState>((set, get) => ({
         currentInstanceIndex: 0,
         currentInstance: foundSeries.instances[0] || null,
       })
+
+      // Save view state to localStorage for auto-restore on refresh (per-study)
+      try {
+        const allViewStates = JSON.parse(localStorage.getItem('openscans-view-states') || '{}')
+        allViewStates[foundStudy.studyInstanceUID] = {
+          seriesInstanceUID: foundSeries.seriesInstanceUID,
+          instanceIndex: 0,
+        }
+        localStorage.setItem('openscans-view-states', JSON.stringify(allViewStates))
+      } catch (e) {
+        console.error('Failed to save view state:', e)
+      }
     }
   },
 
@@ -224,7 +262,7 @@ export const useStudyStore = create<StudyState>((set, get) => ({
    * ```
    */
   setCurrentInstance: (instanceIndex) => {
-    const { currentSeries } = get()
+    const { currentSeries, currentStudy } = get()
     if (!currentSeries) return
 
     const clampedIndex = Math.max(
@@ -235,6 +273,20 @@ export const useStudyStore = create<StudyState>((set, get) => ({
       currentInstanceIndex: clampedIndex,
       currentInstance: currentSeries.instances[clampedIndex] || null,
     })
+
+    // Save view state to localStorage for auto-restore on refresh (per-study)
+    if (currentStudy && currentSeries) {
+      try {
+        const allViewStates = JSON.parse(localStorage.getItem('openscans-view-states') || '{}')
+        allViewStates[currentStudy.studyInstanceUID] = {
+          seriesInstanceUID: currentSeries.seriesInstanceUID,
+          instanceIndex: clampedIndex,
+        }
+        localStorage.setItem('openscans-view-states', JSON.stringify(allViewStates))
+      } catch (e) {
+        console.error('Failed to save view state:', e)
+      }
+    }
   },
 
   /**
