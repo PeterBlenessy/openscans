@@ -15,6 +15,7 @@ describe('Annotation Workflow Integration', () => {
   let mockInstance: ReturnType<typeof createMockInstance>
 
   beforeEach(() => {
+    localStorage.clear() // Clear view state persistence
     useAnnotationStore.getState().reset()
     useStudyStore.getState().reset()
     mockInstance = createMockInstance()
@@ -191,6 +192,7 @@ describe('Annotation Workflow Integration', () => {
 
   describe('Annotation filtering', () => {
     beforeEach(() => {
+    localStorage.clear() // Clear view state persistence
       const annotationStore = useAnnotationStore.getState()
 
       // Add mix of manual and AI-generated annotations

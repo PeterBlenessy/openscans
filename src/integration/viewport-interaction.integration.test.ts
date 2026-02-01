@@ -12,6 +12,7 @@ import { createMockStudy } from '@/test/fixtures/dicomData'
 
 describe('Viewport Interaction Integration', () => {
   beforeEach(() => {
+    localStorage.clear() // Clear view state persistence
     useStudyStore.getState().reset()
     useViewportStore.getState().resetSettings()
   })

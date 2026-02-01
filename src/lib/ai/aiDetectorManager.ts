@@ -87,7 +87,7 @@ export async function initDetector(
   apiKey: string
 ): Promise<VisionDetector | null> {
   const detector = await getDetector(provider)
-  if (detector && apiKey) {
+  if (detector && apiKey && typeof detector.setApiKey === 'function') {
     detector.setApiKey(apiKey)
   }
   return detector

@@ -45,6 +45,7 @@ describe('AI Workflow Integration', () => {
   let mockInstance: ReturnType<typeof createMockInstance>
 
   beforeEach(() => {
+    localStorage.clear() // Clear view state persistence
     useAnnotationStore.getState().reset()
     useAiAnalysisStore.getState().reset()
     useStudyStore.getState().reset()

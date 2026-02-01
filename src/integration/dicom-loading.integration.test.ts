@@ -20,6 +20,7 @@ vi.mock('@/lib/dicom/DicomStudyService', () => ({
 
 describe('DICOM Loading Integration', () => {
   beforeEach(() => {
+    localStorage.clear() // Clear view state persistence
     useStudyStore.getState().reset()
     vi.clearAllMocks()
   })

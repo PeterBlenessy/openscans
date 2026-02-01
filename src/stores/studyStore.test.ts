@@ -23,6 +23,7 @@ import {
 describe('studyStore', () => {
   // Reset store before each test
   beforeEach(() => {
+    localStorage.clear() // Clear view state persistence
     useStudyStore.getState().reset()
   })
 
@@ -198,7 +199,7 @@ describe('studyStore', () => {
       const studies = [createMockStudy(3, 5)]
       useStudyStore.getState().setStudies(studies)
 
-      const _targetSeries = studies[0].series[1]
+      const targetSeries = studies[0].series[1]
       useStudyStore.getState().setCurrentSeries(targetSeries.seriesInstanceUID)
 
       const state = useStudyStore.getState()
@@ -254,7 +255,7 @@ describe('studyStore', () => {
       const studies = [createMockStudy(2, 5)]
       useStudyStore.getState().setStudies(studies)
 
-      const _targetSeries = studies[0].series[1]
+      const targetSeries = studies[0].series[1]
       useStudyStore.getState().setCurrentSeries(targetSeries.seriesInstanceUID)
 
       const state = useStudyStore.getState()
