@@ -67,10 +67,25 @@ export function useLoadStudy(): UseLoadStudyReturn {
 
         // Load from appropriate source
         if (entry.folderPath) {
-          // Desktop mode - load from folder path with caching
-          studies = await dicomStudyService.loadStudiesFromDirectory(entry.folderPath, {
-            useCache: true,
-          })
+          // Check if this is a webkitdirectory path (Safari/Firefox fallback)
+          if (entry.folderPath.startsWith('webkit:')) {
+            // For webkitdirectory, we can only load from cache since we don't have persistent folder access
+            const { getCachedStudies } = await import('../lib/storage/studyCache')
+            const cached = getCachedStudies(entry.folderPath)
+
+            if (!cached || cached.length === 0) {
+              throw new Error(
+                'This study was loaded using Safari/Firefox folder selection and is no longer available in cache. Please reselect the folder to reload it.'
+              )
+            }
+
+            studies = cached
+          } else {
+            // Desktop mode (Tauri) - load from folder path with caching
+            studies = await dicomStudyService.loadStudiesFromDirectory(entry.folderPath, {
+              useCache: true,
+            })
+          }
         } else if (entry.directoryHandleId) {
           // Web mode - load from directory handle
           const dirHandle = await getDirectoryHandle(entry.directoryHandleId)

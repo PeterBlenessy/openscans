@@ -193,6 +193,13 @@ export class DicomStudyService {
 
         // Only include files with pixel data (actual images)
         if (this.hasPixelData(dataSet)) {
+          // Check for lossy compression
+          const transferSyntaxUID = this.getString(dataSet, 'x00020010', 'Unknown')
+          if (!this.isLosslessTransferSyntax(transferSyntaxUID)) {
+            const transferSyntaxName = this.getTransferSyntaxName(transferSyntaxUID)
+            console.warn(`⚠️ Lossy compression detected: ${transferSyntaxName}`)
+          }
+
           instances.push({ file, dataset: dataSet, metadata })
         }
       } catch (error) {

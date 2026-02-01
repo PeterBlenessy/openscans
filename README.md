@@ -1,6 +1,20 @@
 # OpenScans
 
-A modern, privacy-first web-based DICOM viewer for medical imaging with advanced viewport tools, export capabilities, and comprehensive testing. Built with React, TypeScript, and Cornerstone.js.
+A modern, privacy-first DICOM viewer for medical imaging with advanced viewport tools, AI-powered analysis, export capabilities, and comprehensive testing. Available as both a web application and desktop app for macOS, Windows, and Linux.
+
+Built with React, TypeScript, Cornerstone.js, and Tauri.
+
+## ⚠️ Medical Disclaimer
+
+**THIS SOFTWARE IS FOR EDUCATIONAL AND RESEARCH PURPOSES ONLY.**
+
+OpenScans is NOT intended for clinical diagnosis, treatment planning, or any medical decision-making. This software has not been evaluated or approved by the FDA or any other regulatory body for medical use. Always consult qualified healthcare professionals and use FDA-approved medical imaging software for clinical purposes.
+
+By using this software, you acknowledge that:
+- This tool is provided "as is" without warranty of any kind
+- The developers assume no liability for any decisions made based on this software
+- You should never use this software as a substitute for professional medical advice
+- All image analysis and measurements should be verified using certified medical devices
 
 ## ✨ Features
 
@@ -11,18 +25,22 @@ A modern, privacy-first web-based DICOM viewer for medical imaging with advanced
 - **🎯 Navigation**: Browse multi-instance series with keyboard shortcuts and slider
 - **🎨 Viewport Tools**: Window/Level, Zoom, Pan, Rotation, Flip, Invert
 - **📊 Metadata Display**: Comprehensive study, series, and instance information
+- **✏️ Annotations**: Manual markers with AI-powered detection (vertebrae)
+- **🤖 AI Analysis**: Optional AI radiology analysis (Claude, Gemini, OpenAI)
 - **⭐ Favorites**: Star images and export to batch PDF
-- **📤 Export**: PNG, JPEG, and PDF with privacy-first defaults
+- **📤 Export**: PNG, JPEG, and PDF with privacy-first defaults (Tauri-aware file saving)
 - **🎛️ Image Presets**: Quick W/L presets for different tissue types
-- **⚡ Keyboard Shortcuts**: Full keyboard navigation and tool control
+- **⚡ Keyboard Shortcuts**: Full keyboard navigation (arrows, A, F, I, R, M, N)
 - **🌙 Dark Theme**: Eye-friendly dark mode (default)
+- **💻 Desktop Apps**: Native apps for macOS, Windows, and Linux (via Tauri)
 
 ### Privacy & Compliance
 
-- **🔒 Client-Side Only**: All processing in browser, zero data transmission
+- **🔒 Client-Side Only**: All processing locally, zero data transmission (except optional AI)
 - **🛡️ Privacy-First Export**: Patient data excluded from filenames by default
 - **📋 HIPAA Considerations**: Designed for medical privacy compliance
 - **🚫 No Analytics**: No tracking, cookies, or third-party scripts
+- **🔐 Optional AI**: AI features require your own API keys (not included)
 
 ## 🛠️ Tech Stack
 
@@ -55,15 +73,27 @@ pnpm dev
 
 The application will open at `http://localhost:3000`
 
+### Browser Compatibility
+
+**Web Application:**
+- **Chrome/Edge** (Recommended): Full support including File System Access API for folder selection
+- **Firefox**: Fully supported
+- **Safari**: Fully supported (uses webkitdirectory fallback for folder selection)
+
+**Desktop Application:**
+- Available for macOS (Intel + Apple Silicon), Windows, and Linux via Tauri
+
 ### Usage
 
 1. **Load DICOM Files**:
    - Drag and drop `.dcm` files onto the dropzone, OR
-   - Click "Select Files" to browse for files
+   - Click "Select Files" to browse for files, OR
+   - Click "Select Folder" to load entire folders (Chrome/Edge/Safari)
 
 2. **View Images**:
-   - Use Previous/Next buttons to navigate through slices
-   - Scroll with mouse wheel to navigate
+   - Use Previous/Next buttons or arrow keys to navigate through slices
+   - Drag to adjust window/level
+   - Scroll with mouse wheel or Cmd/Ctrl+scroll to zoom
    - View metadata in the right sidebar
 
 3. **Load New Files**:
@@ -113,6 +143,10 @@ pnpm dev                    # Start dev server (localhost:3000)
 pnpm build                  # Build for production
 pnpm preview                # Preview production build
 
+# Desktop App (Tauri)
+pnpm tauri dev              # Start Tauri development mode
+pnpm tauri build            # Build desktop app for current platform
+
 # Code Quality
 pnpm lint                   # Run ESLint
 pnpm format                 # Format with Prettier
@@ -123,6 +157,34 @@ pnpm test                   # Run unit tests
 pnpm test -- --watch        # Unit tests in watch mode
 pnpm test -- --coverage     # Generate coverage report
 pnpm test:e2e              # Run E2E tests
+```
+
+### Building Desktop Apps
+
+Desktop applications are built automatically via GitHub Actions when you push a version tag:
+
+```bash
+# Create and push a version tag
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The workflow builds for:
+- **macOS**: Intel (x86_64) and Apple Silicon (aarch64)
+- **Linux**: Ubuntu 22.04+
+- **Windows**: Windows 10+
+
+Builds are uploaded to GitHub Releases as draft releases. To build locally:
+
+```bash
+# Install Rust (required for Tauri)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Install platform-specific dependencies (Linux only)
+sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+
+# Build for your current platform
+pnpm tauri build
 ```
 
 ### Known Issues

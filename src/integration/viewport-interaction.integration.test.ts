@@ -24,171 +24,143 @@ describe('Viewport Interaction Integration', () => {
         createMockStudy(2, 3), // 2 series, 3 instances each
       ]
 
-      const studyStore = useStudyStore.getState()
+      // Load studies (this auto-selects first study)
+      useStudyStore.getState().setStudies(mockStudies)
 
-      // Load studies
-      studyStore.setStudies(mockStudies)
-
-      // Initially no study/series selected
-      expect(studyStore.currentStudy).toBeNull()
-      expect(studyStore.currentSeries).toBeNull()
-      expect(studyStore.currentInstance).toBeNull()
-
-      // Select first study
-      studyStore.setCurrentStudy(mockStudies[0].studyInstanceUID)
-      expect(studyStore.currentStudy).toEqual(mockStudies[0])
-
-      // Select first series in study
-      const firstSeries = mockStudies[0].series[0]
-      studyStore.setCurrentSeries(firstSeries.seriesInstanceUID)
-      expect(studyStore.currentSeries).toEqual(firstSeries)
-
-      // Select first instance in series
-      const firstInstance = firstSeries.instances[0]
-      studyStore.setCurrentInstance(0)
-      expect(studyStore.currentInstance).toEqual(firstInstance)
+      // setStudies auto-selects first study, series, and instance
+      expect(useStudyStore.getState().currentStudy).toEqual(mockStudies[0])
+      expect(useStudyStore.getState().currentSeries).toEqual(mockStudies[0].series[0])
+      expect(useStudyStore.getState().currentInstance).toEqual(mockStudies[0].series[0].instances[0])
 
       // Navigate to next instance
-      studyStore.nextInstance()
-      expect(studyStore.currentInstance?.instanceNumber).toBe(2)
+      useStudyStore.getState().nextInstance()
+      expect(useStudyStore.getState().currentInstance?.instanceNumber).toBe(2)
 
       // Navigate to previous instance
-      studyStore.previousInstance()
-      expect(studyStore.currentInstance?.instanceNumber).toBe(1)
+      useStudyStore.getState().previousInstance()
+      expect(useStudyStore.getState().currentInstance?.instanceNumber).toBe(1)
     })
 
     it('should handle series boundary when navigating instances', () => {
       const mockStudy = createMockStudy(2, 3) // 2 series, 3 instances each
-      const studyStore = useStudyStore.getState()
 
-      studyStore.setStudies([mockStudy])
-      studyStore.setCurrentStudy(mockStudy.studyInstanceUID)
-      studyStore.setCurrentSeries(mockStudy.series[0].seriesInstanceUID)
+      useStudyStore.getState().setStudies([mockStudy])
+      useStudyStore.getState().setCurrentStudy(mockStudy.studyInstanceUID)
+      useStudyStore.getState().setCurrentSeries(mockStudy.series[0].seriesInstanceUID)
 
       // Go to last instance in first series
-      studyStore.setCurrentInstance(2)
-      expect(studyStore.currentInstance?.instanceNumber).toBe(3)
+      useStudyStore.getState().setCurrentInstance(2)
+      expect(useStudyStore.getState().currentInstance?.instanceNumber).toBe(3)
 
       // Try to go next (should stay at last instance)
-      studyStore.nextInstance()
-      expect(studyStore.currentInstance?.instanceNumber).toBe(3)
+      useStudyStore.getState().nextInstance()
+      expect(useStudyStore.getState().currentInstance?.instanceNumber).toBe(3)
 
       // Go to first instance
-      studyStore.setCurrentInstance(0)
-      expect(studyStore.currentInstance?.instanceNumber).toBe(1)
+      useStudyStore.getState().setCurrentInstance(0)
+      expect(useStudyStore.getState().currentInstance?.instanceNumber).toBe(1)
 
       // Try to go previous (should stay at first instance)
-      studyStore.previousInstance()
-      expect(studyStore.currentInstance?.instanceNumber).toBe(1)
+      useStudyStore.getState().previousInstance()
+      expect(useStudyStore.getState().currentInstance?.instanceNumber).toBe(1)
     })
 
     it('should auto-select first series and instance when study is selected', () => {
       const mockStudy = createMockStudy(2, 4)
-      const studyStore = useStudyStore.getState()
 
-      studyStore.setStudies([mockStudy])
-      studyStore.setCurrentStudy(mockStudy.studyInstanceUID)
+      useStudyStore.getState().setStudies([mockStudy])
+      useStudyStore.getState().setCurrentStudy(mockStudy.studyInstanceUID)
 
       // Should auto-select first series
-      expect(studyStore.currentSeries).toEqual(mockStudy.series[0])
+      expect(useStudyStore.getState().currentSeries).toEqual(mockStudy.series[0])
 
       // Should auto-select first instance
-      expect(studyStore.currentInstance).toEqual(mockStudy.series[0].instances[0])
+      expect(useStudyStore.getState().currentInstance).toEqual(mockStudy.series[0].instances[0])
     })
   })
 
   describe('Viewport tool state management', () => {
     it('should manage window/level adjustments', () => {
-      const viewportStore = useViewportStore.getState()
-
       // Initial state (MR defaults)
-      expect(viewportStore.settings.windowCenter).toBe(600)
-      expect(viewportStore.settings.windowWidth).toBe(1200)
+      expect(useViewportStore.getState().settings.windowCenter).toBe(600)
+      expect(useViewportStore.getState().settings.windowWidth).toBe(1200)
 
       // Adjust window/level
-      viewportStore.setWindowLevel(200, 400)
-      expect(viewportStore.settings.windowCenter).toBe(200)
-      expect(viewportStore.settings.windowWidth).toBe(400)
+      useViewportStore.getState().setWindowLevel(200, 400)
+      expect(useViewportStore.getState().settings.windowCenter).toBe(200)
+      expect(useViewportStore.getState().settings.windowWidth).toBe(400)
 
       // Change modality (CT has different defaults)
-      viewportStore.setModality('CT')
-      expect(viewportStore.settings.windowCenter).toBe(40)
-      expect(viewportStore.settings.windowWidth).toBe(400)
+      useViewportStore.getState().setModality('CT')
+      expect(useViewportStore.getState().settings.windowCenter).toBe(40)
+      expect(useViewportStore.getState().settings.windowWidth).toBe(400)
     })
 
     it('should manage zoom state', () => {
-      const viewportStore = useViewportStore.getState()
-
       // Initial zoom
-      expect(viewportStore.settings.zoom).toBe(1.0)
+      expect(useViewportStore.getState().settings.zoom).toBe(1.0)
 
       // Zoom in
-      viewportStore.setZoom(1.5)
-      expect(viewportStore.settings.zoom).toBe(1.5)
+      useViewportStore.getState().setZoom(1.5)
+      expect(useViewportStore.getState().settings.zoom).toBe(1.5)
 
       // Zoom out
-      viewportStore.setZoom(0.75)
-      expect(viewportStore.settings.zoom).toBe(0.75)
+      useViewportStore.getState().setZoom(0.75)
+      expect(useViewportStore.getState().settings.zoom).toBe(0.75)
 
       // Reset settings
-      viewportStore.resetSettings()
-      expect(viewportStore.settings.zoom).toBe(1.0)
+      useViewportStore.getState().resetSettings()
+      expect(useViewportStore.getState().settings.zoom).toBe(1.0)
     })
 
     it('should manage pan offset', () => {
-      const viewportStore = useViewportStore.getState()
-
       // Initial pan
-      expect(viewportStore.settings.pan.x).toBe(0)
-      expect(viewportStore.settings.pan.y).toBe(0)
+      expect(useViewportStore.getState().settings.pan.x).toBe(0)
+      expect(useViewportStore.getState().settings.pan.y).toBe(0)
 
       // Pan the viewport
-      viewportStore.setPan(50, 30)
-      expect(viewportStore.settings.pan.x).toBe(50)
-      expect(viewportStore.settings.pan.y).toBe(30)
+      useViewportStore.getState().setPan(50, 30)
+      expect(useViewportStore.getState().settings.pan.x).toBe(50)
+      expect(useViewportStore.getState().settings.pan.y).toBe(30)
 
       // Reset settings
-      viewportStore.resetSettings()
-      expect(viewportStore.settings.pan.x).toBe(0)
-      expect(viewportStore.settings.pan.y).toBe(0)
+      useViewportStore.getState().resetSettings()
+      expect(useViewportStore.getState().settings.pan.x).toBe(0)
+      expect(useViewportStore.getState().settings.pan.y).toBe(0)
     })
 
     it('should toggle invert mode', () => {
-      const viewportStore = useViewportStore.getState()
-
       // Initial state
-      expect(viewportStore.settings.invert).toBe(false)
+      expect(useViewportStore.getState().settings.invert).toBe(false)
 
       // Set invert
-      viewportStore.setInvert(true)
-      expect(viewportStore.settings.invert).toBe(true)
+      useViewportStore.getState().setInvert(true)
+      expect(useViewportStore.getState().settings.invert).toBe(true)
 
       // Unset invert
-      viewportStore.setInvert(false)
-      expect(viewportStore.settings.invert).toBe(false)
+      useViewportStore.getState().setInvert(false)
+      expect(useViewportStore.getState().settings.invert).toBe(false)
     })
   })
 
   describe('Combined study navigation and viewport tools', () => {
     it('should reset viewport tools when changing instances', () => {
       const mockStudy = createMockStudy(1, 3)
-      const studyStore = useStudyStore.getState()
-      const viewportStore = useViewportStore.getState()
 
       // Load study and select first instance
-      studyStore.setStudies([mockStudy])
-      studyStore.setCurrentStudy(mockStudy.studyInstanceUID)
+      useStudyStore.getState().setStudies([mockStudy])
+      useStudyStore.getState().setCurrentStudy(mockStudy.studyInstanceUID)
 
       // Apply some viewport adjustments
-      viewportStore.setZoom(2.0)
-      viewportStore.setPan(100, 50)
-      viewportStore.setWindowLevel(200, 400)
+      useViewportStore.getState().setZoom(2.0)
+      useViewportStore.getState().setPan(100, 50)
+      useViewportStore.getState().setWindowLevel(200, 400)
 
-      expect(viewportStore.settings.zoom).toBe(2.0)
-      expect(viewportStore.settings.pan.x).toBe(100)
+      expect(useViewportStore.getState().settings.zoom).toBe(2.0)
+      expect(useViewportStore.getState().settings.pan.x).toBe(100)
 
       // Navigate to next instance
-      studyStore.nextInstance()
+      useStudyStore.getState().nextInstance()
 
       // Note: In real app, viewport tools might persist or reset
       // depending on settings. This tests the store behavior.
@@ -196,87 +168,84 @@ describe('Viewport Interaction Integration', () => {
 
     it('should maintain study selection when adjusting viewport tools', () => {
       const mockStudy = createMockStudy(2, 4)
-      const studyStore = useStudyStore.getState()
-      const viewportStore = useViewportStore.getState()
 
       // Select study and instance
-      studyStore.setStudies([mockStudy])
-      studyStore.setCurrentStudy(mockStudy.studyInstanceUID)
-      const initialInstance = studyStore.currentInstance
+      useStudyStore.getState().setStudies([mockStudy])
+      useStudyStore.getState().setCurrentStudy(mockStudy.studyInstanceUID)
+      const initialInstance = useStudyStore.getState().currentInstance
 
       // Adjust viewport tools
-      viewportStore.setZoom(1.5)
-      viewportStore.setPan(50, 25)
-      viewportStore.setWindowLevel(150, 300)
+      useViewportStore.getState().setZoom(1.5)
+      useViewportStore.getState().setPan(50, 25)
+      useViewportStore.getState().setWindowLevel(150, 300)
 
       // Study and instance selection should be unchanged
-      expect(studyStore.currentStudy?.studyInstanceUID).toBe(mockStudy.studyInstanceUID)
-      expect(studyStore.currentInstance).toEqual(initialInstance)
+      expect(useStudyStore.getState().currentStudy?.studyInstanceUID).toBe(mockStudy.studyInstanceUID)
+      expect(useStudyStore.getState().currentInstance).toEqual(initialInstance)
     })
   })
 
   describe('Multi-study workflow', () => {
     it('should switch between studies and maintain independent viewport states', () => {
       const mockStudies = [
-        createMockStudy(1, 3),
-        createMockStudy(1, 2),
+        createMockStudy(1, 3, { studyInstanceUID: '1.2.840.113619.2.1.1.1.1.20240101' }),
+        createMockStudy(1, 2, { studyInstanceUID: '1.2.840.113619.2.1.1.1.1.20240102' }),
       ]
-      const studyStore = useStudyStore.getState()
-      const viewportStore = useViewportStore.getState()
 
-      studyStore.setStudies(mockStudies)
-
-      // Select first study
-      studyStore.setCurrentStudy(mockStudies[0].studyInstanceUID)
-      const firstStudyInstance = studyStore.currentInstance
+      // setStudies auto-selects first study
+      useStudyStore.getState().setStudies(mockStudies)
+      const firstStudyInstance = useStudyStore.getState().currentInstance
 
       // Apply viewport settings
-      viewportStore.setZoom(2.0)
-      viewportStore.setWindowLevel(200, 400)
+      useViewportStore.getState().setZoom(2.0)
+      useViewportStore.getState().setWindowLevel(200, 400)
 
       // Switch to second study
-      studyStore.setCurrentStudy(mockStudies[1].studyInstanceUID)
+      useStudyStore.getState().setCurrentStudy(mockStudies[1].studyInstanceUID)
 
-      // Verify different instance is selected
-      expect(studyStore.currentInstance).not.toEqual(firstStudyInstance)
-      expect(studyStore.currentInstance?.sopInstanceUID).toBe(
+      // Verify different instance is selected (compare by UID, not deep equality)
+      expect(useStudyStore.getState().currentInstance?.sopInstanceUID).not.toBe(
+        firstStudyInstance?.sopInstanceUID
+      )
+      expect(useStudyStore.getState().currentInstance?.sopInstanceUID).toBe(
         mockStudies[1].series[0].instances[0].sopInstanceUID
       )
 
       // Note: Viewport tools persist across study changes
       // (In real app, this might be configurable via settings)
-      expect(viewportStore.settings.zoom).toBe(2.0)
+      expect(useViewportStore.getState().settings.zoom).toBe(2.0)
     })
   })
 
   describe('Edge cases', () => {
     it('should handle navigation with no studies loaded', () => {
-      const studyStore = useStudyStore.getState()
-
       // Try to navigate when no studies loaded
-      studyStore.nextInstance()
-      studyStore.previousInstance()
+      useStudyStore.getState().nextInstance()
+      useStudyStore.getState().previousInstance()
 
       // Should remain null
-      expect(studyStore.currentInstance).toBeNull()
+      expect(useStudyStore.getState().currentInstance).toBeNull()
     })
 
     it('should handle invalid study/series/instance UIDs', () => {
       const mockStudy = createMockStudy(1, 2)
-      const studyStore = useStudyStore.getState()
 
-      studyStore.setStudies([mockStudy])
+      useStudyStore.getState().setStudies([mockStudy])
 
-      // Try to select non-existent study
-      studyStore.setCurrentStudy('invalid-uid')
-      expect(studyStore.currentStudy).toBeNull()
+      // Store the current state before attempting invalid operations
+      const validStudy = useStudyStore.getState().currentStudy
+      const validSeries = useStudyStore.getState().currentSeries
 
-      // Try to select non-existent series
-      studyStore.setCurrentSeries('invalid-uid')
-      expect(studyStore.currentSeries).toBeNull()
+      // Try to select non-existent study (should be ignored, current study remains)
+      useStudyStore.getState().setCurrentStudy('invalid-uid')
+      expect(useStudyStore.getState().currentStudy).toEqual(validStudy)
+
+      // Try to select non-existent series (should be ignored, current series remains)
+      useStudyStore.getState().setCurrentSeries('invalid-uid')
+      expect(useStudyStore.getState().currentSeries).toEqual(validSeries)
 
       // Try to select non-existent instance (index out of bounds gets clamped)
-      studyStore.setCurrentInstance(999)
+      useStudyStore.getState().setCurrentInstance(999)
       // Note: setCurrentInstance clamps the index, so it will select the last valid instance
       // This test verifies the clamping behavior works correctly
     })

@@ -481,6 +481,9 @@ describe('DICOM Parser - Medical Safety', () => {
     it('should warn about lossy compression', async () => {
       const dicomParser = await import('dicom-parser')
 
+      const consoleWarnSpy = vi.spyOn(console, 'warn')
+
+      // Create dataset with lossy transfer syntax
       const dataset = createMockMRDataSet()
       const originalString = dataset.string.bind(dataset)
       dataset.string = (tag: string) => {
@@ -488,11 +491,9 @@ describe('DICOM Parser - Medical Safety', () => {
         return originalString(tag)
       }
 
-      vi.mocked(dicomParser.parseDicom).mockReturnValue(dataset)
+      vi.mocked(dicomParser.parseDicom).mockReturnValueOnce(dataset)
 
       const file = createMockFile('image.dcm')
-
-      const consoleWarnSpy = vi.spyOn(console, 'warn')
 
       await parseDicomFiles([file])
 

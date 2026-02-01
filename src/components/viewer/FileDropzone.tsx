@@ -163,8 +163,27 @@ export function FileDropzone({ className, onFilesLoaded }: FileDropzoneProps) {
       }
 
       // Filter to DICOM files and load them
-      // Pass folder path if in desktop mode (result is a string)
-      const folderPath = typeof result === 'string' ? result : undefined
+      // Pass folder path for caching:
+      // - Tauri (string): use the actual folder path
+      // - Web with File System Access API (FileSystemDirectoryHandle): undefined (uses handle ID instead)
+      // - Web with webkitdirectory (File[]): extract folder name from webkitRelativePath
+      let folderPath: string | undefined
+      if (typeof result === 'string') {
+        // Tauri mode
+        folderPath = result
+      } else if (Array.isArray(result) && result.length > 0) {
+        // Safari/Firefox webkitdirectory mode - extract folder name from first file
+        // webkitRelativePath looks like "FolderName/subfolder/file.dcm"
+        const firstFile = result[0] as File & { webkitRelativePath?: string }
+        if (firstFile.webkitRelativePath) {
+          // Extract the root folder name
+          const pathParts = firstFile.webkitRelativePath.split('/')
+          if (pathParts.length > 0) {
+            folderPath = `webkit:${pathParts[0]}` // Prefix to distinguish from real paths
+          }
+        }
+      }
+
       await loadFiles(allFiles, folderPath)
 
       console.log(`Successfully loaded files from directory`)
