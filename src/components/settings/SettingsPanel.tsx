@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useSettingsStore, Theme, ScrollDirection, AIProvider } from '@/stores/settingsStore'
+import { Theme, ScrollDirection, AIProvider } from '@/stores/settingsStore'
+import { themeClasses } from '@/lib/utils'
+import { useSettingsState } from '@/hooks/useSettingsState'
 
 interface SettingsPanelProps {
   show: boolean
@@ -7,34 +9,7 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
-  const theme = useSettingsStore((state) => state.theme)
-  const scrollDirection = useSettingsStore((state) => state.scrollDirection)
-  const windowLevelSensitivity = useSettingsStore((state) => state.windowLevelSensitivity)
-  const zoomSensitivity = useSettingsStore((state) => state.zoomSensitivity)
-  const hidePersonalInfo = useSettingsStore((state) => state.hidePersonalInfo)
-  const persistStudies = useSettingsStore((state) => state.persistStudies)
-  const aiEnabled = useSettingsStore((state) => state.aiEnabled)
-  const aiProvider = useSettingsStore((state) => state.aiProvider)
-  const aiApiKey = useSettingsStore((state) => state.aiApiKey)
-  const geminiApiKey = useSettingsStore((state) => state.geminiApiKey)
-  const openaiApiKey = useSettingsStore((state) => state.openaiApiKey)
-  const aiConsentGiven = useSettingsStore((state) => state.aiConsentGiven)
-  const aiResponseLanguage = useSettingsStore((state) => state.aiResponseLanguage)
-
-  const setTheme = useSettingsStore((state) => state.setTheme)
-  const setScrollDirection = useSettingsStore((state) => state.setScrollDirection)
-  const setWindowLevelSensitivity = useSettingsStore((state) => state.setWindowLevelSensitivity)
-  const setZoomSensitivity = useSettingsStore((state) => state.setZoomSensitivity)
-  const setHidePersonalInfo = useSettingsStore((state) => state.setHidePersonalInfo)
-  const setPersistStudies = useSettingsStore((state) => state.setPersistStudies)
-  const setAiEnabled = useSettingsStore((state) => state.setAiEnabled)
-  const setAiProvider = useSettingsStore((state) => state.setAiProvider)
-  const setAiApiKey = useSettingsStore((state) => state.setAiApiKey)
-  const setGeminiApiKey = useSettingsStore((state) => state.setGeminiApiKey)
-  const setOpenaiApiKey = useSettingsStore((state) => state.setOpenaiApiKey)
-  const setAiConsentGiven = useSettingsStore((state) => state.setAiConsentGiven)
-  const setAiResponseLanguage = useSettingsStore((state) => state.setAiResponseLanguage)
-  const resetToDefaults = useSettingsStore((state) => state.resetToDefaults)
+  const settings = useSettingsState()
 
   const [showApiKey, setShowApiKey] = useState(false)
 
@@ -54,7 +29,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
 
   if (!show) return null
 
-  const isDark = theme === 'dark'
+  const isDark = settings.theme === 'dark'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -65,15 +40,15 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
       />
 
       {/* Modal */}
-      <div className={`relative rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden border ${isDark ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
+      <div className={`relative rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden border ${themeClasses.bg(settings.theme)} ${themeClasses.border(settings.theme)}`}>
         {/* Header */}
-        <div className={`flex items-center justify-between p-4 border-b ${isDark ? 'border-[#2a2a2a]' : 'border-gray-200'}`}>
-          <h2 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Settings</h2>
+        <div className={`flex items-center justify-between p-4 border-b ${themeClasses.border(settings.theme)}`}>
+          <h2 className={`text-xl font-semibold ${themeClasses.text(settings.theme)}`}>Settings</h2>
           <button
             onClick={onClose}
-            className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-[#2a2a2a]' : 'hover:bg-gray-100'}`}
+            className={`p-2 rounded-lg transition-colors ${themeClasses.hoverBgSecondary(settings.theme)}`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 ${themeClasses.textSecondary(settings.theme)}`}>
               <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
             </svg>
           </button>
@@ -85,9 +60,9 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
           <SettingsSection title="Appearance" isDark={isDark}>
             <SettingsRow label="Theme" description="Choose between dark and light mode" isDark={isDark}>
               <select
-                value={theme}
-                onChange={(e) => setTheme(e.target.value as Theme)}
-                className={`border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a] text-white focus:ring-[#3a3a3a]' : 'bg-gray-100 border-gray-300 text-gray-900 focus:ring-gray-400'}`}
+                value={settings.theme}
+                onChange={(e) => settings.setTheme(e.target.value as Theme)}
+                className={`border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${themeClasses.bgSecondary(settings.theme)} ${themeClasses.border(settings.theme)} ${themeClasses.text(settings.theme)} ${isDark ? 'focus:ring-[#3a3a3a]' : 'focus:ring-gray-400'}`}
               >
                 <option value="dark">Dark</option>
                 <option value="light">Light</option>
@@ -99,8 +74,8 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
           <SettingsSection title="Viewport Behavior" isDark={isDark}>
             <SettingsRow label="Scroll Direction" description="Mouse wheel scroll behavior for image navigation" isDark={isDark}>
               <select
-                value={scrollDirection}
-                onChange={(e) => setScrollDirection(e.target.value as ScrollDirection)}
+                value={settings.scrollDirection}
+                onChange={(e) => settings.setScrollDirection(e.target.value as ScrollDirection)}
                 className={`border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a] text-white focus:ring-[#3a3a3a]' : 'bg-gray-100 border-gray-300 text-gray-900 focus:ring-gray-400'}`}
               >
                 <option value="natural">Natural (scroll up = next)</option>
@@ -108,26 +83,26 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
               </select>
             </SettingsRow>
 
-            <SettingsRow label="Window/Level Sensitivity" description={`Current: ${windowLevelSensitivity.toFixed(1)}x`} isDark={isDark}>
+            <SettingsRow label="Window/Level Sensitivity" description={`Current: ${settings.windowLevelSensitivity.toFixed(1)}x`} isDark={isDark}>
               <input
                 type="range"
                 min="0.5"
                 max="3"
                 step="0.1"
-                value={windowLevelSensitivity}
-                onChange={(e) => setWindowLevelSensitivity(parseFloat(e.target.value))}
+                value={settings.windowLevelSensitivity}
+                onChange={(e) => settings.setWindowLevelSensitivity(parseFloat(e.target.value))}
                 className={`w-32 h-2 rounded-lg appearance-none cursor-pointer ${isDark ? 'bg-[#0f0f0f]' : 'bg-gray-200'}`}
               />
             </SettingsRow>
 
-            <SettingsRow label="Zoom Sensitivity" description={`Current: ${(zoomSensitivity * 100).toFixed(0)}%`} isDark={isDark}>
+            <SettingsRow label="Zoom Sensitivity" description={`Current: ${(settings.zoomSensitivity * 100).toFixed(0)}%`} isDark={isDark}>
               <input
                 type="range"
                 min="0.01"
                 max="0.15"
                 step="0.01"
-                value={zoomSensitivity}
-                onChange={(e) => setZoomSensitivity(parseFloat(e.target.value))}
+                value={settings.zoomSensitivity}
+                onChange={(e) => settings.setZoomSensitivity(parseFloat(e.target.value))}
                 className={`w-32 h-2 rounded-lg appearance-none cursor-pointer ${isDark ? 'bg-[#0f0f0f]' : 'bg-gray-200'}`}
               />
             </SettingsRow>
@@ -137,8 +112,8 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
           <SettingsSection title="Privacy" isDark={isDark}>
             <SettingsRow label="Hide Personal Information" description="Hide patient names and IDs throughout the app" isDark={isDark}>
               <ToggleSwitch
-                checked={hidePersonalInfo}
-                onChange={setHidePersonalInfo}
+                checked={settings.hidePersonalInfo}
+                onChange={settings.setHidePersonalInfo}
                 isDark={isDark}
               />
             </SettingsRow>
@@ -161,9 +136,9 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
           <SettingsSection title="AI Detection" isDark={isDark}>
             <SettingsRow label="Enable AI Detection" description="Use AI vision models for vertebrae detection" isDark={isDark}>
               <ToggleSwitch
-                checked={aiEnabled}
+                checked={settings.aiEnabled}
                 onChange={(enabled) => {
-                  if (enabled && !aiConsentGiven) {
+                  if (enabled && !settings.aiConsentGiven) {
                     // Show consent prompt
                     const consent = confirm(
                       'AI Detection Privacy Notice:\n\n' +
@@ -173,23 +148,23 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                       'Do you consent to sending image data to external AI services when using AI features?'
                     )
                     if (consent) {
-                      setAiConsentGiven(true)
-                      setAiEnabled(true)
+                      settings.setAiConsentGiven(true)
+                      settings.setAiEnabled(true)
                     }
                   } else {
-                    setAiEnabled(enabled)
+                    settings.setAiEnabled(enabled)
                   }
                 }}
                 isDark={isDark}
               />
             </SettingsRow>
 
-            {aiEnabled && (
+            {settings.aiEnabled && (
               <>
                 <SettingsRow label="AI Provider" description="Which AI service to use" isDark={isDark}>
                   <select
-                    value={aiProvider}
-                    onChange={(e) => setAiProvider(e.target.value as AIProvider)}
+                    value={settings.aiProvider}
+                    onChange={(e) => settings.setAiProvider(e.target.value as AIProvider)}
                     className={`border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a] text-white focus:ring-[#3a3a3a]' : 'bg-gray-100 border-gray-300 text-gray-900 focus:ring-gray-400'}`}
                   >
                     <option value="claude">Claude (Anthropic)</option>
@@ -201,8 +176,8 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
 
                 <SettingsRow label="Response Language" description="Language for AI analysis text" isDark={isDark}>
                   <select
-                    value={aiResponseLanguage}
-                    onChange={(e) => setAiResponseLanguage(e.target.value)}
+                    value={settings.aiResponseLanguage}
+                    onChange={(e) => settings.setAiResponseLanguage(e.target.value)}
                     className={`border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a] text-white focus:ring-[#3a3a3a]' : 'bg-gray-100 border-gray-300 text-gray-900 focus:ring-gray-400'}`}
                   >
                     <option value="English">English</option>
@@ -222,13 +197,13 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                   </select>
                 </SettingsRow>
 
-                {aiProvider === 'claude' && (
+                {settings.aiProvider === 'claude' && (
                   <SettingsRow label="API Key" description="Your Anthropic API key" isDark={isDark}>
                     <div className="flex gap-2 items-center">
                       <input
                         type={showApiKey ? 'text' : 'password'}
-                        value={aiApiKey}
-                        onChange={(e) => setAiApiKey(e.target.value)}
+                        value={settings.aiApiKey}
+                        onChange={(e) => settings.setAiApiKey(e.target.value)}
                         placeholder="sk-ant-..."
                         className={`flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a] text-white focus:ring-[#3a3a3a] placeholder-gray-600' : 'bg-gray-100 border-gray-300 text-gray-900 focus:ring-gray-400 placeholder-gray-400'}`}
                       />
@@ -248,13 +223,13 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                   </SettingsRow>
                 )}
 
-                {aiProvider === 'gemini' && (
+                {settings.aiProvider === 'gemini' && (
                   <SettingsRow label="API Key" description="Your Google AI API key" isDark={isDark}>
                     <div className="flex gap-2 items-center">
                       <input
                         type={showApiKey ? 'text' : 'password'}
-                        value={geminiApiKey}
-                        onChange={(e) => setGeminiApiKey(e.target.value)}
+                        value={settings.geminiApiKey}
+                        onChange={(e) => settings.setGeminiApiKey(e.target.value)}
                         placeholder="AIza..."
                         className={`flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a] text-white focus:ring-[#3a3a3a] placeholder-gray-600' : 'bg-gray-100 border-gray-300 text-gray-900 focus:ring-gray-400 placeholder-gray-400'}`}
                       />
@@ -274,13 +249,13 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                   </SettingsRow>
                 )}
 
-                {aiProvider === 'openai' && (
+                {settings.aiProvider === 'openai' && (
                   <SettingsRow label="API Key" description="Your OpenAI API key" isDark={isDark}>
                     <div className="flex gap-2 items-center">
                       <input
                         type={showApiKey ? 'text' : 'password'}
-                        value={openaiApiKey}
-                        onChange={(e) => setOpenaiApiKey(e.target.value)}
+                        value={settings.openaiApiKey}
+                        onChange={(e) => settings.setOpenaiApiKey(e.target.value)}
                         placeholder="sk-..."
                         className={`flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a] text-white focus:ring-[#3a3a3a] placeholder-gray-600' : 'bg-gray-100 border-gray-300 text-gray-900 focus:ring-gray-400 placeholder-gray-400'}`}
                       />
@@ -321,8 +296,8 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
           <SettingsSection title="Data Management" isDark={isDark}>
             <SettingsRow label="Persist Studies" description="Remember recently opened studies and reload them after refresh" isDark={isDark}>
               <ToggleSwitch
-                checked={persistStudies}
-                onChange={setPersistStudies}
+                checked={settings.persistStudies}
+                onChange={settings.setPersistStudies}
                 isDark={isDark}
               />
             </SettingsRow>
@@ -355,7 +330,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
         {/* Footer */}
         <div className={`flex items-center justify-between p-4 border-t ${isDark ? 'border-[#2a2a2a]' : 'border-gray-200'}`}>
           <button
-            onClick={resetToDefaults}
+            onClick={settings.resetToDefaults}
             className={`px-4 py-2 text-sm transition-colors ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}
           >
             Reset to Defaults
