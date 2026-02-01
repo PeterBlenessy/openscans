@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { VertebraResponse } from './types'
 import { parseVertebraJson } from './dicomImageUtils'
 import { BaseVisionDetector } from './BaseVisionDetector'

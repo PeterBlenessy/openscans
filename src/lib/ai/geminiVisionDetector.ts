@@ -1,4 +1,5 @@
 import { GoogleGenAI } from '@google/genai'
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { VertebraResponse } from './types'
 import { BaseVisionDetector } from './BaseVisionDetector'
 

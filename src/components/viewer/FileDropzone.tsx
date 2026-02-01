@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useCallback, useState } from 'react'
 import { useDicomLoader } from '@/hooks/useDicomLoader'
 import { useErrorHandler } from '@/hooks/useErrorHandler'
@@ -71,12 +72,14 @@ export function FileDropzone({ className, onFilesLoaded }: FileDropzoneProps) {
   )
 
   // Helper function to recursively get all files from a directory
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async function getAllFilesFromDirectory(dirEntry: any): Promise<File[]> {
     const files: File[] = []
     const reader = dirEntry.createReader()
 
     return new Promise((resolve) => {
       const readEntries = () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         reader.readEntries(async (entries: any[]) => {
           if (entries.length === 0) {
             resolve(files)

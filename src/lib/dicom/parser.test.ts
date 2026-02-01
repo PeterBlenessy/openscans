@@ -22,7 +22,7 @@ import {
 
 // Mock dicom-parser
 vi.mock('dicom-parser', () => ({
-  parseDicom: vi.fn((byteArray: Uint8Array) => {
+  parseDicom: vi.fn((_byteArray: Uint8Array) => {
     // Return a mock dataset based on what's being parsed
     // We'll control this in individual tests
     return createMockMRDataSet()

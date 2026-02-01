@@ -1,4 +1,5 @@
 import { DicomInstance } from '@/types'
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { MarkerAnnotation } from '@/types/annotation'
 import { DetectionResult, AnalysisResult, VisionDetector, VertebraResponse } from './types'
 import { AiAnalysis } from '@/stores/aiAnalysisStore'

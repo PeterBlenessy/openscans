@@ -1,4 +1,5 @@
 import OpenAI from 'openai'
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { VertebraResponse } from './types'
 import { parseVertebraJson } from './dicomImageUtils'
 import { BaseVisionDetector } from './BaseVisionDetector'

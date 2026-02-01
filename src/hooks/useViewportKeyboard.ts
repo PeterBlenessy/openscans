@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { DicomInstance, DicomStudy } from '../types'
 import { Annotation } from '../types/annotation'
+import { AiAnalysis } from '../stores/aiAnalysisStore'
 import { useAiOperations } from './useAiOperations'
 
 interface UseViewportKeyboardOptions {
@@ -12,7 +13,7 @@ interface UseViewportKeyboardOptions {
   setAnalyzing: (isAnalyzing: boolean, error?: string | null) => void
   addAnnotations: (annotations: Annotation[]) => void
   deleteAnnotationsForInstance: (instanceUID: string, isAiGenerated: boolean) => void
-  addAnalysis: (analysis: any) => void
+  addAnalysis: (analysis: AiAnalysis) => void
   handleError: (error: Error | string, context: string, severity?: 'error' | 'warning' | 'info') => void
 }
 

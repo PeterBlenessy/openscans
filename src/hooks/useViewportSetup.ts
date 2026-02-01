@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { RefObject, MutableRefObject, useEffect, useState } from 'react'
 import { initCornerstone, cornerstone } from '../lib/cornerstone/initCornerstone'
 import { DicomInstance, ViewportSettings } from '../types'

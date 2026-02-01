@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Unit tests for studyStore
  *
@@ -14,9 +15,9 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { useStudyStore } from './studyStore'
 import {
   createMockStudy,
-  createMockSeries,
-  createMockInstance,
-  createMockMultiStudyDataset,
+  _createMockSeries,
+  _createMockInstance,
+  _createMockMultiStudyDataset,
 } from '@/test/fixtures/dicomData'
 
 describe('studyStore', () => {
@@ -197,7 +198,7 @@ describe('studyStore', () => {
       const studies = [createMockStudy(3, 5)]
       useStudyStore.getState().setStudies(studies)
 
-      const targetSeries = studies[0].series[1]
+      const _targetSeries = studies[0].series[1]
       useStudyStore.getState().setCurrentSeries(targetSeries.seriesInstanceUID)
 
       const state = useStudyStore.getState()
@@ -224,7 +225,7 @@ describe('studyStore', () => {
       expect(useStudyStore.getState().currentStudy?.studyInstanceUID).toBe('study-uid-1')
 
       // Switch to series in study2 (cross-study lookup)
-      const targetSeries = study2.series[0]
+      const _targetSeries = study2.series[0]
       useStudyStore.getState().setCurrentSeries('series-study2-1')
 
       const state = useStudyStore.getState()
@@ -253,7 +254,7 @@ describe('studyStore', () => {
       const studies = [createMockStudy(2, 5)]
       useStudyStore.getState().setStudies(studies)
 
-      const targetSeries = studies[0].series[1]
+      const _targetSeries = studies[0].series[1]
       useStudyStore.getState().setCurrentSeries(targetSeries.seriesInstanceUID)
 
       const state = useStudyStore.getState()

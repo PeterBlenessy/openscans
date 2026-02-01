@@ -1,4 +1,5 @@
 import { DicomStudy, DicomMetadata } from '@/types'
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { dicomStudyService } from './DicomStudyService'
 import { FileWithDirectory } from '../storage/directoryHandleStorage'
 

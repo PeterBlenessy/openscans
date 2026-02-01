@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { DicomInstance, DicomStudy } from '../types'
 import { Annotation } from '../types/annotation'
+import { AiAnalysis } from '../stores/aiAnalysisStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { mockDetector } from '../lib/ai/mockVertebralDetector'
 import { initDetector, getApiKeyForProvider } from '../lib/ai/aiDetectorManager'
@@ -14,7 +15,7 @@ interface UseAiOperationsOptions {
   setAnalyzing: (isAnalyzing: boolean, error?: string | null) => void
   addAnnotations: (annotations: Annotation[]) => void
   deleteAnnotationsForInstance: (instanceUID: string, isAiGenerated: boolean) => void
-  addAnalysis: (analysis: any) => void
+  addAnalysis: (analysis: AiAnalysis) => void
   handleError: (error: Error | string, context: string, severity?: 'error' | 'warning' | 'info') => void
 }
 

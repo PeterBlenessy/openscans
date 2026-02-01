@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 /**
  * Mock DICOM datasets for testing
  *
@@ -185,12 +188,12 @@ export function createMockDataSet(overrides: Partial<any> = {}): DataSet {
     },
 
     intString: (tag: string, index?: number): number | undefined => {
-      const strValue = mockDataSet.string(tag, index)
+      const strValue = mockDataSet.string(tag, _index)
       return strValue ? parseInt(strValue, 10) : undefined
     },
 
     floatString: (tag: string, index?: number): number | undefined => {
-      const strValue = mockDataSet.string(tag, index)
+      const strValue = mockDataSet.string(tag, _index)
       return strValue ? parseFloat(strValue) : undefined
     },
   } as DataSet

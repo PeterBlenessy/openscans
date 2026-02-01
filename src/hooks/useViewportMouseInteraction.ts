@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { RefObject, useEffect, useState, useRef } from 'react'
 import { useViewportStore } from '../stores/viewportStore'
 import { cornerstone } from '../lib/cornerstone/initCornerstone'

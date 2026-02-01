@@ -10,7 +10,7 @@
  * Target: ~15 assertions, 95%+ coverage
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { generateFilename, previewFilename } from './fileNaming'
 import { createMockInstance } from '@/test/fixtures/dicomData'
 import type { DicomInstance } from '@/types'
@@ -85,7 +85,7 @@ describe('fileNaming - Privacy Compliance', () => {
       expect(filename).toContain('PAT_123_456_HOSPITAL')
       // Check patient ID part doesn't have special chars (excluding hyphens used as separators)
       const patientIdPart = filename.split(' - ')[0]
-      expect(patientIdPart).not.toMatch(/[\/\@]/)
+      expect(patientIdPart).not.toMatch(/[/@]/)
     })
 
     it('should format filename correctly without patient data', () => {

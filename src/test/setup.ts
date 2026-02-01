@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 /**
  * Global test setup for Vitest
  *
@@ -90,7 +93,7 @@ class FileReaderMock {
   }
 }
 
-// @ts-ignore - FileReader mock
+// @ts-expect-error - FileReader mock
 global.FileReader = FileReaderMock as any
 
 // Mock URL.createObjectURL and revokeObjectURL

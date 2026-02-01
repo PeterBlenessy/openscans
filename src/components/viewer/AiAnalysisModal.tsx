@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -142,7 +143,7 @@ export function AiAnalysisModal() {
             addText(line.substring(5), 11, 'bold')
           }
           // Bullet points
-          else if (line.match(/^[\*\-\+]\s/)) {
+          else if (line.match(/^[*\-+]\s/)) {
             const text = '• ' + line.substring(2)
             addText(text, 10, 'normal', 5)
           }

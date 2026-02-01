@@ -42,7 +42,7 @@ export async function pickDirectory(): Promise<FileSystemDirectoryHandle | strin
     }
 
     try {
-      // @ts-ignore - showDirectoryPicker is not in TypeScript types yet
+      // @ts-expect-error - showDirectoryPicker is not in TypeScript types yet
       const directoryHandle: FileSystemDirectoryHandle = await window.showDirectoryPicker({
         mode: 'read',
       })
@@ -74,9 +74,10 @@ export async function readFilesFromDirectory(
     let fileReadTime = 0
     let blobCreateTime = 0
 
+    // eslint-disable-next-line no-inner-declarations
     async function readDirRecursive(dirPath: string) {
       try {
-        // @ts-ignore - readDir options type
+        // @ts-expect-error - readDir options type
         const entries = await readDir(dirPath)
 
         for (const entry of entries) {
@@ -125,8 +126,9 @@ export async function readFilesFromDirectory(
     const startTime = performance.now()
     const files: File[] = []
 
+    // eslint-disable-next-line no-inner-declarations
     async function readDirRecursive(dirHandle: FileSystemDirectoryHandle) {
-      // @ts-ignore - TypeScript doesn't have entries() in types yet
+      // @ts-expect-error - TypeScript doesn't have entries() in types yet
       for await (const [, handle] of dirHandle.entries()) {
         if (handle.kind === 'file') {
           const file = await (handle as FileSystemFileHandle).getFile()
