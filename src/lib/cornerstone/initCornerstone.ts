@@ -1,5 +1,5 @@
-// @ts-expect-error - cornerstone-core doesn't have TypeScript definitions
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// @ts-expect-error - cornerstone-core doesn't have TypeScript definitions
 import * as cornerstone from 'cornerstone-core'
 // @ts-expect-error - cornerstone-tools doesn't have TypeScript definitions
 import * as cornerstoneTools from 'cornerstone-tools'

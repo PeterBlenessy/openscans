@@ -77,7 +77,6 @@ export async function readFilesFromDirectory(
     // eslint-disable-next-line no-inner-declarations
     async function readDirRecursive(dirPath: string) {
       try {
-        // @ts-expect-error - readDir options type
         const entries = await readDir(dirPath)
 
         for (const entry of entries) {
