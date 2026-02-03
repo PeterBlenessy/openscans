@@ -109,7 +109,7 @@ jobs:
           fi
 
       - name: Build Tauri app (with signing)
-        if: matrix.platform == 'macos-latest' && secrets.APPLE_CERTIFICATE != ''
+        if: ${{ matrix.platform == 'macos-latest' && secrets.APPLE_CERTIFICATE != '' }}
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -125,7 +125,7 @@ jobs:
           args: ${{ matrix.args }}
 
       - name: Build Tauri app (unsigned)
-        if: matrix.platform != 'macos-latest' || secrets.APPLE_CERTIFICATE == ''
+        if: ${{ matrix.platform != 'macos-latest' || secrets.APPLE_CERTIFICATE == '' }}
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
