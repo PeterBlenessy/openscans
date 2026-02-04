@@ -1,0 +1,28 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- White background with macOS-style rounded corners -->
+  <rect width="512" height="512" rx="102" fill="#ffffff"/>
+
+  <!-- Main design: Layered scan slices representing medical imaging -->
+
+  <!-- Back layer (darkest - transparent black) -->
+  <rect x="60" y="160" width="392" height="280" rx="12" fill="#000000" opacity="0.4"/>
+
+  <!-- Middle layer (transparent black) -->
+  <rect x="80" y="120" width="392" height="280" rx="12" fill="#000000" opacity="0.3"/>
+
+  <!-- Front layer (lightest - transparent grey) -->
+  <rect x="100" y="80" width="392" height="280" rx="12" fill="#000000" opacity="0.15"/>
+
+  <!-- Scan line detail on front layer -->
+  <rect x="100" y="80" width="392" height="280" rx="12" fill="url(#scanGradient)" opacity="0.3"/>
+
+
+  <!-- Gradient definition for scan effect -->
+  <defs>
+    <linearGradient id="scanGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#000000;stop-opacity:0.2" />
+      <stop offset="50%" style="stop-color:#000000;stop-opacity:0.05" />
+      <stop offset="100%" style="stop-color:#000000;stop-opacity:0.3" />
+    </linearGradient>
+  </defs>
+</svg>
