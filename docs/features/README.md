@@ -93,7 +93,7 @@ Each feature file includes: status, description, user benefits, and (for unimple
 | [DICOM Anonymization](06-export-sharing/dicom-anonymization.md) | ❌ |
 | [Share via Link/URL](06-export-sharing/share-via-link.md) | ❌ |
 
-### 07 — AI & Intelligence (6 features)
+### 07 — AI & Intelligence (7 features)
 
 | Feature | Status |
 |---------|--------|
@@ -102,6 +102,7 @@ Each feature file includes: status, description, user benefits, and (for unimple
 | [Multi-Provider AI](07-ai-intelligence/multi-provider-ai.md) | ✅ |
 | [Drag-to-Adjust AI Markers](07-ai-intelligence/drag-to-adjust-markers.md) | ✅ |
 | [AI Consent Management](07-ai-intelligence/ai-consent-management.md) | ✅ |
+| [Subscription AI — Anthropic](07-ai-intelligence/subscription-ai-anthropic.md) | ❌ |
 | [Local AI Models (MONAI/TF.js)](07-ai-intelligence/local-ai-models.md) | ❌ |
 
 ### 08 — UX & Accessibility (11 features)
@@ -140,9 +141,9 @@ Each feature file includes: status, description, user benefits, and (for unimple
 | Annotations & Measurements | 1 | 1 | 8 | 10 |
 | Segmentation | 0 | 0 | 5 | 5 |
 | Export & Sharing | 6 | 0 | 3 | 9 |
-| AI & Intelligence | 5 | 0 | 1 | 6 |
+| AI & Intelligence | 5 | 0 | 2 | 7 |
 | UX & Accessibility | 6 | 0 | 5 | 11 |
 | Privacy & Security | 4 | 0 | 1 | 5 |
-| **Total** | **36** | **1** | **36** | **73** |
+| **Total** | **36** | **1** | **37** | **74** |
 
 See [competitor-analysis.md](../competitor-analysis.md) for the full comparison matrix and prioritized gap analysis.

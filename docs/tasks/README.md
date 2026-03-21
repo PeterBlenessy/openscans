@@ -21,6 +21,7 @@ Implementation task breakdowns for each unimplemented or partially implemented f
 | [Full-Screen Mode](03-advanced-viewing/fullscreen-mode.md) | Low (0.5-1d) | None | Advanced Viewing |
 | [Split / Comparison View](03-advanced-viewing/split-comparison-view.md) | High (5-8d) | None | Advanced Viewing |
 | [Ellipse / Rectangle ROI](04-annotations-measurements/ellipse-rectangle-roi.md) | Medium (3-4d) | Distance Measurement | Annotations |
+| [Subscription AI — Anthropic](07-ai-intelligence/subscription-ai-anthropic.md) | High (8-12d) | None | AI |
 
 ### Tier 2 — Should Consider (Differentiating, medium demand)
 
@@ -92,6 +93,7 @@ Implementation task breakdowns for each unimplemented or partially implemented f
 │   │   └── GrowCut
 │   ├── DICOM-SEG Support
 │   └── RT Structure Set
+├── Subscription AI — Anthropic (proxy + auth + quota)
 ├── DICOMweb / PACS Integration
 │   ├── Share via Link
 │   └── Authentication (OpenID)
@@ -108,10 +110,10 @@ Implementation task breakdowns for each unimplemented or partially implemented f
 | `04-annotations-measurements/` | 9 | Drawing and measurement tools |
 | `05-segmentation/` | 5 | Segmentation creation and display |
 | `06-export-sharing/` | 3 | Export formats and sharing |
-| `07-ai-intelligence/` | 1 | Local AI models |
+| `07-ai-intelligence/` | 2 | Subscription AI and local models |
 | `08-ux-accessibility/` | 5 | UI, i18n, and accessibility |
 | `09-privacy-security/` | 1 | Authentication |
-| **Total** | **37** | |
+| **Total** | **38** | |
 
 ## Recommended Starting Point
 
