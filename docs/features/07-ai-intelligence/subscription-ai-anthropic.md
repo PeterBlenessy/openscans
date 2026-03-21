@@ -1,122 +1,111 @@
-# Subscription-Based AI Provider Usage (Anthropic)
+# Claude Code Subscription Integration
 
 **Status**: ❌ Not Implemented
 **Category**: AI & Intelligence
 **Priority**: Tier 1 — Should Implement
-**Initial Provider**: Anthropic (Claude)
+**Platform**: Desktop (Tauri) only — browser keeps existing BYOK mode
 
 ## Description
 
-Offer AI-powered features (vertebral detection, radiology analysis) as a managed subscription service where OpenScans provides the Anthropic API access — users do not need their own API key. The existing "bring your own key" (BYOK) model remains available as an alternative for users who prefer direct provider accounts or offline use.
+Allow users to leverage their existing **Claude Pro or Max subscription** for OpenScans' AI features (vertebral detection, radiology analysis) by communicating with a locally running Claude Code instance. This is the same approach used by [Zed](https://zed.dev/docs/ai/external-agents) and [NoteSage](https://github.com/PeterBlenessy/notesage) — the app talks to Claude Code, which handles authentication with the user's subscription credentials. No API key required.
 
-### Two Operating Modes
+### Three AI Modes
 
-| Mode | API Key | Backend Required | Offline | Cost to User |
-|------|---------|-----------------|---------|-------------|
-| **Subscription** (new) | App-provided via proxy | Yes (lightweight) | No | Subscription fee |
-| **BYOK** (existing) | User-provided | No | Yes* | Direct to provider |
-
-*BYOK with mock detector works fully offline.
+| Mode | Auth | Platform | Cost to User | How It Works |
+|------|------|----------|-------------|-------------|
+| **Claude Code** (new) | User's Pro/Max subscription | Desktop only | Included in subscription | App → Claude Agent SDK → Claude Code (local) |
+| **BYOK** (existing) | User-provided API key | Browser + Desktop | Pay-per-token to provider | App → Anthropic/OpenAI/Gemini API directly |
+| **Mock** (existing) | None | Browser + Desktop | Free | Offline mock detector |
 
 ## Architecture
 
-### Why a Backend Proxy Is Required
+### How It Works
 
-The Anthropic SDK (`@anthropic-ai/sdk`) supports `dangerouslyAllowBrowser: true` for client-side use, but this flag exists as a warning: **any API key embedded in browser JavaScript is visible in DevTools** (Network tab, source maps, memory inspection). This is acceptable for user-supplied BYOK keys (the user's own key), but unacceptable for an app-owned key serving all subscribers.
-
-A lightweight backend proxy solves this:
+The [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-typescript) (`@anthropic-ai/claude-agent-sdk`) spawns Claude Code as a local subprocess. Claude Code authenticates using the user's subscription OAuth credentials (stored in `~/.claude/` from `claude login`). OpenScans sends prompts through this SDK, and Claude Code processes them using the subscription — no API key needed, no per-token billing.
 
 ```
-┌──────────────────────────────┐
-│  Browser (OpenScans React)   │
-│                              │
-│  ┌─────────────────────┐     │
-│  │ BYOK Mode           │     │  User's own API key
-│  │ Direct to Anthropic ├─────┼──────► api.anthropic.com
-│  └─────────────────────┘     │
-│                              │
-│  ┌─────────────────────┐     │
-│  │ Subscription Mode   │     │  Session token only
-│  │ Via proxy           ├─────┼──────► proxy.openscans.io
-│  └─────────────────────┘     │         │
-│                              │         │ App's API key
-└──────────────────────────────┘         │ (server-side only)
-                                         ▼
-                                  api.anthropic.com
+┌──────────────────────────────────────────────┐
+│  OpenScans Desktop (Tauri + React)            │
+│                                               │
+│  ┌─────────────────────────────────────────┐  │
+│  │  Node.js sidecar (Tauri sidecar)        │  │
+│  │                                         │  │
+│  │  Claude Agent SDK                       │  │
+│  │  query({ prompt: "Analyze image..." })  │  │
+│  └──────────────┬──────────────────────────┘  │
+│                 │ stdio (JSON-RPC)             │
+│                 ▼                              │
+│  ┌─────────────────────────────────────────┐  │
+│  │  Claude Code (local subprocess)         │  │
+│  │  • Authenticated with user's Pro/Max    │  │
+│  │  • Uses subscription, not API key       │  │
+│  │  • Reads image via built-in Read tool   │  │
+│  └──────────────┬──────────────────────────┘  │
+│                 │ HTTPS (subscription auth)    │
+└─────────────────┼─────────────────────────────┘
+                  ▼
+           api.anthropic.com
+           (billed to user's subscription)
 ```
 
-### Proxy Requirements (Minimal)
+### Why This Pattern Is Allowed
 
-The proxy is intentionally lightweight — a single serverless function (Cloudflare Worker, Vercel Edge Function, or AWS Lambda). It does NOT process DICOM data or store patient information. Its responsibilities:
+In January 2026, Anthropic [blocked third-party tools from directly using OAuth tokens](https://venturebeat.com/technology/anthropic-cracks-down-on-unauthorized-claude-usage-by-third-party-harnesses/) from Claude subscriptions. Client fingerprinting rejects unauthorized clients. However, the Zed/NoteSage pattern is permitted because **Claude Code itself** makes the API calls — OpenScans just communicates with Claude Code via the official Agent SDK over stdio. This is explicitly supported by Anthropic.
 
-1. **Authenticate the user** — Verify session token / subscription status
-2. **Inject the API key** — Add the Anthropic API key server-side
-3. **Forward the request** — Pass the vision request body to Anthropic's API
-4. **Track usage** — Record token counts per user for metering
-5. **Enforce quotas** — Reject requests when subscription limits are exceeded
-6. **Return the response** — Stream the Anthropic response back to the browser
+### Why Desktop Only
 
-### Privacy Preservation
+The Claude Agent SDK requires Node.js and spawns local processes — it cannot run in a browser. This feature is available only in the Tauri desktop build. The browser build continues to offer BYOK (user-provided API keys) and mock detector modes, which are unchanged.
 
-- The proxy forwards the same request body the browser would send directly to Anthropic — including the base64-encoded image. **No DICOM metadata is sent** (the browser strips it before encoding, as it does today).
-- The proxy does NOT store images, responses, or any patient data.
-- The proxy logs only: user ID, timestamp, model, token counts, and request status.
-- This is architecturally identical to the current BYOK flow — the only difference is where the API key is injected.
+### Image Analysis Flow
+
+Claude Code's built-in `Read` tool supports reading image files. The flow for analyzing a DICOM image:
+
+1. OpenScans renders the current viewport to a temporary PNG file (using existing export infrastructure)
+2. The Agent SDK sends a prompt: `"Read and analyze the medical image at /tmp/openscans/current.png..."`
+3. Claude Code uses its `Read` tool to view the image (multimodal)
+4. Claude returns structured analysis text
+5. OpenScans parses the response and displays results / creates annotations
+6. Temp file is cleaned up
 
 ## Benefits
 
-- **Zero-friction onboarding** — Users get AI features immediately without creating an Anthropic account, generating API keys, or understanding token pricing
-- **Predictable cost** — Monthly subscription fee instead of pay-per-token uncertainty
-- **Simplified UX** — No API key configuration; just sign up and use AI features
-- **Revenue model** — Enables sustainable development of OpenScans through subscription income
-- **BYOK preserved** — Power users and institutions with their own Anthropic accounts can continue using direct API access with no proxy dependency
+- **No API key needed** — Users with a Claude Pro ($20/mo) or Max ($100-200/mo) subscription can use AI features at no additional cost
+- **Familiar pattern** — Same approach as Zed and NoteSage; users who already have Claude Code installed are ready immediately
+- **No server infrastructure** — Everything runs locally; no proxy, no backend, no user accounts
+- **Privacy preserved** — Images are processed through the user's own Claude Code instance; OpenScans has no server involvement
+- **BYOK preserved** — Users without a subscription can still use API keys in both browser and desktop
+- **Subscription cost savings** — Pro/Max subscriptions include generous usage; per-token API billing can be significantly more expensive for heavy users
 
-## Subscription Model Design
+## Prerequisites for Users
 
-### Tiers (Initial)
+1. **Claude Pro or Max subscription** at [claude.ai](https://claude.ai)
+2. **Claude Code installed** — `npm install -g @anthropic-ai/claude-code` (or via Homebrew/installer)
+3. **Logged in** — `claude login` (one-time, credentials stored in `~/.claude/`)
 
-| Tier | AI Requests / Month | Models | Price |
-|------|---------------------|--------|-------|
-| **Free** | 10 | Claude Haiku | $0 |
-| **Pro** | 200 | Claude Sonnet | TBD |
-| **Unlimited** | Unlimited | Claude Sonnet + Opus | TBD |
-
-- "AI request" = one detection or one analysis call
-- Token limits per request enforced server-side
-- Unused requests do not roll over
-
-### What's Metered
-
-Each AI operation counts as one request:
-- Vertebral detection (one image → one request)
-- Radiology analysis (one image → one request)
-- Future AI features would also consume requests
-
-### Authentication
-
-Users authenticate via a simple email + magic link flow (or OAuth with GitHub/Google). Authentication is ONLY required for subscription-mode AI — all other OpenScans features continue to work without any account.
+OpenScans will detect whether Claude Code is available and guide users through setup if needed.
 
 ## How It Differs from NoteSage
 
-[NoteSage](https://github.com/PeterBlenessy/notesage) uses a pure BYOK model: users provide their own API keys, and the Tauri/Rust backend proxies requests using those user-supplied keys. There is no subscription billing, usage tracking, or app-owned API key.
+[NoteSage](https://github.com/PeterBlenessy/notesage) implements the same pattern but with broader scope:
+- NoteSage uses **ACP (Agent Client Protocol)** to support multiple agent types (Claude Code, OpenAI Codex, GitHub Copilot, Gemini CLI)
+- NoteSage's ACP integration lives in its **Rust backend** (`src-tauri/src/commands/acp.rs`) and spawns agents as subprocesses
+- NoteSage handles full chat conversations, inline completions, and agent tasks through ACP
 
-OpenScans takes this further by:
-1. Offering an app-managed subscription option alongside BYOK
-2. Using a serverless proxy (not a Tauri backend) so it works in browser-only mode
-3. Adding usage metering and quota enforcement
-4. Maintaining a path to local AI models (TensorFlow.js) for fully offline use
+OpenScans simplifies this:
+- **Claude Code only** — no need for the full ACP abstraction
+- Uses the **Claude Agent SDK** (`@anthropic-ai/claude-agent-sdk`) directly from a Node.js sidecar
+- Focused on **single-turn vision requests** (analyze one image), not multi-turn chat
 
-## Compatibility Requirements
+## Browser Fallback
 
-- **Browser-only**: The subscription flow must work in a standard web browser with no Tauri or native dependencies
-- **Desktop app**: The Tauri desktop app uses the same web-based subscription flow (the proxy is accessed via HTTPS, same as in the browser)
-- **Offline fallback**: When the proxy is unreachable, BYOK mode and mock detector remain functional
-- **No API key in browser**: The app-owned Anthropic API key never appears in client-side code, network requests, or localStorage
+When running in the browser (no Tauri):
+- The Claude Code option is hidden from the settings UI
+- BYOK mode (user-provided API keys) and mock detector remain fully functional
+- A note explains: "Claude Code subscription mode is available in the desktop app"
 
 ## Future Extensions
 
-- Additional subscription providers (OpenAI, Google Gemini)
-- Usage dashboard showing remaining requests and history
-- Team/institutional subscriptions with shared quotas
-- Stripe integration for payment processing
-- Webhook-based subscription lifecycle management
+- Detect Claude Code installation automatically and prompt setup
+- Show subscription usage/quota if Claude Code exposes this
+- Support additional subscription-based agents via ACP (if demand exists)
+- Explore community WebSocket bridges to Claude Code for browser support (unofficial, experimental)

@@ -1,386 +1,380 @@
-# Task: Implement Subscription-Based AI (Anthropic)
+# Task: Implement Claude Code Subscription Integration
 
-**Feature**: [Subscription AI (Anthropic)](../../features/07-ai-intelligence/subscription-ai-anthropic.md)
+**Feature**: [Claude Code Subscription Integration](../../features/07-ai-intelligence/subscription-ai-anthropic.md)
 **Priority**: Tier 1 — Should Implement
-**Estimated Effort**: High (8-12 days)
+**Estimated Effort**: High (6-8 days)
 **Dependencies**: None (builds alongside existing BYOK infrastructure)
+**Platform**: Desktop (Tauri) only
 
 ## Overview
 
-Add a subscription mode for Anthropic-powered AI features. Users sign up, get a session, and use AI without providing their own API key. A lightweight serverless proxy holds the app's Anthropic key and enforces usage quotas. The existing BYOK mode remains unchanged.
+Integrate with a locally running Claude Code instance via the Claude Agent SDK so users can leverage their Claude Pro/Max subscription for AI features without API keys. This is the same pattern used by Zed and NoteSage. No ACP abstraction needed — we talk to Claude Code directly through the SDK's `query()` function.
+
+## Key Technical Decision: Agent SDK, Not ACP
+
+- **ACP** (Agent Client Protocol) is Zed's open standard for connecting any editor to any agent. NoteSage uses it to support Claude Code, Codex, Copilot, and Gemini agents.
+- **Agent SDK** (`@anthropic-ai/claude-agent-sdk`) is Anthropic's official SDK that spawns and communicates with Claude Code directly over stdio/JSON-RPC.
+- Since OpenScans only needs Claude Code, we use the **Agent SDK directly** — simpler, fewer dependencies, officially supported.
 
 ## Implementation Steps
 
 ---
 
-### Step 1: Create the Serverless Proxy
+### Step 1: Add Agent SDK as a Tauri Sidecar
 
-**Location**: New repository or `proxy/` directory (deployed separately)
-**Runtime**: Cloudflare Worker (recommended) or Vercel Edge Function
+The Agent SDK requires Node.js. In the Tauri desktop app, it runs as a **sidecar process** — a bundled Node.js script that Tauri spawns and communicates with via IPC.
 
-The proxy is a single serverless function with ~200 lines of code. It is the only component that touches the Anthropic API key.
+#### 1a: Create the Sidecar Script
 
-#### 1a: Proxy Request Handler
+**File**: `src-tauri/sidecars/claude-bridge.mjs`
 
-```typescript
-// proxy/src/index.ts (Cloudflare Worker example)
+```javascript
+import { query } from '@anthropic-ai/claude-agent-sdk'
 
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    // 1. CORS headers for browser requests
-    if (request.method === 'OPTIONS') return corsResponse()
+// Listen for requests from Tauri via stdin
+process.stdin.setEncoding('utf-8')
+let buffer = ''
 
-    // 2. Authenticate user
-    const session = await verifySession(request, env)
-    if (!session) return unauthorized()
-
-    // 3. Check quota
-    const usage = await getUsage(session.userId, env)
-    if (usage.remaining <= 0) return quotaExceeded(usage)
-
-    // 4. Parse and validate the request body
-    const body = await request.json()
-    validateRequest(body) // ensure model, messages, max_tokens are within bounds
-
-    // 5. Forward to Anthropic with app API key
-    const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': env.ANTHROPIC_API_KEY,       // server-side only
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        ...body,
-        model: getAllowedModel(session.tier, body.model),
-        max_tokens: Math.min(body.max_tokens || 4096, getMaxTokens(session.tier)),
-      }),
-    })
-
-    // 6. Track usage
-    const responseBody = await anthropicResponse.json()
-    await recordUsage(session.userId, {
-      inputTokens: responseBody.usage?.input_tokens || 0,
-      outputTokens: responseBody.usage?.output_tokens || 0,
-      model: responseBody.model,
-      timestamp: Date.now(),
-    }, env)
-
-    // 7. Return response with remaining quota header
-    return new Response(JSON.stringify(responseBody), {
-      headers: {
-        ...corsHeaders(),
-        'X-Quota-Remaining': String(usage.remaining - 1),
-        'X-Quota-Limit': String(usage.limit),
-      },
-    })
-  },
-}
-```
-
-#### 1b: Data Storage (Usage Tracking)
-
-For Cloudflare Workers, use **KV** or **D1** (SQLite):
-
-```typescript
-// Usage record per user per month
-interface UsageRecord {
-  userId: string
-  month: string        // "2026-03"
-  requestCount: number
-  inputTokens: number
-  outputTokens: number
-}
-```
-
-Minimal schema — no DICOM data, no images, no patient information.
-
-#### 1c: Session Verification
-
-```typescript
-async function verifySession(request: Request, env: Env): Promise<Session | null> {
-  const token = request.headers.get('Authorization')?.replace('Bearer ', '')
-  if (!token) return null
-
-  // Verify JWT or lookup session token in KV
-  const session = await env.SESSIONS.get(token, 'json')
-  if (!session || session.expiresAt < Date.now()) return null
-
-  return session as Session
-}
-```
-
-#### 1d: Model and Token Guardrails
-
-```typescript
-function getAllowedModel(tier: string, requestedModel: string): string {
-  const TIER_MODELS: Record<string, string[]> = {
-    free: ['claude-haiku-4-5-20251001'],
-    pro: ['claude-sonnet-4-5-20241022', 'claude-haiku-4-5-20251001'],
-    unlimited: ['claude-opus-4-5-20250514', 'claude-sonnet-4-5-20241022', 'claude-haiku-4-5-20251001'],
+process.stdin.on('data', (chunk) => {
+  buffer += chunk
+  // Messages are newline-delimited JSON
+  const lines = buffer.split('\n')
+  buffer = lines.pop() // keep incomplete line in buffer
+  for (const line of lines) {
+    if (line.trim()) handleRequest(JSON.parse(line))
   }
-  const allowed = TIER_MODELS[tier] || TIER_MODELS.free
-  return allowed.includes(requestedModel) ? requestedModel : allowed[0]
-}
+})
 
-function getMaxTokens(tier: string): number {
-  return { free: 1024, pro: 4096, unlimited: 8192 }[tier] || 1024
-}
-```
+async function handleRequest(request) {
+  const { id, type, prompt, allowedTools } = request
 
----
+  try {
+    let result = ''
 
-### Step 2: Create Auth Store (Frontend)
-
-**File**: `src/stores/authStore.ts`
-
-```typescript
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-
-interface AuthState {
-  // State
-  isAuthenticated: boolean
-  user: UserProfile | null
-  sessionToken: string | null
-  subscription: SubscriptionInfo | null
-
-  // Actions
-  login: (email: string) => Promise<void>
-  verifyMagicLink: (token: string) => Promise<void>
-  logout: () => void
-  refreshSubscription: () => Promise<void>
-}
-
-interface UserProfile {
-  id: string
-  email: string
-}
-
-interface SubscriptionInfo {
-  tier: 'free' | 'pro' | 'unlimited'
-  requestsUsed: number
-  requestsLimit: number
-  periodEnd: string  // ISO date
-}
-
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      isAuthenticated: false,
-      user: null,
-      sessionToken: null,
-      subscription: null,
-
-      login: async (email) => {
-        const res = await fetch(`${PROXY_URL}/auth/magic-link`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email }),
-        })
-        if (!res.ok) throw new Error('Failed to send magic link')
-        // User checks email for the link
+    for await (const message of query({
+      prompt,
+      options: {
+        allowedTools: allowedTools || ['Read'],
+        maxTurns: 3,
+        systemPrompt: request.systemPrompt || undefined,
       },
-
-      verifyMagicLink: async (token) => {
-        const res = await fetch(`${PROXY_URL}/auth/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
-        })
-        const data = await res.json()
-        set({
-          isAuthenticated: true,
-          user: data.user,
-          sessionToken: data.sessionToken,
-          subscription: data.subscription,
-        })
-      },
-
-      logout: () => set({
-        isAuthenticated: false,
-        user: null,
-        sessionToken: null,
-        subscription: null,
-      }),
-
-      refreshSubscription: async () => {
-        const { sessionToken } = get()
-        if (!sessionToken) return
-        const res = await fetch(`${PROXY_URL}/subscription`, {
-          headers: { 'Authorization': `Bearer ${sessionToken}` },
-        })
-        if (res.ok) {
-          const subscription = await res.json()
-          set({ subscription })
+    })) {
+      // Collect text responses
+      if (message.type === 'assistant') {
+        for (const block of message.message?.content || []) {
+          if (block.type === 'text') {
+            result += block.text
+          }
         }
-      },
-    }),
-    {
-      name: 'openscans-auth',
-      partialize: (state) => ({
-        // Persist session token but NOT user email to localStorage
-        sessionToken: state.sessionToken,
-        isAuthenticated: state.isAuthenticated,
-      }),
+      }
     }
-  )
-)
+
+    send({ id, status: 'ok', result })
+  } catch (error) {
+    send({ id, status: 'error', error: error.message })
+  }
+}
+
+function send(message) {
+  process.stdout.write(JSON.stringify(message) + '\n')
+}
+
+// Signal readiness
+send({ type: 'ready' })
+```
+
+#### 1b: Install Agent SDK for Sidecar
+
+**File**: `src-tauri/sidecars/package.json`
+
+```json
+{
+  "name": "openscans-claude-bridge",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.81"
+  }
+}
+```
+
+Run `cd src-tauri/sidecars && npm install` during build.
+
+#### 1c: Configure Tauri Sidecar
+
+**File**: `src-tauri/tauri.conf.json`
+
+Add the sidecar to the Tauri configuration so it's bundled with the app:
+
+```json
+{
+  "bundle": {
+    "externalBin": ["sidecars/claude-bridge"]
+  }
+}
+```
+
+Note: The sidecar requires Node.js on the user's system (same requirement as Claude Code itself).
+
+---
+
+### Step 2: Create Tauri Commands for Claude Code Communication
+
+**File**: `src-tauri/src/commands/claude_code.rs`
+
+Create Rust Tauri commands that spawn and manage the sidecar:
+
+```rust
+use tauri::api::process::{Command, CommandEvent};
+
+#[tauri::command]
+async fn claude_code_available() -> Result<bool, String> {
+    // Check if Claude Code CLI is installed
+    let output = Command::new("claude")
+        .args(["--version"])
+        .output()
+        .map_err(|e| e.to_string())?;
+    Ok(output.status.success())
+}
+
+#[tauri::command]
+async fn claude_code_auth_status() -> Result<String, String> {
+    // Check if user is logged in
+    let output = Command::new("claude")
+        .args(["auth", "status"])
+        .output()
+        .map_err(|e| e.to_string())?;
+    // Parse output for auth status
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+}
+
+#[tauri::command]
+async fn claude_code_query(
+    prompt: String,
+    system_prompt: Option<String>,
+    allowed_tools: Vec<String>,
+) -> Result<String, String> {
+    // Send request to the sidecar bridge
+    // ... spawn sidecar, send JSON, read response
+}
 ```
 
 ---
 
-### Step 3: Create Subscription-Aware AI Client
+### Step 3: Create Frontend Claude Code Service
 
-**File**: `src/lib/ai/subscriptionClient.ts`
+**File**: `src/lib/ai/claudeCodeService.ts`
 
-This is the browser-side client that routes AI requests through the proxy instead of calling Anthropic directly.
+This service handles communication with the Tauri sidecar. It is only loaded in the desktop build.
 
 ```typescript
-const PROXY_URL = import.meta.env.VITE_AI_PROXY_URL || 'https://proxy.openscans.io'
+import { invoke } from '@tauri-apps/api/core'
 
-interface ProxyRequestOptions {
-  model: string
-  maxTokens: number
-  messages: Array<{ role: string; content: unknown }>
+interface ClaudeCodeStatus {
+  installed: boolean
+  authenticated: boolean
+  version: string | null
 }
 
-interface ProxyResponse {
-  content: Array<{ type: string; text: string }>
-  usage: { input_tokens: number; output_tokens: number }
-  quotaRemaining: number
-  quotaLimit: number
+export async function getClaudeCodeStatus(): Promise<ClaudeCodeStatus> {
+  try {
+    const installed = await invoke<boolean>('claude_code_available')
+    if (!installed) return { installed: false, authenticated: false, version: null }
+
+    const authStatus = await invoke<string>('claude_code_auth_status')
+    const authenticated = authStatus.includes('authenticated')
+
+    return { installed, authenticated, version: authStatus }
+  } catch {
+    return { installed: false, authenticated: false, version: null }
+  }
 }
 
-export async function callAnthropicViaProxy(
-  sessionToken: string,
-  options: ProxyRequestOptions
-): Promise<ProxyResponse> {
-  const response = await fetch(`${PROXY_URL}/v1/messages`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${sessionToken}`,
-    },
-    body: JSON.stringify({
-      model: options.model,
-      max_tokens: options.maxTokens,
-      messages: options.messages,
-    }),
+export async function queryClaudeCode(
+  prompt: string,
+  systemPrompt?: string
+): Promise<string> {
+  const result = await invoke<string>('claude_code_query', {
+    prompt,
+    systemPrompt,
+    allowedTools: ['Read'],  // Only need Read for image analysis
   })
-
-  if (response.status === 401) {
-    throw new Error('Session expired. Please log in again.')
-  }
-  if (response.status === 429) {
-    const data = await response.json()
-    throw new QuotaExceededError(data.used, data.limit, data.resetDate)
-  }
-  if (!response.ok) {
-    throw new Error(`Proxy error: ${response.status}`)
-  }
-
-  const data = await response.json()
-  return {
-    content: data.content,
-    usage: data.usage,
-    quotaRemaining: parseInt(response.headers.get('X-Quota-Remaining') || '0'),
-    quotaLimit: parseInt(response.headers.get('X-Quota-Limit') || '0'),
-  }
-}
-
-export class QuotaExceededError extends Error {
-  constructor(
-    public used: number,
-    public limit: number,
-    public resetDate: string
-  ) {
-    super(`AI quota exceeded: ${used}/${limit} requests used. Resets ${resetDate}.`)
-  }
+  return result
 }
 ```
 
 ---
 
-### Step 4: Create Subscription-Mode Detector
+### Step 4: Create Claude Code Detector
 
-**File**: `src/lib/ai/subscriptionDetector.ts`
+**File**: `src/lib/ai/claudeCodeDetector.ts`
 
-Implements the same detector interface as `claudeVisionDetector.ts` but routes through the proxy.
+Implements the same detector interface as other providers but routes through Claude Code.
 
 ```typescript
-import { callAnthropicViaProxy } from './subscriptionClient'
-import { useAuthStore } from '../../stores/authStore'
+import { queryClaudeCode } from './claudeCodeService'
+import { writeTemporaryImage, cleanupTemporaryImage } from './tempImageManager'
 
-export class SubscriptionDetector {
+const DETECTION_SYSTEM_PROMPT = `You are a medical imaging AI assistant specializing in vertebral body detection. You will be shown a medical image. Identify and label all visible vertebral bodies with their positions.`
+
+const ANALYSIS_SYSTEM_PROMPT = `You are a medical imaging AI assistant. Analyze the provided medical image and describe your findings in a structured radiology report format.`
+
+export class ClaudeCodeDetector {
   async detectVertebrae(instance: DicomInstance): Promise<Detection[]> {
-    const sessionToken = useAuthStore.getState().sessionToken
-    if (!sessionToken) throw new Error('Not authenticated')
+    // 1. Render the image to a temp file
+    const tempPath = await writeTemporaryImage(instance)
 
-    const imageBase64 = await instanceToBase64(instance)
+    try {
+      // 2. Send prompt through Claude Code
+      const response = await queryClaudeCode(
+        `Read the medical image at ${tempPath} and identify all visible vertebral bodies. ` +
+        `For each vertebra, provide: label (e.g., L1, L2, T12), ` +
+        `approximate x,y position as percentage of image dimensions (0-100), ` +
+        `and confidence score (0-1). ` +
+        `Return ONLY a JSON array: [{"label":"L1","x":50,"y":30,"confidence":0.95}, ...]`,
+        DETECTION_SYSTEM_PROMPT
+      )
 
-    const response = await callAnthropicViaProxy(sessionToken, {
-      model: 'claude-sonnet-4-5-20241022',
-      maxTokens: 2048,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: 'image/png', data: imageBase64 } },
-          { type: 'text', text: VERTEBRAL_DETECTION_PROMPT },
-        ],
-      }],
-    })
-
-    // Update quota display
-    useAuthStore.getState().refreshSubscription()
-
-    return parseDetectionResponse(response.content[0].text)
+      // 3. Parse the JSON response
+      return parseDetectionResponse(response)
+    } finally {
+      // 4. Clean up temp file
+      await cleanupTemporaryImage(tempPath)
+    }
   }
 
   async analyzeImage(instance: DicomInstance): Promise<string> {
-    const sessionToken = useAuthStore.getState().sessionToken
-    if (!sessionToken) throw new Error('Not authenticated')
+    const tempPath = await writeTemporaryImage(instance)
 
-    const imageBase64 = await instanceToBase64(instance)
-
-    const response = await callAnthropicViaProxy(sessionToken, {
-      model: 'claude-sonnet-4-5-20241022',
-      maxTokens: 4096,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: 'image/png', data: imageBase64 } },
-          { type: 'text', text: ANALYSIS_PROMPT },
-        ],
-      }],
-    })
-
-    useAuthStore.getState().refreshSubscription()
-
-    return response.content[0].text
+    try {
+      const response = await queryClaudeCode(
+        `Read and analyze the medical image at ${tempPath}. ` +
+        `Provide a structured radiology analysis including: ` +
+        `findings, impression, and any notable observations.`,
+        ANALYSIS_SYSTEM_PROMPT
+      )
+      return response
+    } finally {
+      await cleanupTemporaryImage(tempPath)
+    }
   }
 }
 ```
 
 ---
 
-### Step 5: Update Detector Initialization
+### Step 5: Create Temporary Image Manager
+
+**File**: `src/lib/ai/tempImageManager.ts`
+
+Manages writing viewport images to temp files for Claude Code to read.
+
+```typescript
+import { writeFile, removeFile } from '@tauri-apps/plugin-fs'
+import { tempDir, join } from '@tauri-apps/api/path'
+
+export async function writeTemporaryImage(instance: DicomInstance): Promise<string> {
+  // Reuse existing image export infrastructure to render viewport to PNG
+  const imageData = await renderInstanceToPng(instance)
+
+  const tmpDir = await tempDir()
+  const filePath = await join(tmpDir, `openscans-ai-${Date.now()}.png`)
+
+  await writeFile(filePath, imageData)
+  return filePath
+}
+
+export async function cleanupTemporaryImage(path: string): Promise<void> {
+  try {
+    await removeFile(path)
+  } catch {
+    // Ignore cleanup errors
+  }
+}
+```
+
+---
+
+### Step 6: Update Settings Store and UI
+
+**File**: `src/stores/settingsStore.ts`
+
+```typescript
+// Add to existing AI provider options:
+aiProvider: 'claude' | 'gemini' | 'openai' | 'claude-code' | 'none'
+//                                           ^^^^^^^^^^^^^ new option
+```
+
+**File**: `src/components/settings/SettingsPanel.tsx`
+
+Add Claude Code as a provider option in the AI settings section:
+
+```
+┌─ AI Detection ──────────────────────────────────────────┐
+│                                                          │
+│  Provider:  [Claude Code (Subscription) ▾]               │
+│                                                          │
+│  ┌── Claude Code Status ──────────────────────────────┐  │
+│  │  ✅ Claude Code installed (v2.1.x)                 │  │
+│  │  ✅ Authenticated (Pro subscription)               │  │
+│  │                                                    │  │
+│  │  Uses your Claude Pro/Max subscription.            │  │
+│  │  No API key needed.                                │  │
+│  └────────────────────────────────────────────────────┘  │
+│                                                          │
+│  Other providers:                                        │
+│  • Claude (API Key) — current BYOK                       │
+│  • OpenAI (API Key) — current BYOK                       │
+│  • Gemini (API Key) — current BYOK                       │
+│  • None (Mock Only) — offline                            │
+│                                                          │
+└──────────────────────────────────────────────────────────┘
+```
+
+When Claude Code is not installed or not authenticated, show setup guidance:
+
+```
+┌── Claude Code Setup ───────────────────────────────────┐
+│  ❌ Claude Code not found                              │
+│                                                        │
+│  To use your Claude subscription:                      │
+│  1. Install: npm install -g @anthropic-ai/claude-code  │
+│  2. Log in: claude login                               │
+│  3. Restart OpenScans                                  │
+│                                                        │
+│  Requires Claude Pro ($20/mo) or Max subscription.     │
+└────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Step 7: Detect Platform and Conditionally Load
+
+**File**: `src/lib/platform.ts`
+
+```typescript
+export function isTauriDesktop(): boolean {
+  return '__TAURI__' in window
+}
+```
 
 **File**: `src/hooks/useAiOperations.ts`
 
-Modify the existing `initDetector()` function to support the subscription mode:
+Update detector initialization to include Claude Code:
 
 ```typescript
-function initDetector(settings: Settings, authState: AuthState): Detector {
-  // Subscription mode: user is authenticated, use proxy
-  if (authState.isAuthenticated && authState.sessionToken) {
-    if (settings.aiProvider === 'subscription' || settings.aiProvider === 'claude') {
-      return new SubscriptionDetector()
-    }
-  }
+import { isTauriDesktop } from '../lib/platform'
 
-  // BYOK mode: user provides their own key (existing behavior)
+function initDetector(settings: Settings): Detector {
   switch (settings.aiProvider) {
+    case 'claude-code':
+      if (!isTauriDesktop()) {
+        // Fallback: Claude Code not available in browser
+        console.warn('Claude Code only available in desktop app')
+        return new MockVertebralDetector()
+      }
+      return new ClaudeCodeDetector()
+
     case 'claude':
       return new ClaudeVisionDetector(settings.aiApiKey)
     case 'openai':
@@ -395,159 +389,91 @@ function initDetector(settings: Settings, authState: AuthState): Detector {
 
 ---
 
-### Step 6: Update Settings Store
-
-**File**: `src/stores/settingsStore.ts`
-
-Add subscription-related settings:
-
-```typescript
-// Add to existing SettingsState interface:
-aiMode: 'subscription' | 'byok'  // new: which mode is active
-// existing fields unchanged: aiProvider, aiApiKey, etc.
-
-// Add action:
-setAiMode: (mode: 'subscription' | 'byok') => void
-```
-
-Default `aiMode` to `'byok'` to preserve existing behavior.
-
----
-
-### Step 7: Update Settings Panel UI
+### Step 8: Update AI Consent Flow
 
 **File**: `src/components/settings/SettingsPanel.tsx`
 
-Add a mode selector at the top of the AI section:
+The consent dialog for Claude Code mode should differ from BYOK:
 
-```
-┌─ AI Detection ──────────────────────────────────┐
-│                                                   │
-│  AI Mode:  [● Subscription]  [○ Bring Your Key]  │
-│                                                   │
-│  ── Subscription Mode ──────────────────────────  │
-│  Status: Pro Plan (142 / 200 requests remaining)  │
-│  Resets: April 1, 2026                            │
-│  [Manage Subscription]   [Log Out]                │
-│                                                   │
-│  ── OR ─────────────────────────────────────────  │
-│                                                   │
-│  ── Bring Your Own Key ─────────────────────────  │
-│  Provider: [Claude ▾]                             │
-│  API Key:  [sk-ant-••••••••••] 👁                 │
-│  (existing UI, unchanged)                         │
-│                                                   │
-└───────────────────────────────────────────────────┘
-```
+**Claude Code consent:**
+> "AI features will process images through your local Claude Code installation,
+> which uses your Claude Pro/Max subscription. Images are read locally by Claude Code
+> and sent to Anthropic's API using your subscription credentials.
+> No API key is stored in OpenScans."
 
-When subscription mode is selected and user is not authenticated, show:
-```
-┌─ Sign In ──────────────────────────┐
-│  Email: [________________]         │
-│  [Send Magic Link]                 │
-│                                    │
-│  Or continue with:                 │
-│  [GitHub]  [Google]                │
-└────────────────────────────────────┘
-```
+Key difference from BYOK: emphasize that it's the user's own subscription and their own local Claude Code, not a third-party API key.
 
 ---
 
-### Step 8: Create Quota Display Component
+### Step 9: Handle Claude Code Errors Gracefully
 
-**File**: `src/components/viewer/QuotaIndicator.tsx`
+**File**: `src/lib/ai/claudeCodeDetector.ts`
 
-Show remaining requests in the toolbar when subscription mode is active:
+Handle common failure modes:
 
 ```typescript
-export function QuotaIndicator() {
-  const subscription = useAuthStore((s) => s.subscription)
-  if (!subscription) return null
-
-  const pct = (subscription.requestsUsed / subscription.requestsLimit) * 100
-  const color = pct > 90 ? 'text-red-400' : pct > 70 ? 'text-yellow-400' : 'text-green-400'
-
-  return (
-    <div className={`text-xs ${color}`} title="AI requests remaining this period">
-      {subscription.requestsLimit - subscription.requestsUsed} / {subscription.requestsLimit}
-    </div>
-  )
+try {
+  const result = await queryClaudeCode(prompt, systemPrompt)
+  return parseResult(result)
+} catch (error) {
+  if (error.message.includes('not found') || error.message.includes('ENOENT')) {
+    throw new Error(
+      'Claude Code is not installed. Install it with: npm install -g @anthropic-ai/claude-code'
+    )
+  }
+  if (error.message.includes('not authenticated') || error.message.includes('login')) {
+    throw new Error(
+      'Claude Code is not logged in. Run "claude login" in your terminal.'
+    )
+  }
+  if (error.message.includes('rate limit') || error.message.includes('quota')) {
+    throw new Error(
+      'Claude subscription rate limit reached. Try again later or switch to API key mode.'
+    )
+  }
+  throw error
 }
 ```
 
-Display this in the viewport toolbar near the AI detection buttons.
-
 ---
 
-### Step 9: Handle Quota Exceeded Gracefully
-
-**File**: `src/hooks/useAiOperations.ts`
-
-When a `QuotaExceededError` is caught:
-
-1. Show a user-friendly error: "You've used all 200 AI requests this month. Resets on April 1."
-2. Offer upgrade path: "Upgrade to Unlimited for unrestricted access"
-3. Offer BYOK fallback: "Or switch to Bring Your Own Key mode"
-4. Disable AI buttons (but don't hide them) when quota is 0
-
----
-
-### Step 10: Add Environment Configuration
-
-**File**: `.env.example`
-
-```env
-# AI Proxy URL (subscription mode)
-VITE_AI_PROXY_URL=https://proxy.openscans.io
-
-# Leave empty for production; set for local proxy development
-# VITE_AI_PROXY_URL=http://localhost:8787
-```
-
-**File**: `vite.config.ts`
-
-Ensure the env variable is available to the app via `import.meta.env.VITE_AI_PROXY_URL`.
-
----
-
-### Step 11: Update AI Consent Flow
+### Step 10: Hide Claude Code Option in Browser Build
 
 **File**: `src/components/settings/SettingsPanel.tsx`
 
-The consent dialog should differ by mode:
-
-**Subscription mode consent:**
-> "AI features send images to Anthropic's API via the OpenScans proxy.
-> Images are sent without patient metadata. The proxy does not store images.
-> Your subscription covers the AI processing cost."
-
-**BYOK mode consent** (unchanged):
-> "Images will be sent to external AI services using your API key..."
+```typescript
+const providerOptions = [
+  // Only show Claude Code in desktop app
+  ...(isTauriDesktop() ? [{ value: 'claude-code', label: 'Claude Code (Subscription)' }] : []),
+  { value: 'claude', label: 'Claude (API Key)' },
+  { value: 'openai', label: 'OpenAI (API Key)' },
+  { value: 'gemini', label: 'Gemini (API Key)' },
+  { value: 'none', label: 'None (Mock Only)' },
+]
+```
 
 ---
 
-### Step 12: Add Tests
+### Step 11: Add Tests
 
-**File**: `src/stores/__tests__/authStore.test.ts`
+**File**: `src/lib/ai/__tests__/claudeCodeDetector.test.ts`
 
-1. Test login flow (email → magic link → verify → session)
-2. Test logout clears session
-3. Test subscription quota tracking
-4. Test session token persistence in localStorage
-5. Test expired session handling
+1. Test detection prompt formatting
+2. Test response parsing (valid JSON, malformed JSON)
+3. Test error handling (not installed, not authenticated, rate limited)
+4. Test temp file creation and cleanup
 
-**File**: `src/lib/ai/__tests__/subscriptionClient.test.ts`
+**File**: `src/lib/ai/__tests__/claudeCodeService.test.ts`
 
-1. Test proxy request formation (correct headers, body)
-2. Test quota exceeded error handling
-3. Test session expired handling (401)
-4. Test quota header parsing from response
+1. Test `getClaudeCodeStatus()` — installed, not installed, authenticated, not authenticated
+2. Test `queryClaudeCode()` with mock Tauri invoke
+3. Test timeout handling
 
-**File**: `src/lib/ai/__tests__/subscriptionDetector.test.ts`
+**File**: `src/lib/ai/__tests__/tempImageManager.test.ts`
 
-1. Test detection via proxy (mock fetch)
-2. Test analysis via proxy (mock fetch)
-3. Test unauthenticated rejection
+1. Test temp file write
+2. Test cleanup on success and failure
+3. Test unique filename generation
 
 ---
 
@@ -557,76 +483,68 @@ The consent dialog should differ by mode:
 
 | File | Purpose |
 |------|---------|
-| `proxy/src/index.ts` | Serverless proxy (Cloudflare Worker) |
-| `proxy/wrangler.toml` | Cloudflare Worker configuration |
-| `src/stores/authStore.ts` | Authentication and subscription state |
-| `src/lib/ai/subscriptionClient.ts` | Browser-side proxy client |
-| `src/lib/ai/subscriptionDetector.ts` | Detector routed through proxy |
-| `src/components/viewer/QuotaIndicator.tsx` | Remaining requests display |
-| `src/components/auth/LoginForm.tsx` | Email login / magic link UI |
-| `src/components/auth/SubscriptionStatus.tsx` | Plan status and management |
+| `src-tauri/sidecars/claude-bridge.mjs` | Node.js sidecar running Agent SDK |
+| `src-tauri/sidecars/package.json` | Sidecar dependencies |
+| `src-tauri/src/commands/claude_code.rs` | Tauri commands for Claude Code IPC |
+| `src/lib/ai/claudeCodeService.ts` | Frontend ↔ Tauri sidecar communication |
+| `src/lib/ai/claudeCodeDetector.ts` | Detector implementation via Claude Code |
+| `src/lib/ai/tempImageManager.ts` | Temp file management for image analysis |
 
 ### Modified Files
 
 | File | Change |
 |------|--------|
-| `src/stores/settingsStore.ts` | Add `aiMode` setting |
-| `src/hooks/useAiOperations.ts` | Route to subscription or BYOK detector |
-| `src/components/settings/SettingsPanel.tsx` | Add mode selector, login UI, quota display |
-| `src/components/viewer/ViewportToolbar.tsx` | Show quota indicator |
-| `.env.example` | Add `VITE_AI_PROXY_URL` |
+| `src/stores/settingsStore.ts` | Add `'claude-code'` provider option |
+| `src/hooks/useAiOperations.ts` | Route to Claude Code detector when selected |
+| `src/components/settings/SettingsPanel.tsx` | Claude Code provider UI, status display, setup guidance |
+| `src-tauri/tauri.conf.json` | Register sidecar binary |
+| `src-tauri/Cargo.toml` | Add sidecar process management (if not already present) |
 
 ### Unchanged Files
 
-| File | Why Unchanged |
-|------|--------------|
-| `src/lib/ai/claudeVisionDetector.ts` | BYOK mode preserved as-is |
-| `src/lib/ai/openaiVisionDetector.ts` | BYOK mode preserved as-is |
-| `src/lib/ai/geminiVisionDetector.ts` | BYOK mode preserved as-is |
-| `src/lib/ai/mockVertebralDetector.ts` | Offline fallback preserved as-is |
+| File | Why |
+|------|-----|
+| `src/lib/ai/claudeVisionDetector.ts` | BYOK mode unchanged |
+| `src/lib/ai/openaiVisionDetector.ts` | BYOK mode unchanged |
+| `src/lib/ai/geminiVisionDetector.ts` | BYOK mode unchanged |
+| `src/lib/ai/mockVertebralDetector.ts` | Offline fallback unchanged |
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Users can sign up with email and receive a magic link
-- [ ] Authenticated users can use AI features without providing an API key
-- [ ] The app-owned Anthropic API key is NEVER present in browser code or network requests from the browser
-- [ ] Usage quota is tracked and displayed (e.g., "142 / 200 requests remaining")
-- [ ] Quota exceeded shows a clear message with upgrade and BYOK fallback options
+- [ ] Users can select "Claude Code (Subscription)" as an AI provider in settings
+- [ ] When selected, OpenScans detects Claude Code installation and auth status
+- [ ] Setup guidance shown when Claude Code is not installed or not authenticated
+- [ ] AI detection and analysis work through Claude Code using the user's subscription
+- [ ] Temp images are created, read by Claude Code, and cleaned up
+- [ ] Error messages are clear for: not installed, not logged in, rate limited
+- [ ] Claude Code option is hidden in browser builds
 - [ ] BYOK mode continues to work exactly as before (no regression)
-- [ ] Mock detector works offline regardless of auth state
-- [ ] AI consent dialog is shown before first use in both modes
-- [ ] Session persists across page reloads (localStorage)
-- [ ] Subscription works identically in browser and Tauri desktop app
-- [ ] Proxy is stateless and stores no image data
+- [ ] Mock detector works offline regardless of Claude Code status
+- [ ] No API keys stored for Claude Code mode — subscription credentials managed by Claude Code itself
 
 ---
 
 ## Dependency Graph
 
 ```
-Step 1: Proxy (can be developed independently)
+Step 1: Sidecar (Agent SDK bridge)
     ↓
-Step 2: Auth Store ──► Step 7: Settings UI
-    ↓                      ↓
-Step 3: Subscription Client    Step 8: Quota Indicator
+Step 2: Tauri commands (Rust IPC)
     ↓
-Step 4: Subscription Detector
+Step 3: Frontend service (invoke wrapper)
     ↓
-Step 5: Detector Init Update
+Step 4: Claude Code detector (implements existing interface)
+Step 5: Temp image manager
     ↓
-Step 9: Quota Exceeded Handling
+Step 6: Settings store + UI
+Step 7: Platform detection + conditional loading
+Step 8: Consent flow update
+Step 9: Error handling
+Step 10: Browser build exclusion
     ↓
-Step 12: Tests
+Step 11: Tests
 ```
 
-Steps 1 and 2-7 can be developed in parallel. The proxy can be tested independently with curl before the frontend is connected.
-
----
-
-## Architecture Note: Why Not the Agent SDK
-
-The user's original request mentioned "Anthropic's Agent SDK." The [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-typescript) (`@anthropic-ai/claude-agent-sdk`) is a server-side framework for building autonomous coding agents — it requires Node.js, file system access, and terminal execution. It is not applicable to browser-based medical image analysis.
-
-The correct tool for OpenScans is the standard **Anthropic SDK** (`@anthropic-ai/sdk`) used via a backend proxy, which is what this task implements. The SDK's `messages.create()` API with vision capabilities is exactly what the existing BYOK detectors already use.
+Steps 1-3 (backend) and steps 5-10 (frontend) can be developed in parallel.
