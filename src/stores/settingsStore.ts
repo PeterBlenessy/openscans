@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { storeKey, getKey, deleteKey } from '../lib/utils/credentials'
 
 export type Theme = 'dark' | 'light'
 export type ScrollDirection = 'natural' | 'inverted'
@@ -12,9 +13,12 @@ export type AIProvider = 'claude' | 'gemini' | 'openai' | 'none'
  *
  * Settings are automatically saved to localStorage and restored on page load.
  *
- * SECURITY NOTE: API keys are stored in localStorage which is NOT secure.
- * This is acceptable for a demo/prototype but should be replaced with
- * a secure backend for production use.
+ * SECURITY NOTE: API keys are NEVER persisted to localStorage. On desktop
+ * (Tauri) they are stored in the OS keychain via `src/lib/utils/credentials.ts`
+ * and hydrated into the in-memory store at startup. On web they live only in
+ * memory for the current session. The `aiApiKey` / `geminiApiKey` /
+ * `openaiApiKey` fields below remain on the store for synchronous reads, but
+ * are stripped from anything written to localStorage.
  */
 export interface SettingsState {
   // Appearance
@@ -42,11 +46,11 @@ export interface SettingsState {
   aiEnabled: boolean
   /** Which AI API provider to use */
   aiProvider: AIProvider
-  /** Claude API key (insecure localStorage storage - demo only) */
+  /** Claude API key (in-memory only; persisted to OS keychain on desktop) */
   aiApiKey: string
-  /** Google Gemini API key (insecure localStorage storage - demo only) */
+  /** Google Gemini API key (in-memory only; persisted to OS keychain on desktop) */
   geminiApiKey: string
-  /** OpenAI API key (insecure localStorage storage - demo only) */
+  /** OpenAI API key (in-memory only; persisted to OS keychain on desktop) */
   openaiApiKey: string
   /** User has consented to sending images to external API */
   aiConsentGiven: boolean
@@ -86,6 +90,19 @@ export interface SettingsState {
 
 const STORAGE_KEY = 'openscans-settings'
 
+/**
+ * API-key fields that must NEVER be written to localStorage. They are kept in
+ * the in-memory store only and (on desktop) mirrored to the OS keychain.
+ */
+const SENSITIVE_KEYS = ['aiApiKey', 'geminiApiKey', 'openaiApiKey'] as const
+
+/** Map of in-memory key field -> keychain credential name. */
+const KEYCHAIN_NAMES = {
+  aiApiKey: 'claude',
+  geminiApiKey: 'gemini',
+  openaiApiKey: 'openai',
+} as const
+
 const defaultSettings = {
   theme: 'dark' as Theme,
   scrollDirection: 'natural' as ScrollDirection,
@@ -111,7 +128,19 @@ function loadSettings(): Partial<typeof defaultSettings> {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
-      return JSON.parse(saved)
+      const parsed = JSON.parse(saved) as Record<string, unknown>
+
+      // Migration: purge any legacy plaintext API keys persisted at rest by
+      // older builds. We never want these to live in localStorage again.
+      const hadSensitive = SENSITIVE_KEYS.some((k) => k in parsed)
+      if (hadSensitive) {
+        for (const k of SENSITIVE_KEYS) {
+          delete parsed[k]
+        }
+        saveSettings(parsed as Partial<typeof defaultSettings>)
+      }
+
+      return parsed as Partial<typeof defaultSettings>
     }
   } catch (e) {
     console.error('Failed to load settings:', e)
@@ -126,9 +155,31 @@ function loadSettings(): Partial<typeof defaultSettings> {
  */
 function saveSettings(settings: Partial<typeof defaultSettings>) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
+    // Strip API keys before persisting — they must never hit localStorage.
+    const sanitized: Record<string, unknown> = { ...settings }
+    for (const k of SENSITIVE_KEYS) {
+      delete sanitized[k]
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized))
   } catch (e) {
     console.error('Failed to save settings:', e)
+  }
+}
+
+/**
+ * Persist an API key to the OS keychain (desktop only — no-op on web).
+ *
+ * An empty value deletes the keychain entry rather than storing a blank
+ * secret, so clearing a key in Settings removes it at rest.
+ *
+ * @param name - Keychain credential name ('claude' | 'gemini' | 'openai')
+ * @param value - Secret value, or '' to delete
+ */
+async function persistKey(name: string, value: string): Promise<void> {
+  if (value === '') {
+    await deleteKey(name)
+  } else {
+    await storeKey(name, value)
   }
 }
 
@@ -182,6 +233,25 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
   // Apply initial theme
   applyTheme(initialSettings.theme)
 
+  // Hydrate in-memory API keys from the OS keychain (desktop only). Runs
+  // asynchronously so store creation stays synchronous; getKey() is a no-op
+  // returning null on web, so this is harmless there. Each key is only set if
+  // the keychain actually holds a value, so we don't clobber the defaults.
+  void (async () => {
+    const [claude, gemini, openai] = await Promise.all([
+      getKey(KEYCHAIN_NAMES.aiApiKey),
+      getKey(KEYCHAIN_NAMES.geminiApiKey),
+      getKey(KEYCHAIN_NAMES.openaiApiKey),
+    ])
+    const hydrated: Partial<SettingsState> = {}
+    if (claude) hydrated.aiApiKey = claude
+    if (gemini) hydrated.geminiApiKey = gemini
+    if (openai) hydrated.openaiApiKey = openai
+    if (Object.keys(hydrated).length > 0) {
+      set(hydrated)
+    }
+  })()
+
   return {
     ...initialSettings,
 
@@ -229,17 +299,21 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
 
     setAiApiKey: (aiApiKey) => {
       set({ aiApiKey })
+      // Key is never persisted to localStorage; mirror to keychain on desktop.
       saveSettings({ ...get(), aiApiKey })
+      void persistKey(KEYCHAIN_NAMES.aiApiKey, aiApiKey)
     },
 
     setGeminiApiKey: (geminiApiKey) => {
       set({ geminiApiKey })
       saveSettings({ ...get(), geminiApiKey })
+      void persistKey(KEYCHAIN_NAMES.geminiApiKey, geminiApiKey)
     },
 
     setOpenaiApiKey: (openaiApiKey) => {
       set({ openaiApiKey })
       saveSettings({ ...get(), openaiApiKey })
+      void persistKey(KEYCHAIN_NAMES.openaiApiKey, openaiApiKey)
     },
 
     setAiConsentGiven: (aiConsentGiven) => {
@@ -256,6 +330,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
       applyTheme(defaultSettings.theme)
       set(defaultSettings)
       saveSettings(defaultSettings)
+      // Clear any keychain-stored keys too (defaults are empty strings).
+      void persistKey(KEYCHAIN_NAMES.aiApiKey, defaultSettings.aiApiKey)
+      void persistKey(KEYCHAIN_NAMES.geminiApiKey, defaultSettings.geminiApiKey)
+      void persistKey(KEYCHAIN_NAMES.openaiApiKey, defaultSettings.openaiApiKey)
     },
   }
 })
