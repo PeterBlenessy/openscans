@@ -35,7 +35,7 @@ export function LeftDrawer({ state, onLoadNewFiles, onOpenSettings, onOpenKeyboa
 
   const handleStudyClick = async (entry: RecentStudyEntry) => {
     console.log(
-      `[LeftDrawer] Clicked study: ${entry.studyInstanceUID}, current studies in store: ${studies.length}`
+      `[LeftDrawer] Study clicked, current studies in store: ${studies.length}`
     )
 
     // Check if this study is already loaded

@@ -12,12 +12,26 @@ import { DicomStudy } from '@/types'
 const cache = new Map<string, DicomStudy[]>()
 
 /**
+ * Produce a short, non-reversible token for a cache key so logs never expose
+ * the raw folder path or directory-handle id (which can embed a patient's name
+ * or folder). Returns the first 8 chars of a simple non-cryptographic hash.
+ */
+function keyToken(key: string): string {
+  let hash = 0
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash << 5) - hash + key.charCodeAt(i)
+    hash |= 0 // force 32-bit
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0').slice(0, 8)
+}
+
+/**
  * Get cached studies for a folder/directory
  */
 export function getCachedStudies(key: string): DicomStudy[] | undefined {
   const cached = cache.get(key)
   if (cached) {
-    console.log(`[StudyCache] ⚡ Cache hit for: ${key}`)
+    console.log(`[StudyCache] ⚡ Cache hit for study folder <${keyToken(key)}>`)
   }
   return cached
 }
@@ -27,7 +41,7 @@ export function getCachedStudies(key: string): DicomStudy[] | undefined {
  */
 export function cacheStudies(key: string, studies: DicomStudy[]): void {
   cache.set(key, studies)
-  console.log(`[StudyCache] Cached ${studies.length} studies for: ${key}`)
+  console.log(`[StudyCache] Cached ${studies.length} studies for study folder <${keyToken(key)}>`)
 }
 
 /**
@@ -35,7 +49,7 @@ export function cacheStudies(key: string, studies: DicomStudy[]): void {
  */
 export function clearCachedStudies(key: string): void {
   cache.delete(key)
-  console.log(`[StudyCache] Cleared cache for: ${key}`)
+  console.log(`[StudyCache] Cleared cache for study folder <${keyToken(key)}>`)
 }
 
 /**

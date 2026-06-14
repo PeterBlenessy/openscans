@@ -39,7 +39,7 @@ export async function saveFile(blob: Blob, filename: string): Promise<void> {
 
     // Write file
     await writeFile(savePath, uint8Array)
-    console.log(`[Tauri] File saved to: ${savePath}`)
+    console.log(`[Tauri] File saved (${uint8Array.length} bytes)`)
   } else {
     // Web mode - use file-saver library
     browserSaveAs(blob, filename)
