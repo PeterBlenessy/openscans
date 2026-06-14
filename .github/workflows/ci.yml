@@ -7,6 +7,10 @@ on:
   # Allow the release workflow to reuse this as a pre-release gate.
   workflow_call:
 
+# Least-privilege token: these jobs only read the repo.
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     name: Build & Unit Tests
