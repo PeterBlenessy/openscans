@@ -9,11 +9,16 @@ permissions:
   contents: write
 
 jobs:
+  # Reuse the CI build + unit tests as a pre-release gate, mirroring the
+  # Notesage release pipeline. A release never ships from a red build.
+  tests:
+    uses: ./.github/workflows/ci.yml
+
   create-release:
+    needs: tests
     runs-on: ubuntu-latest
     outputs:
       release_id: ${{ steps.create-release.outputs.result }}
-      release_upload_url: ${{ steps.create-release.outputs.upload_url }}
 
     steps:
       - uses: actions/checkout@v4
@@ -32,14 +37,19 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const tag = context.ref.replace('refs/tags/', '');
+            // Flag alpha/beta/rc tags as prereleases so GitHub's
+            // `releases/latest` resolver (used by the updater endpoint) keeps
+            // pointing stable users at the latest stable build.
+            const isPrerelease = /-(alpha|beta|rc)(\.|$)/.test(tag);
             const { data } = await github.rest.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              tag_name: context.ref.replace('refs/tags/', ''),
-              name: `OpenScans ${context.ref.replace('refs/tags/', '')}`,
+              tag_name: tag,
+              name: `OpenScans ${tag}`,
               body: 'Release notes will be updated after builds complete.',
               draft: true,
-              prerelease: false
+              prerelease: isPrerelease
             })
             return data.id
 
@@ -63,7 +73,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v4
         with:
           version: 10
 
@@ -79,6 +89,11 @@ jobs:
           # macOS universal build requires both targets
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
       - name: Install dependencies (Ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
@@ -88,8 +103,11 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Update version from tag
+      - name: Update version from tag and configure signing
         shell: bash
+        env:
+          # Only used to decide whether to emit (signed) updater artifacts.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
           # Extract version from tag (remove 'v' prefix)
           VERSION=${GITHUB_REF#refs/tags/v}
@@ -98,30 +116,51 @@ jobs:
           # Update package.json
           sed "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" package.json > package.json.tmp && mv package.json.tmp package.json
 
-          # Update tauri.conf.json
+          # Update tauri.conf.json (first "version" field on its own line)
           sed "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp && mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
 
           # Update Cargo.toml
           sed "s/^version = \"[^\"]*\"/version = \"$VERSION\"/" src-tauri/Cargo.toml > src-tauri/Cargo.toml.tmp && mv src-tauri/Cargo.toml.tmp src-tauri/Cargo.toml
 
-          echo "Updated all config files to version $VERSION"
-          cat package.json | grep version
-          cat src-tauri/tauri.conf.json | grep version
-          cat src-tauri/Cargo.toml | grep version
+          # Enable signed updater artifacts ONLY when the update-signing key is
+          # configured as a secret. Without it the build still succeeds — it just
+          # produces unsigned installers and no latest.json (no auto-update).
+          if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            sed 's/"createUpdaterArtifacts": false/"createUpdaterArtifacts": true/' src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp && mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
+            echo "Update signing key present -> emitting signed updater artifacts (latest.json)."
+          else
+            echo "No TAURI_SIGNING_PRIVATE_KEY secret -> building without updater artifacts."
+          fi
 
-      # Build Tauri app (unsigned for now - signing can be added later by configuring secrets)
+          echo "Updated config files to version $VERSION"
+          grep '"version"' package.json | head -1
+          grep '"version"' src-tauri/tauri.conf.json | head -1
+          grep '^version' src-tauri/Cargo.toml
+          grep 'createUpdaterArtifacts' src-tauri/tauri.conf.json
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Note: macOS code signing requires APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD,
-          # APPLE_SIGNING_IDENTITY, APPLE_ID, APPLE_PASSWORD secrets to be configured.
-          # Without these, builds will be unsigned (users need to right-click -> Open on first launch)
+          # macOS code signing & notarization. ENABLE_CODE_SIGNING is empty when
+          # the cert secret is unset, so tauri-action skips signing and the build
+          # still succeeds (unsigned — users right-click -> Open on first launch).
+          ENABLE_CODE_SIGNING: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          # Tauri update signing. When unset, createUpdaterArtifacts was left
+          # false above, so no signing is attempted.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
-          tagName: ${{ github.ref_name }}
-          releaseName: "OpenScans v__VERSION__"
-          releaseBody: "See https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }} for release notes"
+          # tagName/releaseName intentionally omitted: passing them alongside
+          # releaseId makes tauri-action attempt a second createRelease for the
+          # same tag. releaseId alone is enough to upload the build assets.
           args: ${{ matrix.args }}
 
   publish-release:
