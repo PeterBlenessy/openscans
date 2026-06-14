@@ -10,7 +10,8 @@ import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { mockDetector } from '@/lib/ai/mockVertebralDetector'
 import { initDetector, getApiKeyForProvider } from '@/lib/ai/aiDetectorManager'
 import { isTauri } from '@/lib/utils/platform'
-import { AiSendConfirmDialog, confirmAiSend } from './AiSendConfirmDialog'
+import { AiSendConfirmDialog } from './AiSendConfirmDialog'
+import { confirmAiSend } from '@/lib/ai/ai-send-confirm'
 
 /** Human-readable provider names for confirmation copy. */
 const PROVIDER_DISPLAY_NAMES: Record<string, string> = {

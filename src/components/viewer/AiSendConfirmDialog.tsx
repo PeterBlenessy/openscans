@@ -1,46 +1,15 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
+import { CONFIRM_EVENT, type ConfirmRequestDetail } from '@/lib/ai/ai-send-confirm'
 
 /**
  * Per-send confirmation dialog for cloud AI requests.
  *
- * The DICOM pixel data physically leaves the device when a cloud provider
- * (Claude / OpenAI / Gemini) is invoked. This dialog forces an explicit,
- * per-send acknowledgement of that egress — and, since the user must click
- * "Send to <provider>" every time, it doubles as the consent gate.
- *
- * It is driven imperatively via {@link confirmAiSend} so it can be awaited from
- * non-React code (the `useAiOperations` hook) rather than threaded through props.
  * Mount `<AiSendConfirmDialog />` once in a persistent surface (the viewport
- * toolbar) and any call site can `await confirmAiSend(provider)`.
+ * toolbar); any call site can then `await confirmAiSend(provider)` (from
+ * `@/lib/ai/ai-send-confirm`) and this dialog resolves the promise.
  */
-
-const CONFIRM_EVENT = 'openscans:ai-send-confirm-request'
-
-interface ConfirmRequestDetail {
-  provider: string
-  resolve: (confirmed: boolean) => void
-}
-
-/**
- * Request per-send confirmation before an image is sent to a cloud provider.
- *
- * @param provider - Human-readable provider name shown in the dialog
- * @returns Promise resolving to `true` if the user confirmed, `false` if cancelled
- */
-export function confirmAiSend(provider: string): Promise<boolean> {
-  // SSR / non-DOM safety: if there's no window, deny the send.
-  if (typeof window === 'undefined') {
-    return Promise.resolve(false)
-  }
-
-  return new Promise<boolean>((resolve) => {
-    const detail: ConfirmRequestDetail = { provider, resolve }
-    window.dispatchEvent(new CustomEvent<ConfirmRequestDetail>(CONFIRM_EVENT, { detail }))
-  })
-}
-
 export function AiSendConfirmDialog() {
   const [pending, setPending] = useState<ConfirmRequestDetail | null>(null)
 

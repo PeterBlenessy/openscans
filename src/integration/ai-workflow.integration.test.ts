@@ -53,7 +53,7 @@ vi.mock('@/lib/utils/platform', () => ({
 }))
 
 // Auto-confirm the per-send dialog so cloud sends proceed in tests
-vi.mock('@/components/viewer/AiSendConfirmDialog', () => ({
+vi.mock('@/lib/ai/ai-send-confirm', () => ({
   confirmAiSend: vi.fn(async () => true),
 }))
 
@@ -67,7 +67,7 @@ vi.mock('@/lib/ai/aiDetectorManager', () => ({
     const { mockDetector } = await import('@/lib/ai/mockVertebralDetector')
     return mockDetector
   }),
-  getApiKeyForProvider: vi.fn((provider: string, keys: any) => {
+  getApiKeyForProvider: vi.fn((_provider: string, keys: { aiApiKey?: string; geminiApiKey?: string; openaiApiKey?: string }) => {
     return keys.aiApiKey || keys.geminiApiKey || keys.openaiApiKey || ''
   }),
 }))

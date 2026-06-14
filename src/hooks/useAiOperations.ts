@@ -6,7 +6,7 @@ import { useSettingsStore } from '../stores/settingsStore'
 import { mockDetector } from '../lib/ai/mockVertebralDetector'
 import { initDetector, getApiKeyForProvider } from '../lib/ai/aiDetectorManager'
 import { isTauri } from '../lib/utils/platform'
-import { confirmAiSend } from '../components/viewer/AiSendConfirmDialog'
+import { confirmAiSend } from '../lib/ai/ai-send-confirm'
 
 /** Human-readable provider names for confirmation copy. */
 const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
