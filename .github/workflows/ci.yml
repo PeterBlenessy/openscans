@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Allow the release workflow to reuse this as a pre-release gate.
+  workflow_call:
+
+# Least-privilege token: these jobs only read the repo.
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build & Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # `tsc && vite build` — this is the web-browser build. It is the real
+      # regression gate: if the web app stops building, fail here.
+      - name: Build (typecheck + web bundle)
+        run: pnpm build
+
+      # `pnpm test` runs vitest in watch mode; use the non-watch runner in CI.
+      - name: Unit tests
+        run: pnpm exec vitest run
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    # Advisory only — lint warnings should not block a build or release.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
