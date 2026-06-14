@@ -9,6 +9,16 @@ import { useSettingsStore } from '@/stores/settingsStore'
 import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { mockDetector } from '@/lib/ai/mockVertebralDetector'
 import { initDetector, getApiKeyForProvider } from '@/lib/ai/aiDetectorManager'
+import { isTauri } from '@/lib/utils/platform'
+import { AiSendConfirmDialog } from './AiSendConfirmDialog'
+import { confirmAiSend } from '@/lib/ai/ai-send-confirm'
+
+/** Human-readable provider names for confirmation copy. */
+const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
+  claude: 'Claude (Anthropic)',
+  gemini: 'Gemini (Google)',
+  openai: 'OpenAI',
+}
 
 interface ViewportToolbarProps {
   className?: string
@@ -42,6 +52,9 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
 
   const { handleError } = useErrorHandler()
   const showModal = useAiAnalysisStore((state) => state.showModal)
+
+  // Cloud AI is desktop-only — gate every AI entry point on the platform.
+  const showAiControls = isTauri()
 
   // AI settings
   const aiEnabled = useSettingsStore((state) => state.aiEnabled)
@@ -114,10 +127,10 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
   const handleAiDetection = async () => {
     if (!currentInstance || isDetecting) return
 
-    try {
-      setDetecting(true)
-      deleteAnnotationsForInstance(currentInstance.sopInstanceUID, true)
+    // Cloud AI is desktop-only — never attempt a detection from the web build.
+    if (!isTauri()) return
 
+    try {
       // Use AI detector if enabled, otherwise use mock detector
       let detector: { detectVertebrae: typeof mockDetector.detectVertebrae } = mockDetector
 
@@ -128,6 +141,17 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
           detector = aiDetector
         }
       }
+
+      // The mock detector runs locally (no egress) — only confirm when a real
+      // cloud detector will actually send the image.
+      const usingCloudDetector = detector !== mockDetector
+      if (usingCloudDetector) {
+        const confirmed = await confirmAiSend(PROVIDER_DISPLAY_NAMES[aiProvider] || aiProvider)
+        if (!confirmed) return
+      }
+
+      setDetecting(true)
+      deleteAnnotationsForInstance(currentInstance.sopInstanceUID, true)
 
       const result = await detector.detectVertebrae(currentInstance)
       addAnnotations(result.annotations)
@@ -174,10 +198,13 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
     // Check if there's already an analysis for this image
     const existingAnalysis = getAnalysisForInstance(currentInstance.sopInstanceUID)
     if (existingAnalysis) {
-      // Show the existing analysis instead of generating a new one
+      // Show the existing analysis instead of generating a new one (no egress).
       showModal(existingAnalysis.id)
       return
     }
+
+    // Cloud AI is desktop-only — radiology analysis always needs a cloud call.
+    if (!isTauri()) return
 
     // Get current study UID
     const studyUID = currentStudy?.studyInstanceUID
@@ -195,6 +222,11 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
       )
       return
     }
+
+    // Analysis always sends the image to a cloud provider — confirm the egress
+    // (and consent) before anything leaves the device.
+    const confirmed = await confirmAiSend(PROVIDER_DISPLAY_NAMES[aiProvider] || aiProvider)
+    if (!confirmed) return
 
     try {
       setAnalyzing(true)
@@ -433,29 +465,39 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
         }
       />
 
-      <ToolbarDivider />
+      {/* AI controls — desktop-only. Cloud vision (Claude/OpenAI/Gemini) sends
+          DICOM pixels off-device, so the AI entry points are not rendered in
+          the web build at all. */}
+      {showAiControls && (
+        <>
+          <ToolbarDivider />
 
-      {/* AI Vertebrae Detection */}
-      <ToolbarButton
-        onClick={handleAiDetection}
-        title="AI vertebrae detection (M)"
-        disabled={!currentInstance || isDetecting || isAnalyzing}
-        data-testid="ai-detection-button"
-        icon={<Target className="w-4 h-4" />}
-      />
+          {/* AI Vertebrae Detection */}
+          <ToolbarButton
+            onClick={handleAiDetection}
+            title="AI vertebrae detection (M)"
+            disabled={!currentInstance || isDetecting || isAnalyzing}
+            data-testid="ai-detection-button"
+            icon={<Target className="w-4 h-4" />}
+          />
 
-      {/* AI Radiology Analysis */}
-      <ToolbarButton
-        onClick={handleAiAnalysis}
-        title={
-          currentInstance && getAnalysisForInstance(currentInstance.sopInstanceUID)
-            ? "View AI analysis (N)"
-            : "AI radiology analysis (N)"
-        }
-        disabled={!currentInstance || isDetecting || isAnalyzing}
-        data-testid="ai-analysis-button"
-        icon={<FileText className="w-4 h-4" />}
-      />
+          {/* AI Radiology Analysis */}
+          <ToolbarButton
+            onClick={handleAiAnalysis}
+            title={
+              currentInstance && getAnalysisForInstance(currentInstance.sopInstanceUID)
+                ? "View AI analysis (N)"
+                : "AI radiology analysis (N)"
+            }
+            disabled={!currentInstance || isDetecting || isAnalyzing}
+            data-testid="ai-analysis-button"
+            icon={<FileText className="w-4 h-4" />}
+          />
+
+          {/* Per-send confirmation dialog (imperative, awaited by the handlers) */}
+          <AiSendConfirmDialog />
+        </>
+      )}
     </div>
   )
 }

@@ -3,8 +3,9 @@ import { create } from 'zustand'
 export interface RecentStudyEntry {
   id: string
   studyInstanceUID: string
-  patientName: string
-  patientID: string
+  // NOTE: patient identifiers (patientName/patientID) are intentionally NOT stored
+  // in recents. The recents list persists to localStorage and must never hold PHI.
+  // Only study-level descriptors (date, description, counts) are kept.
   studyDate: string
   studyDescription: string
   seriesCount: number
@@ -27,7 +28,31 @@ function loadRecentStudies(): RecentStudyEntry[] {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
-      return JSON.parse(saved)
+      const parsed: unknown = JSON.parse(saved)
+      if (!Array.isArray(parsed)) return []
+
+      // Migration/purge: older builds persisted patientName/patientID into
+      // localStorage. Strip those PHI fields off every loaded entry so any
+      // previously-persisted patient identifiers are removed on next load.
+      let purged = false
+      const cleaned = parsed.map((raw) => {
+        const entry = raw as RecentStudyEntry & {
+          patientName?: unknown
+          patientID?: unknown
+        }
+        if ('patientName' in entry || 'patientID' in entry) {
+          purged = true
+          delete entry.patientName
+          delete entry.patientID
+        }
+        return entry as RecentStudyEntry
+      })
+
+      // Re-persist immediately so the purge is durable, not just in-memory.
+      if (purged) {
+        saveRecentStudies(cleaned)
+      }
+      return cleaned
     }
   } catch (e) {
     console.error('Failed to load recent studies:', e)

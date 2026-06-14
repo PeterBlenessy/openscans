@@ -5,6 +5,19 @@ import { AiAnalysis } from '../stores/aiAnalysisStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { mockDetector } from '../lib/ai/mockVertebralDetector'
 import { initDetector, getApiKeyForProvider } from '../lib/ai/aiDetectorManager'
+import { isTauri } from '../lib/utils/platform'
+import { confirmAiSend } from '../lib/ai/ai-send-confirm'
+
+/** Human-readable provider names for confirmation copy. */
+const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
+  claude: 'Claude (Anthropic)',
+  gemini: 'Gemini (Google)',
+  openai: 'OpenAI',
+}
+
+function providerDisplayName(provider: string): string {
+  return PROVIDER_DISPLAY_NAMES[provider] || provider
+}
 
 interface UseAiOperationsOptions {
   currentInstance: DicomInstance | null
@@ -78,10 +91,18 @@ export function useAiOperations(options: UseAiOperationsOptions): UseAiOperation
   const handleAiDetection = useCallback(async () => {
     if (!currentInstance || isDetecting) return
 
-    try {
-      setDetecting(true)
-      deleteAnnotationsForInstance(currentInstance.sopInstanceUID, true)
+    // Cloud AI is desktop-only. On web, the only available detector is the
+    // local mock; never attempt a cloud call.
+    if (!isTauri()) {
+      handleError(
+        'AI detection requires the OpenScans desktop app.',
+        'AI Detection',
+        'info'
+      )
+      return
+    }
 
+    try {
       // Get AI settings
       const aiSettings = useSettingsStore.getState()
       let detector = mockDetector
@@ -99,6 +120,21 @@ export function useAiOperations(options: UseAiOperationsOptions): UseAiOperation
         }
       }
 
+      // A cloud provider will run only when we resolved a real (configured)
+      // detector. The mock detector runs locally with zero egress, so it must
+      // NOT trigger the confirmation/consent gate.
+      const usingCloudDetector = detector !== mockDetector
+      if (usingCloudDetector) {
+        const confirmed = await confirmAiSend(providerDisplayName(aiSettings.aiProvider))
+        if (!confirmed) {
+          // User aborted the send before any image left the device.
+          return
+        }
+      }
+
+      setDetecting(true)
+      deleteAnnotationsForInstance(currentInstance.sopInstanceUID, true)
+
       const result = await detector.detectVertebrae(currentInstance)
       addAnnotations(result.annotations)
       console.log(`AI detection completed in ${result.processingTimeMs.toFixed(0)}ms with ${result.confidence.toFixed(2)} confidence`)
@@ -108,7 +144,7 @@ export function useAiOperations(options: UseAiOperationsOptions): UseAiOperation
       console.error('AI detection failed:', error)
       setDetecting(false, errorMessage)
     }
-  }, [currentInstance, isDetecting, setDetecting, deleteAnnotationsForInstance, addAnnotations])
+  }, [currentInstance, isDetecting, setDetecting, deleteAnnotationsForInstance, addAnnotations, handleError])
 
   /**
    * Triggers AI radiology analysis on the current instance.
@@ -117,6 +153,17 @@ export function useAiOperations(options: UseAiOperationsOptions): UseAiOperation
    */
   const handleAiAnalysis = useCallback(async () => {
     if (!currentInstance || isAnalyzing) return
+
+    // Cloud AI is desktop-only. Radiology analysis always requires a cloud
+    // provider, so it is unavailable on web.
+    if (!isTauri()) {
+      handleError(
+        'AI radiology analysis requires the OpenScans desktop app.',
+        'AI Analysis',
+        'info'
+      )
+      return
+    }
 
     const studyUID = currentStudy?.studyInstanceUID
     if (!studyUID) {
@@ -132,6 +179,13 @@ export function useAiOperations(options: UseAiOperationsOptions): UseAiOperation
         'AI Analysis',
         'warning'
       )
+      return
+    }
+
+    // Analysis always sends the image to a cloud provider — confirm the egress
+    // (and, implicitly, consent) before anything leaves the device.
+    const confirmed = await confirmAiSend(providerDisplayName(aiSettings.aiProvider))
+    if (!confirmed) {
       return
     }
 

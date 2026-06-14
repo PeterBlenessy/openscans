@@ -1,4 +1,7 @@
 import { useEffect, ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { useSettingsStore } from '@/stores/settingsStore'
+import { themeClasses } from '@/lib/utils'
 
 interface ModalProps {
   show: boolean
@@ -14,8 +17,8 @@ interface ModalProps {
 }
 
 /**
- * Reusable modal component with dark theme styling.
- * Handles backdrop clicks, escape key, and provides consistent layout.
+ * Reusable modal component. Follows the active app theme (dark/light) and
+ * handles backdrop clicks, escape key, and provides consistent layout.
  *
  * @example
  * ```tsx
@@ -42,6 +45,8 @@ export function Modal({
   maxWidth = 'max-w-3xl',
   maxHeight = 'max-h-[80vh]'
 }: ModalProps) {
+  const theme = useSettingsStore((s) => s.theme)
+
   // Close on Escape key
   useEffect(() => {
     if (!show) return
@@ -58,20 +63,24 @@ export function Modal({
 
   if (!show) return null
 
-  return (
+  // Render through a portal to document.body so the overlay escapes any
+  // ancestor stacking context (e.g. a toolbar with transform/backdrop-filter).
+  // Without this, a modal mounted inside such an ancestor can be painted
+  // *below* sibling overlays like the annotation/spine-marker layer.
+  return createPortal(
     <div
       className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
-        className={`bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-2xl ${maxWidth} w-full ${maxHeight} flex flex-col`}
+        className={`${themeClasses.bg(theme)} border ${themeClasses.border(theme)} rounded-lg shadow-2xl ${maxWidth} w-full ${maxHeight} flex flex-col`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#2a2a2a]">
+        <div className={`flex items-center justify-between p-4 border-b ${themeClasses.border(theme)}`}>
           <div className="flex items-center gap-2">
-            {icon && <div className="w-5 h-5 text-white">{icon}</div>}
-            <h2 className="text-lg font-semibold text-white">{title}</h2>
+            {icon && <div className={`w-5 h-5 ${themeClasses.text(theme)}`}>{icon}</div>}
+            <h2 className={`text-lg font-semibold ${themeClasses.text(theme)}`}>{title}</h2>
             {headerLeftActions}
           </div>
           <div className="flex items-center gap-2">
@@ -79,7 +88,8 @@ export function Modal({
             <button
               onClick={onClose}
               title="Close"
-              className="p-1.5 text-gray-400 hover:text-white hover:bg-[#2a2a2a] rounded transition-colors"
+              aria-label="Close dialog"
+              className={`p-1.5 rounded transition-colors ${themeClasses.textSecondary(theme)} ${themeClasses.hoverText(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -100,11 +110,12 @@ export function Modal({
 
         {/* Footer (optional) */}
         {footer && (
-          <div className="p-4 border-t border-[#2a2a2a]">
+          <div className={`p-4 border-t ${themeClasses.border(theme)}`}>
             {footer}
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

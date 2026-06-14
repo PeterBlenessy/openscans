@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Theme, ScrollDirection, AIProvider } from '@/stores/settingsStore'
 import { themeClasses } from '@/lib/utils'
 import { useSettingsState } from '@/hooks/useSettingsState'
+import { isTauri } from '@/lib/utils/platform'
 
 interface SettingsPanelProps {
   show: boolean
@@ -30,6 +31,9 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
   if (!show) return null
 
   const isDark = settings.theme === 'dark'
+  // Cloud AI is desktop-only — the entire AI section (provider picker, API-key
+  // inputs, enable toggle) is hidden in the web build.
+  const showAiSettings = isTauri()
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -132,15 +136,18 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
             </div>
           </SettingsSection>
 
-          {/* AI Detection Section */}
+          {/* AI Detection Section — desktop-only */}
+          {showAiSettings && (
           <SettingsSection title="AI Detection" isDark={isDark}>
             <SettingsRow label="Enable AI Detection" description="Use AI vision models for vertebrae detection" isDark={isDark}>
               <ToggleSwitch
                 checked={settings.aiEnabled}
-                onChange={(enabled) => {
+                onChange={async (enabled) => {
                   if (enabled && !settings.aiConsentGiven) {
-                    // Show consent prompt
-                    const consent = confirm(
+                    // Show consent prompt. NOTE: in the Tauri desktop build
+                    // window.confirm() returns a Promise, so it must be awaited
+                    // (awaiting the plain boolean the browser returns is a no-op).
+                    const consent = await window.confirm(
                       'AI Detection Privacy Notice:\n\n' +
                       'When you explicitly use the AI analysis or detection features, DICOM images will be sent to external AI services (Claude, Gemini, or OpenAI API). ' +
                       'Images are sent without patient metadata, but the pixel data itself leaves your device when you click the AI analysis button.\n\n' +
@@ -291,6 +298,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
               </>
             )}
           </SettingsSection>
+          )}
 
           {/* Data Section */}
           <SettingsSection title="Data Management" isDark={isDark}>
@@ -310,19 +318,23 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
               <p className="text-xs text-gray-500 mb-3">
                 Remove all stored AI analyses and annotations from localStorage
               </p>
-              <button
-                onClick={() => {
-                  if (confirm('Clear all stored AI analyses and annotations? This cannot be undone.')) {
-                    localStorage.removeItem('openscans-ai-analyses')
-                    localStorage.removeItem('openscans-annotations')
-                    // Reload page to clear in-memory state
-                    window.location.reload()
-                  }
-                }}
-                className={`px-3 py-2 text-sm rounded transition-colors ${isDark ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}`}
-              >
-                Clear All AI Data
-              </button>
+              <div className="flex justify-end">
+                <button
+                  onClick={async () => {
+                    // window.confirm() returns a Promise in the Tauri desktop
+                    // build, so it must be awaited (no-op on web's boolean).
+                    if (await window.confirm('Clear all stored AI analyses and annotations? This cannot be undone.')) {
+                      localStorage.removeItem('openscans-ai-analyses')
+                      localStorage.removeItem('openscans-annotations')
+                      // Reload page to clear in-memory state
+                      window.location.reload()
+                    }
+                  }}
+                  className={`px-3 py-2 text-sm rounded transition-colors ${isDark ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}`}
+                >
+                  Clear All AI Data
+                </button>
+              </div>
             </div>
           </SettingsSection>
         </div>

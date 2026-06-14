@@ -1,3 +1,50 @@
+use keyring::Entry;
+
+/// Fixed keyring service namespace for all OpenScans credentials.
+const KEYRING_SERVICE: &str = "openscans";
+
+/// Build a keyring entry for the given account/service name under the
+/// OpenScans namespace.
+fn credential_entry(service: &str) -> Result<Entry, String> {
+  Entry::new(KEYRING_SERVICE, service).map_err(|e| e.to_string())
+}
+
+/// Store a credential in the OS keychain.
+///
+/// `service` is used as the entry account/username under the fixed
+/// "openscans" keyring service.
+#[tauri::command]
+fn store_credential(service: String, key: String) -> Result<(), String> {
+  let entry = credential_entry(&service)?;
+  entry.set_password(&key).map_err(|e| e.to_string())
+}
+
+/// Retrieve a credential from the OS keychain.
+///
+/// Returns `Ok(None)` when no entry exists for `service`.
+#[tauri::command]
+fn get_credential(service: String) -> Result<Option<String>, String> {
+  let entry = credential_entry(&service)?;
+  match entry.get_password() {
+    Ok(password) => Ok(Some(password)),
+    Err(keyring::Error::NoEntry) => Ok(None),
+    Err(e) => Err(e.to_string()),
+  }
+}
+
+/// Delete a credential from the OS keychain.
+///
+/// Treats a missing entry as success (idempotent delete).
+#[tauri::command]
+fn delete_credential(service: String) -> Result<(), String> {
+  let entry = credential_entry(&service)?;
+  match entry.delete_credential() {
+    Ok(()) => Ok(()),
+    Err(keyring::Error::NoEntry) => Ok(()),
+    Err(e) => Err(e.to_string()),
+  }
+}
+
 /// Update information returned to the frontend by `check_for_update`.
 #[cfg(desktop)]
 #[derive(serde::Serialize)]
@@ -58,12 +105,25 @@ pub fn run() {
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_shell::init());
 
-  // The updater is a desktop-only concern; the web build never reaches this
-  // code, and mobile targets don't ship the updater plugin.
+  // Desktop also ships the updater plugin + its commands; the web build never
+  // reaches this code, and mobile targets don't ship the updater plugin.
   #[cfg(desktop)]
   let builder = builder
     .plugin(tauri_plugin_updater::Builder::new().build())
-    .invoke_handler(tauri::generate_handler![check_for_update, install_update]);
+    .invoke_handler(tauri::generate_handler![
+      store_credential,
+      get_credential,
+      delete_credential,
+      check_for_update,
+      install_update
+    ]);
+
+  #[cfg(not(desktop))]
+  let builder = builder.invoke_handler(tauri::generate_handler![
+    store_credential,
+    get_credential,
+    delete_credential
+  ]);
 
   builder
     .setup(|app| {
