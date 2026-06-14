@@ -28,7 +28,6 @@ export function LeftDrawer({ state, onLoadNewFiles, onOpenSettings, onOpenKeyboa
 
   const theme = useSettingsStore((state) => state.theme)
   const setTheme = useSettingsStore((state) => state.setTheme)
-  const hidePersonalInfo = useSettingsStore((state) => state.hidePersonalInfo)
 
   const { loadStudy, isLoading } = useLoadStudy()
   const { handleError } = useErrorHandler()
@@ -156,14 +155,16 @@ export function LeftDrawer({ state, onLoadNewFiles, onOpenSettings, onOpenKeyboa
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            {!hidePersonalInfo && (
-                              <p className={`text-sm font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                {entry.patientName || 'Unknown Patient'}
+                            {/* Recents never hold patient identifiers — lead with the
+                                study description (falling back to date, then "Study"). */}
+                            <p className={`text-sm font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                              {entry.studyDescription || entry.studyDate || 'Study'}
+                            </p>
+                            {entry.studyDate && (
+                              <p className={`text-xs truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                                {entry.studyDate}
                               </p>
                             )}
-                            <p className={`text-xs truncate ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                              {entry.studyDescription || 'No description'}
-                            </p>
                             <p className="text-xs text-gray-500 mt-1">
                               {entry.seriesCount} series, {entry.imageCount} images
                             </p>

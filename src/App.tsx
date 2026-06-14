@@ -137,8 +137,7 @@ function App() {
         )
         addRecentStudy({
           studyInstanceUID: study.studyInstanceUID,
-          patientName: study.patientName || 'Unknown',
-          patientID: study.patientID || '',
+          // patientName/patientID intentionally omitted — recents must not persist PHI
           studyDate: study.studyDate || '',
           studyDescription: study.studyDescription || '',
           seriesCount: study.series.length,
