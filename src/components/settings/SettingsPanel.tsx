@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Theme, ScrollDirection, AIProvider } from '@/stores/settingsStore'
 import { themeClasses } from '@/lib/utils'
 import { useSettingsState } from '@/hooks/useSettingsState'
+import { isTauri } from '@/lib/utils/platform'
 
 interface SettingsPanelProps {
   show: boolean
@@ -30,6 +31,9 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
   if (!show) return null
 
   const isDark = settings.theme === 'dark'
+  // Cloud AI is desktop-only — the entire AI section (provider picker, API-key
+  // inputs, enable toggle) is hidden in the web build.
+  const showAiSettings = isTauri()
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -132,7 +136,8 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
             </div>
           </SettingsSection>
 
-          {/* AI Detection Section */}
+          {/* AI Detection Section — desktop-only */}
+          {showAiSettings && (
           <SettingsSection title="AI Detection" isDark={isDark}>
             <SettingsRow label="Enable AI Detection" description="Use AI vision models for vertebrae detection" isDark={isDark}>
               <ToggleSwitch
@@ -291,6 +296,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
               </>
             )}
           </SettingsSection>
+          )}
 
           {/* Data Section */}
           <SettingsSection title="Data Management" isDark={isDark}>

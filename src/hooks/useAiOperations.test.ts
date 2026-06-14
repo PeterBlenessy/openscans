@@ -86,6 +86,17 @@ vi.mock('@/lib/ai/claudeVisionDetector', () => ({
   },
 }))
 
+// Force desktop platform so the cloud-AI gate is satisfied in jsdom tests
+vi.mock('@/lib/utils/platform', () => ({
+  isTauri: () => true,
+  hasRealAI: () => true,
+}))
+
+// Auto-confirm the per-send dialog so cloud sends proceed in tests
+vi.mock('@/components/viewer/AiSendConfirmDialog', () => ({
+  confirmAiSend: vi.fn(async () => true),
+}))
+
 // Mock the AI detector manager
 vi.mock('@/lib/ai/aiDetectorManager', () => ({
   initDetector: vi.fn(async (provider: string) => {
