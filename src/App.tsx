@@ -11,6 +11,7 @@ import { LeftDrawer, LeftDrawerState } from './components/layout/LeftDrawer'
 import { ResizeHandle } from './components/layout/ResizeHandle'
 import { SettingsPanel } from './components/settings/SettingsPanel'
 import { ErrorToast } from './components/ErrorToast'
+import { UpdateNotification } from './components/UpdateNotification'
 import { useStudyStore } from './stores/studyStore'
 import { useRecentStudiesStore } from './stores/recentStudiesStore'
 import { useSettingsStore } from './stores/settingsStore'
@@ -456,6 +457,9 @@ function App() {
 
       {/* Error Toast Notifications */}
       <ErrorToast />
+
+      {/* Desktop auto-update notification (no-op in the browser) */}
+      <UpdateNotification />
     </div>
   )
 }

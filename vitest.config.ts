@@ -41,8 +41,9 @@ export default mergeConfig(
 
       // Include/exclude patterns
       include: ['**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-      // Exclude the Playwright e2e suite — those specs use the Playwright
-      // runner (test.beforeEach etc.) and must not be executed by vitest.
+      // Exclude the Playwright end-to-end suite — those specs use the
+      // Playwright runner (`test.beforeEach` etc.) and must not be executed by
+      // vitest. They run via `pnpm test:e2e` (playwright.config.ts) instead.
       exclude: ['node_modules', 'dist', '.idea', '.git', '.cache', 'e2e/**'],
 
       // Timeout

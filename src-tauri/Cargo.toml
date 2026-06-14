@@ -31,3 +31,6 @@ dirs = "5"
 # - apple-native / windows-native use the OS keychain on those platforms
 # - sync-secret-service + crypto-rust use pure-Rust zbus (no libdbus at compile time) on Linux
 keyring = { version = "3", default-features = false, features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
+
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-updater = "2"
