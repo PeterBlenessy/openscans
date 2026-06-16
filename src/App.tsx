@@ -11,6 +11,7 @@ import { LeftDrawer, LeftDrawerState } from './components/layout/LeftDrawer'
 import { ResizeHandle } from './components/layout/ResizeHandle'
 import { SettingsPanel } from './components/settings/SettingsPanel'
 import { ErrorToast } from './components/ErrorToast'
+import { ConfirmDialog } from './components/ui/ConfirmDialog'
 import { UpdateNotification } from './components/UpdateNotification'
 import { useStudyStore } from './stores/studyStore'
 import { useRecentStudiesStore } from './stores/recentStudiesStore'
@@ -273,6 +274,9 @@ function App() {
       {/* Help Dialog */}
       <HelpDialog show={showHelp} onClose={() => setShowHelp(false)} />
 
+      {/* Generic confirmation dialog (replaces window.confirm) */}
+      <ConfirmDialog />
+
       {/* Header */}
       <header className={`px-6 py-2.5 flex items-center justify-between border-b flex-shrink-0 ${theme === 'dark' ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
         <div>
@@ -417,6 +421,9 @@ function App() {
                   onResize={handleRightSidebarResize}
                   side="right"
                   theme={theme}
+                  size={rightSidebarWidth}
+                  minSize={192}
+                  maxSize={512}
                 />
 
                 {/* Sidebar Content */}

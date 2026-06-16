@@ -192,6 +192,14 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
           }
         }}
         onClick={onClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            if (e.key === ' ') e.preventDefault()
+            onClick()
+          }
+        }}
         aria-current={isSelected ? 'true' : undefined}
         aria-selected={isSelected}
         className={`flex-shrink-0 relative group cursor-pointer ${

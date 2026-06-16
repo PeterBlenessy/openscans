@@ -4,13 +4,19 @@ interface ResizeHandleProps {
   onResize: (deltaX: number) => void
   side: 'left' | 'right'
   theme: 'dark' | 'light'
+  /** Current panel size in px — reflected via aria-valuenow. */
+  size?: number
+  /** Minimum panel size in px — reflected via aria-valuemin. */
+  minSize?: number
+  /** Maximum panel size in px — reflected via aria-valuemax. */
+  maxSize?: number
 }
 
 /**
  * Draggable resize handle for sidebar panels.
  * Supports both mouse and touch interactions.
  */
-export function ResizeHandle({ onResize, side, theme }: ResizeHandleProps) {
+export function ResizeHandle({ onResize, side, theme, size, minSize, maxSize }: ResizeHandleProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
 
@@ -95,17 +101,20 @@ export function ResizeHandle({ onResize, side, theme }: ResizeHandleProps) {
       style={{ cursor: 'col-resize' }}
       aria-label="Resize sidebar"
       role="separator"
+      aria-orientation="vertical"
+      aria-valuenow={size}
+      aria-valuemin={minSize}
+      aria-valuemax={maxSize}
       tabIndex={0}
       onKeyDown={(e) => {
-        // Keyboard resize: Alt + Arrow keys
-        if (e.altKey) {
-          if (e.key === 'ArrowLeft') {
-            e.preventDefault()
-            onResize(side === 'right' ? 16 : -16)
-          } else if (e.key === 'ArrowRight') {
-            e.preventDefault()
-            onResize(side === 'right' ? -16 : 16)
-          }
+        // Keyboard resize: Arrow keys (plain or with Alt) nudge the panel size
+        // by 16px per press when the handle is focused.
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault()
+          onResize(side === 'right' ? 16 : -16)
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault()
+          onResize(side === 'right' ? -16 : 16)
         }
       }}
     >
