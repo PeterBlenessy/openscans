@@ -55,13 +55,17 @@ export function KeyboardShortcutsHelp({ show, onClose }: KeyboardShortcutsHelpPr
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="keyboard-shortcuts-title"
         className="bg-[#1a1a1a] rounded-lg p-6 max-w-2xl max-h-[80vh] overflow-y-auto border border-[#2a2a2a]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gray-100">Keyboard Shortcuts</h2>
+          <h2 id="keyboard-shortcuts-title" className="text-2xl font-bold text-gray-100">Keyboard Shortcuts</h2>
           <button
             onClick={onClose}
+            aria-label="Close"
             className="text-gray-400 hover:text-gray-100 text-2xl leading-none transition-colors"
           >
             ×

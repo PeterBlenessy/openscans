@@ -76,9 +76,10 @@ function StudyItem({ study, isExpanded, onToggle, currentSeriesUID, onSeriesClic
       {/* Study Header */}
       <button
         onClick={onToggle}
+        aria-expanded={isExpanded}
         className="w-full px-3 py-2 flex items-start gap-2 hover:bg-[#1a1a1a]/50 transition-colors text-left"
       >
-        <span className="text-gray-400 mt-0.5 flex-shrink-0">
+        <span aria-hidden="true" className="text-gray-400 mt-0.5 flex-shrink-0">
           {isExpanded ? '▼' : '▶'}
         </span>
         <div className="flex-1 min-w-0">
@@ -125,6 +126,7 @@ function SeriesItem({ series, isSelected, onClick }: SeriesItemProps) {
   return (
     <button
       onClick={onClick}
+      aria-current={isSelected ? 'true' : undefined}
       className={`w-full px-3 py-2 pl-8 text-left transition-colors ${
         isSelected ? 'bg-[#2a2a2a] border border-[#3a3a3a] hover:bg-[#3a3a3a]' : 'border border-transparent hover:bg-[#1a1a1a]/50'
       }`}

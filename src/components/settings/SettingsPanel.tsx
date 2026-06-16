@@ -44,10 +44,15 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
       />
 
       {/* Modal */}
-      <div className={`relative rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden border ${themeClasses.bg(settings.theme)} ${themeClasses.border(settings.theme)}`}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-panel-title"
+        className={`relative rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden border ${themeClasses.bg(settings.theme)} ${themeClasses.border(settings.theme)}`}
+      >
         {/* Header */}
         <div className={`flex items-center justify-between p-4 border-b ${themeClasses.border(settings.theme)}`}>
-          <h2 className={`text-xl font-semibold ${themeClasses.text(settings.theme)}`}>Settings</h2>
+          <h2 id="settings-panel-title" className={`text-xl font-semibold ${themeClasses.text(settings.theme)}`}>Settings</h2>
           <button
             onClick={onClose}
             className={`p-2 rounded-lg transition-colors ${themeClasses.hoverBgSecondary(settings.theme)}`}
@@ -66,6 +71,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
               <select
                 value={settings.theme}
                 onChange={(e) => settings.setTheme(e.target.value as Theme)}
+                aria-label="Theme"
                 className={`border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${themeClasses.bgSecondary(settings.theme)} ${themeClasses.border(settings.theme)} ${themeClasses.text(settings.theme)} ${isDark ? 'focus:ring-[#3a3a3a]' : 'focus:ring-gray-400'}`}
               >
                 <option value="dark">Dark</option>
@@ -80,6 +86,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
               <select
                 value={settings.scrollDirection}
                 onChange={(e) => settings.setScrollDirection(e.target.value as ScrollDirection)}
+                aria-label="Scroll Direction"
                 className={`border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a] text-white focus:ring-[#3a3a3a]' : 'bg-gray-100 border-gray-300 text-gray-900 focus:ring-gray-400'}`}
               >
                 <option value="natural">Natural (scroll up = next)</option>
@@ -95,6 +102,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                 step="0.1"
                 value={settings.windowLevelSensitivity}
                 onChange={(e) => settings.setWindowLevelSensitivity(parseFloat(e.target.value))}
+                aria-label="Window/Level Sensitivity"
                 className={`w-32 h-2 rounded-lg appearance-none cursor-pointer ${isDark ? 'bg-[#0f0f0f]' : 'bg-gray-200'}`}
               />
             </SettingsRow>
@@ -107,6 +115,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                 step="0.01"
                 value={settings.zoomSensitivity}
                 onChange={(e) => settings.setZoomSensitivity(parseFloat(e.target.value))}
+                aria-label="Zoom Sensitivity"
                 className={`w-32 h-2 rounded-lg appearance-none cursor-pointer ${isDark ? 'bg-[#0f0f0f]' : 'bg-gray-200'}`}
               />
             </SettingsRow>
@@ -172,6 +181,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                   <select
                     value={settings.aiProvider}
                     onChange={(e) => settings.setAiProvider(e.target.value as AIProvider)}
+                    aria-label="AI Provider"
                     className={`border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a] text-white focus:ring-[#3a3a3a]' : 'bg-gray-100 border-gray-300 text-gray-900 focus:ring-gray-400'}`}
                   >
                     <option value="claude">Claude (Anthropic)</option>
@@ -185,6 +195,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                   <select
                     value={settings.aiResponseLanguage}
                     onChange={(e) => settings.setAiResponseLanguage(e.target.value)}
+                    aria-label="Response Language"
                     className={`border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a] text-white focus:ring-[#3a3a3a]' : 'bg-gray-100 border-gray-300 text-gray-900 focus:ring-gray-400'}`}
                   >
                     <option value="English">English</option>
@@ -216,9 +227,10 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                       />
                       <button
                         onClick={() => setShowApiKey(!showApiKey)}
+                        aria-label={showApiKey ? 'Hide API key' : 'Show API key'}
                         className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-[#2a2a2a]' : 'hover:bg-gray-200'}`}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden="true">
                           {showApiKey ? (
                             <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
                           ) : (
@@ -242,9 +254,10 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                       />
                       <button
                         onClick={() => setShowApiKey(!showApiKey)}
+                        aria-label={showApiKey ? 'Hide API key' : 'Show API key'}
                         className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-[#2a2a2a]' : 'hover:bg-gray-200'}`}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden="true">
                           {showApiKey ? (
                             <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
                           ) : (
@@ -268,9 +281,10 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                       />
                       <button
                         onClick={() => setShowApiKey(!showApiKey)}
+                        aria-label={showApiKey ? 'Hide API key' : 'Show API key'}
                         className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-[#2a2a2a]' : 'hover:bg-gray-200'}`}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden="true">
                           {showApiKey ? (
                             <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
                           ) : (

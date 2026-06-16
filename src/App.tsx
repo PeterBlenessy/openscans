@@ -292,8 +292,10 @@ function App() {
             }}
             className={`p-2 rounded transition-colors ${leftDrawerState === 'expanded' ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-500' : 'hover:bg-gray-200 text-gray-400')}`}
             title="Toggle Left Panel"
+            aria-label="Toggle Left Panel"
+            aria-pressed={leftDrawerState === 'expanded'}
           >
-            <PanelLeft size={18} />
+            <PanelLeft size={18} aria-hidden="true" />
           </button>
 
           {/* Right Panel Toggle */}
@@ -301,8 +303,10 @@ function App() {
             onClick={() => setShowRightSidebar(!showRightSidebar)}
             className={`p-2 rounded transition-colors ${showRightSidebar ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-500' : 'hover:bg-gray-200 text-gray-400')}`}
             title="Toggle Right Panel"
+            aria-label="Toggle Right Panel"
+            aria-pressed={showRightSidebar}
           >
-            <PanelRight size={18} />
+            <PanelRight size={18} aria-hidden="true" />
           </button>
 
           {/* Bottom Panel Toggle */}
@@ -310,8 +314,10 @@ function App() {
             onClick={() => setShowThumbnailStrip(!showThumbnailStrip)}
             className={`p-2 rounded transition-colors ${showThumbnailStrip ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-500' : 'hover:bg-gray-200 text-gray-400')}`}
             title="Toggle Thumbnail Strip"
+            aria-label="Toggle Thumbnail Strip"
+            aria-pressed={showThumbnailStrip}
           >
-            <PanelBottom size={18} />
+            <PanelBottom size={18} aria-hidden="true" />
           </button>
 
           {/* Divider */}
@@ -322,9 +328,11 @@ function App() {
             onClick={() => setHidePersonalInfo(!hidePersonalInfo)}
             className={`p-2 rounded transition-colors ${hidePersonalInfo ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-500' : 'hover:bg-gray-200 text-gray-400')}`}
             title={hidePersonalInfo ? 'Show Personal Information' : 'Hide Personal Information'}
+            aria-label={hidePersonalInfo ? 'Show Personal Information' : 'Hide Personal Information'}
+            aria-pressed={hidePersonalInfo}
             data-testid="privacy-toggle"
           >
-            {hidePersonalInfo ? <ShieldCheck size={18} /> : <ShieldOff size={18} />}
+            {hidePersonalInfo ? <ShieldCheck size={18} aria-hidden="true" /> : <ShieldOff size={18} aria-hidden="true" />}
           </button>
         </div>
       </header>
@@ -380,6 +388,7 @@ function App() {
                       }}
                       className={`flex-1 h-2 rounded-lg appearance-none cursor-pointer slider ${theme === 'dark' ? 'bg-[#0f0f0f]' : 'bg-gray-200'}`}
                       data-testid="instance-slider"
+                      aria-label="Navigate images in series"
                       style={{
                         background: theme === 'dark'
                           ? `linear-gradient(to right, #4a4a4a 0%, #4a4a4a ${(currentInstanceIndex / (currentSeries.instances.length - 1)) * 100}%, #0f0f0f ${(currentInstanceIndex / (currentSeries.instances.length - 1)) * 100}%, #0f0f0f 100%)`
@@ -416,10 +425,11 @@ function App() {
               <div className={`border-b ${theme === 'dark' ? 'border-[#2a2a2a]' : 'border-gray-200'}`}>
                 <button
                   onClick={() => setSectionState((prev: typeof sectionState) => ({ ...prev, studiesOpen: !prev.studiesOpen }))}
+                  aria-expanded={sectionState.studiesOpen}
                   className={`w-full p-4 flex items-center justify-between transition-colors ${theme === 'dark' ? 'hover:bg-[#0f0f0f]' : 'hover:bg-gray-50'}`}
                 >
                   <h2 className="text-lg font-semibold">Studies & Series</h2>
-                  <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>{sectionState.studiesOpen ? '▼' : '▶'}</span>
+                  <span aria-hidden="true" className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>{sectionState.studiesOpen ? '▼' : '▶'}</span>
                 </button>
                 {sectionState.studiesOpen && (
                   <div className="px-4 pb-4">
@@ -435,10 +445,11 @@ function App() {
               <div className={`border-b ${theme === 'dark' ? 'border-[#2a2a2a]' : 'border-gray-200'}`}>
                 <button
                   onClick={() => setSectionState((prev: typeof sectionState) => ({ ...prev, favoritesOpen: !prev.favoritesOpen }))}
+                  aria-expanded={sectionState.favoritesOpen}
                   className={`w-full p-4 flex items-center justify-between transition-colors ${theme === 'dark' ? 'hover:bg-[#0f0f0f]' : 'hover:bg-gray-50'}`}
                 >
                   <h2 className="text-lg font-semibold">Key Images</h2>
-                  <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>{sectionState.favoritesOpen ? '▼' : '▶'}</span>
+                  <span aria-hidden="true" className={theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}>{sectionState.favoritesOpen ? '▼' : '▶'}</span>
                 </button>
                 {sectionState.favoritesOpen && (
                   <div className="px-4 pb-4">
