@@ -39,6 +39,8 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
 
   const [showPresets, setShowPresets] = useState(false)
   const presetsRef = useRef<HTMLDivElement>(null)
+  const presetsTriggerRef = useRef<HTMLButtonElement>(null)
+  const presetItemsRef = useRef<(HTMLButtonElement | null)[]>([])
   const currentInstance = useStudyStore((state) => state.currentInstance)
   const currentStudy = useStudyStore((state) => state.currentStudy)
   const currentSeries = useStudyStore((state) => state.currentSeries)
@@ -181,12 +183,37 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
     if (showPresets) {
       document.addEventListener('mousedown', handleClickOutside)
       document.addEventListener('keydown', handleEscape)
+      // Move focus into the menu so arrow-key navigation works immediately.
+      presetItemsRef.current[0]?.focus()
       return () => {
         document.removeEventListener('mousedown', handleClickOutside)
         document.removeEventListener('keydown', handleEscape)
       }
     }
   }, [showPresets])
+
+  // Roving focus between menu items (ArrowUp/ArrowDown wrap; Escape returns
+  // focus to the trigger). Enter/Space activation is handled natively by the
+  // <button> items.
+  const handleMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const items = presetItemsRef.current.filter((el): el is HTMLButtonElement => el !== null)
+    if (items.length === 0) return
+    const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement)
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      const next = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length
+      items[next].focus()
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      const prev = currentIndex < 0 ? items.length - 1 : (currentIndex - 1 + items.length) % items.length
+      items[prev].focus()
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      setShowPresets(false)
+      presetsTriggerRef.current?.focus()
+    }
+  }
 
   const windowPresets = [
     { name: 'Soft Tissue', contrast: 400, brightness: 40 },
@@ -394,6 +421,7 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
       {/* Window Presets Dropdown */}
       <div className="relative" ref={presetsRef}>
         <button
+          ref={presetsTriggerRef}
           onClick={() => setShowPresets(!showPresets)}
           title="Window presets"
           aria-label="Window presets"
@@ -402,7 +430,7 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
           disabled={!currentInstance}
           className={`p-2 rounded transition-colors ${
             !currentInstance
-              ? 'text-gray-600 cursor-not-allowed'
+              ? 'text-gray-500 cursor-not-allowed'
               : showPresets
               ? 'text-white hover:bg-[#2a2a2a]'
               : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-white'
@@ -411,23 +439,25 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
           <MonitorCog size={16} aria-hidden="true" />
         </button>
         {showPresets && (
-          <div role="menu" className="absolute top-full left-0 mt-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl py-1 z-50 min-w-[180px]">
+          <div role="menu" onKeyDown={handleMenuKeyDown} className="absolute top-full left-0 mt-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl py-1 z-50 min-w-[180px]">
             <div className="px-2 pb-0.5 mb-0.5 border-b border-[#2a2a2a]">
               <p className="text-[11px] font-medium text-gray-400">Window Presets</p>
             </div>
-            {windowPresets.map((preset) => (
+            {windowPresets.map((preset, presetIndex) => (
               <button
                 key={preset.name}
+                ref={(el) => (presetItemsRef.current[presetIndex] = el)}
                 role="menuitem"
                 onClick={() => handlePresetClick(preset.brightness, preset.contrast)}
                 className="w-full px-2 py-1 text-left text-xs text-gray-300 hover:bg-[#2a2a2a] hover:text-white transition-colors"
               >
                 <div className="font-medium">{preset.name}</div>
-                <div className="text-[11px] text-gray-500">C:{preset.contrast} B:{preset.brightness}</div>
+                <div className="text-[11px] text-gray-400">C:{preset.contrast} B:{preset.brightness}</div>
               </button>
             ))}
             <div className="border-t border-[#2a2a2a] mt-0.5 pt-0.5 px-2">
               <button
+                ref={(el) => (presetItemsRef.current[windowPresets.length] = el)}
                 role="menuitem"
                 onClick={() => {
                   resetSettings()
@@ -454,7 +484,7 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
         data-testid="favorite-button"
         className={`p-2 rounded transition-colors ${
           !currentInstance
-            ? 'text-gray-600 cursor-not-allowed'
+            ? 'text-gray-500 cursor-not-allowed'
             : isCurrentFavorite
             ? 'text-white hover:bg-[#2a2a2a]'
             : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-white'
@@ -544,7 +574,7 @@ function ToolbarButton({ onClick, title, icon, active = false, disabled = false,
       data-testid={testId}
       className={`p-2 rounded transition-colors ${
         disabled
-          ? 'text-gray-600 cursor-not-allowed'
+          ? 'text-gray-500 cursor-not-allowed'
           : active
           ? 'text-white hover:bg-[#2a2a2a]'
           : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-white'
