@@ -37,6 +37,16 @@ export function KeyboardShortcutsHelp({ show, onClose }: KeyboardShortcutsHelpPr
       { keys: ['Scroll'], description: 'Zoom' },
       { keys: ['R'], description: 'Reset viewport' },
       { keys: ['I'], description: 'Invert colors' },
+      { keys: ['Shift', 'F'], description: 'Toggle full screen' },
+    ]},
+    { category: 'Cine', items: [
+      { keys: ['Space'], description: 'Play / pause cine loop' },
+      { keys: ['+'], description: 'Increase frame rate' },
+      { keys: ['-'], description: 'Decrease frame rate' },
+    ]},
+    { category: 'Measurements', items: [
+      { keys: ['L'], description: 'Distance / ruler tool' },
+      { keys: ['Shift', 'A'], description: 'Angle tool' },
     ]},
     { category: 'Annotations & AI', items: [
       { keys: ['A'], description: 'Toggle annotations' },

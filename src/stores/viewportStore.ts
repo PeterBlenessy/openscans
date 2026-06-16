@@ -1,6 +1,37 @@
 import { create } from 'zustand'
 import { ViewportSettings, Tool } from '@/types'
 
+/** Direction the cine loop advances through the series. */
+export type CineDirection = 'forward' | 'reverse'
+/** Behaviour of the cine loop when it reaches a boundary. */
+export type CineLoopMode = 'loop' | 'bounce' | 'once'
+
+const CINE_FRAME_RATE_KEY = 'openscans-cine-frame-rate'
+const DEFAULT_CINE_FRAME_RATE = 10
+const MIN_CINE_FRAME_RATE = 1
+const MAX_CINE_FRAME_RATE = 30
+
+/** Read the persisted cine frame rate (fps), clamped to the supported range. */
+function loadCineFrameRate(): number {
+  try {
+    const raw = localStorage.getItem(CINE_FRAME_RATE_KEY)
+    if (raw !== null) {
+      const parsed = Number(raw)
+      if (Number.isFinite(parsed)) {
+        return clampFrameRate(parsed)
+      }
+    }
+  } catch {
+    // Ignore storage access errors (e.g. private mode) and fall back to default.
+  }
+  return DEFAULT_CINE_FRAME_RATE
+}
+
+/** Clamp a frame rate to [MIN_CINE_FRAME_RATE, MAX_CINE_FRAME_RATE]. */
+export function clampFrameRate(fps: number): number {
+  return Math.max(MIN_CINE_FRAME_RATE, Math.min(MAX_CINE_FRAME_RATE, Math.round(fps)))
+}
+
 /**
  * Window/Level settings specific to each imaging modality.
  *
@@ -51,6 +82,16 @@ interface ViewportState {
   /** Error message from AI detection, null if no error */
   detectionError: string | null
 
+  // Cine loop / auto-play
+  /** Whether cine playback is currently running */
+  cineEnabled: boolean
+  /** Cine playback speed in frames per second (1-30) */
+  cineFrameRate: number
+  /** Direction cine advances through the series */
+  cineDirection: CineDirection
+  /** Cine boundary behaviour (continuous loop / ping-pong / play once) */
+  cineLoopMode: CineLoopMode
+
   // Actions
   /** Set window/level for current modality */
   setWindowLevel: (center: number, width: number) => void
@@ -78,6 +119,16 @@ interface ViewportState {
   setDetecting: (detecting: boolean, error?: string | null) => void
   /** Reset settings to defaults (DICOM defaults if available) */
   resetSettings: () => void
+  /** Toggle cine playback on/off */
+  toggleCine: () => void
+  /** Explicitly enable or disable cine playback */
+  setCineEnabled: (enabled: boolean) => void
+  /** Set cine playback speed (fps); clamped to 1-30 and persisted */
+  setCineFrameRate: (fps: number) => void
+  /** Set cine playback direction */
+  setCineDirection: (direction: CineDirection) => void
+  /** Set cine boundary behaviour */
+  setCineLoopMode: (mode: CineLoopMode) => void
 }
 
 // Modality-specific default W/L values based on typical imaging ranges
@@ -110,6 +161,12 @@ const defaultTools: Tool[] = [
   { name: 'Zoom', mode: 'passive' },
   { name: 'Pan', mode: 'passive' },
   { name: 'StackScroll', mode: 'active' },
+  // Measurement / ROI tools (cornerstone-tools v6 built-ins). Registered in
+  // initCornerstone(); activated per-element by useViewportTools when selected.
+  { name: 'Length', mode: 'passive' },
+  { name: 'Angle', mode: 'passive' },
+  { name: 'EllipticalRoi', mode: 'passive' },
+  { name: 'RectangleRoi', mode: 'passive' },
 ]
 
 /**
@@ -168,6 +225,10 @@ export const useViewportStore = create<ViewportState>((set) => ({
   showMetadata: true,
   isDetecting: false,
   detectionError: null,
+  cineEnabled: false,
+  cineFrameRate: loadCineFrameRate(),
+  cineDirection: 'forward',
+  cineLoopMode: 'loop',
 
   /**
    * Update window/level for the current modality.
@@ -370,4 +431,22 @@ export const useViewportStore = create<ViewportState>((set) => ({
         },
       }
     }),
+
+  toggleCine: () => set((state) => ({ cineEnabled: !state.cineEnabled })),
+
+  setCineEnabled: (enabled) => set({ cineEnabled: enabled }),
+
+  setCineFrameRate: (fps) => {
+    const clamped = clampFrameRate(fps)
+    try {
+      localStorage.setItem(CINE_FRAME_RATE_KEY, String(clamped))
+    } catch {
+      // Ignore storage errors — the in-memory value still updates.
+    }
+    set({ cineFrameRate: clamped })
+  },
+
+  setCineDirection: (direction) => set({ cineDirection: direction }),
+
+  setCineLoopMode: (mode) => set({ cineLoopMode: mode }),
 }))

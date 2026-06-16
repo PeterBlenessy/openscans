@@ -3,11 +3,58 @@
 import * as cornerstone from 'cornerstone-core'
 // @ts-expect-error - cornerstone-tools doesn't have TypeScript definitions
 import * as cornerstoneTools from 'cornerstone-tools'
+// @ts-expect-error - cornerstone-math doesn't ship TypeScript definitions
+import * as cornerstoneMath from 'cornerstone-math'
 import cornerstoneWADOImageLoader from 'cornerstone-wado-image-loader'
 import dicomParser from 'dicom-parser'
+// @ts-expect-error - hammerjs may not ship type defs in this install
+import Hammer from 'hammerjs'
 import { isTauri } from '../utils/platform'
 
 let isInitialized = false
+let toolsInitialized = false
+
+/**
+ * Initialize cornerstone-tools and register the built-in measurement / ROI tools.
+ *
+ * cornerstone-tools needs its external peer dependencies (cornerstone-core,
+ * cornerstone-math, hammerjs) wired before `init()`. After init we register the
+ * length (ruler), angle, elliptical-ROI and rectangle-ROI tools so they can be
+ * activated per-element from the viewport. Idempotent — safe to call repeatedly.
+ *
+ * Wrapped in a try/catch so a failure to load tools never blocks plain viewing.
+ */
+function initCornerstoneTools(): void {
+  if (toolsInitialized) return
+
+  try {
+    cornerstoneTools.external.cornerstone = cornerstone
+    cornerstoneTools.external.cornerstoneMath = cornerstoneMath
+    cornerstoneTools.external.Hammer = Hammer
+
+    // Let Cornerstone read pixel spacing/rescale from the WADO image so the
+    // measurement tools report calibrated mm / HU values where available.
+    cornerstoneTools.init({
+      mouseEnabled: true,
+      touchEnabled: true,
+      showSVGCursors: true,
+    })
+
+    // Built-in measurement + ROI tools (cornerstone-tools v6).
+    cornerstoneTools.addTool(cornerstoneTools.LengthTool)
+    cornerstoneTools.addTool(cornerstoneTools.AngleTool)
+    cornerstoneTools.addTool(cornerstoneTools.EllipticalRoiTool)
+    cornerstoneTools.addTool(cornerstoneTools.RectangleRoiTool)
+
+    toolsInitialized = true
+  } catch (err) {
+    console.warn('[CornerstoneTools] Initialization failed (measurement tools disabled):', err)
+  }
+}
+
+export function areToolsInitialized(): boolean {
+  return toolsInitialized
+}
 
 /**
  * Initialize Cornerstone 2.x and related libraries
@@ -121,6 +168,9 @@ export async function initCornerstone(): Promise<void> {
 
     // Make cornerstone available globally for debugging
     ;(window as any).cornerstone = cornerstone
+
+    // Register measurement / ROI tools (non-fatal if it fails).
+    initCornerstoneTools()
 
     isInitialized = true
   } catch (error) {
