@@ -202,7 +202,7 @@ export function ViewportToolbar({
     }
   }
 
-  // Close presets dropdown when clicking outside
+  // Close presets dropdown when clicking outside or pressing Escape
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (presetsRef.current && !presetsRef.current.contains(event.target as Node)) {
@@ -210,9 +210,19 @@ export function ViewportToolbar({
       }
     }
 
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowPresets(false)
+      }
+    }
+
     if (showPresets) {
       document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+      document.addEventListener('keydown', handleEscape)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+        document.removeEventListener('keydown', handleEscape)
+      }
     }
   }, [showPresets])
 
@@ -398,6 +408,7 @@ export function ViewportToolbar({
       <ToolbarButton
         onClick={handleFlipHorizontal}
         active={settings.flipHorizontal}
+        isToggle
         title="Flip horizontal (H)"
         icon={
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -410,6 +421,7 @@ export function ViewportToolbar({
       <ToolbarButton
         onClick={handleFlipVertical}
         active={settings.flipVertical}
+        isToggle
         title="Flip vertical (V)"
         icon={
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 rotate-90">
@@ -422,6 +434,7 @@ export function ViewportToolbar({
       <ToolbarButton
         onClick={handleInvert}
         active={settings.invert}
+        isToggle
         title="Invert colors (I)"
         icon={
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -523,6 +536,9 @@ export function ViewportToolbar({
         <button
           onClick={() => setShowPresets(!showPresets)}
           title="Window presets"
+          aria-label="Window presets"
+          aria-haspopup="menu"
+          aria-expanded={showPresets}
           disabled={!currentInstance}
           className={`p-2 rounded transition-colors ${
             !currentInstance
@@ -532,16 +548,17 @@ export function ViewportToolbar({
               : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-white'
           }`}
         >
-          <MonitorCog size={16} />
+          <MonitorCog size={16} aria-hidden="true" />
         </button>
         {showPresets && (
-          <div className="absolute top-full left-0 mt-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl py-1 z-50 min-w-[180px]">
+          <div role="menu" className="absolute top-full left-0 mt-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl py-1 z-50 min-w-[180px]">
             <div className="px-2 pb-0.5 mb-0.5 border-b border-[#2a2a2a]">
               <p className="text-[11px] font-medium text-gray-400">Window Presets</p>
             </div>
             {windowPresets.map((preset) => (
               <button
                 key={preset.name}
+                role="menuitem"
                 onClick={() => handlePresetClick(preset.brightness, preset.contrast)}
                 className="w-full px-2 py-1 text-left text-xs text-gray-300 hover:bg-[#2a2a2a] hover:text-white transition-colors"
               >
@@ -551,6 +568,7 @@ export function ViewportToolbar({
             ))}
             <div className="border-t border-[#2a2a2a] mt-0.5 pt-0.5 px-2">
               <button
+                role="menuitem"
                 onClick={() => {
                   resetSettings()
                   setShowPresets(false)
@@ -570,6 +588,8 @@ export function ViewportToolbar({
       <button
         onClick={handleToggleFavorite}
         title={isCurrentFavorite ? "Remove from favorites" : "Add to favorites"}
+        aria-label={isCurrentFavorite ? "Remove from favorites" : "Add to favorites"}
+        aria-pressed={isCurrentFavorite}
         disabled={!currentInstance}
         data-testid="favorite-button"
         className={`p-2 rounded transition-colors ${
@@ -581,11 +601,11 @@ export function ViewportToolbar({
         }`}
       >
         {isCurrentFavorite ? (
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden="true">
             <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401z" clipRule="evenodd" />
           </svg>
         ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
           </svg>
         )}
@@ -662,14 +682,18 @@ interface ToolbarButtonProps {
   icon: React.ReactNode
   active?: boolean
   disabled?: boolean
+  /** When true, the button is a toggle and `active` is reflected via aria-pressed. */
+  isToggle?: boolean
   'data-testid'?: string
 }
 
-function ToolbarButton({ onClick, title, icon, active = false, disabled = false, 'data-testid': testId }: ToolbarButtonProps) {
+function ToolbarButton({ onClick, title, icon, active = false, disabled = false, isToggle = false, 'data-testid': testId }: ToolbarButtonProps) {
   return (
     <button
       onClick={onClick}
       title={title}
+      aria-label={title}
+      aria-pressed={isToggle ? active : undefined}
       disabled={disabled}
       data-testid={testId}
       className={`p-2 rounded transition-colors ${
@@ -680,7 +704,7 @@ function ToolbarButton({ onClick, title, icon, active = false, disabled = false,
           : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-white'
       }`}
     >
-      {icon}
+      <span aria-hidden="true">{icon}</span>
     </button>
   )
 }

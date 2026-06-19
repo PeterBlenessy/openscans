@@ -34,6 +34,8 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
 
   const currentInstance = useStudyStore((state) => state.currentInstance)
   const currentStudy = useStudyStore((state) => state.currentStudy)
+  const currentSeries = useStudyStore((state) => state.currentSeries)
+  const currentInstanceIndex = useStudyStore((state) => state.currentInstanceIndex)
   const settings = useViewportStore((state) => state.settings)
   const setModality = useViewportStore((state) => state.setModality)
   const isDetecting = useViewportStore((state) => state.isDetecting)
@@ -126,6 +128,15 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
     )
   }
 
+  // Describe the currently displayed image for assistive technology. The canvas
+  // is a non-text graphic, so it carries role="img" with a synthesized label.
+  const modality = currentSeries?.modality || currentInstance.metadata?.modality
+  const seriesDescription = currentSeries?.seriesDescription || currentInstance.metadata?.seriesDescription
+  const totalInSeries = currentSeries?.instances.length
+  const imageLabel = totalInSeries
+    ? `${[modality, seriesDescription].filter(Boolean).join(' ') || 'DICOM image'}, image ${currentInstanceIndex + 1} of ${totalInSeries}`
+    : `${[modality, seriesDescription].filter(Boolean).join(' ') || 'DICOM image'}`
+
   return (
     <div
       ref={containerRef}
@@ -136,6 +147,8 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
       <div
         ref={canvasRef}
         data-testid="viewport"
+        role="img"
+        aria-label={imageLabel}
         className="w-full h-full bg-black"
         style={{
           cursor: isDragging ? 'crosshair' : isPanning ? 'grabbing' : isModifierKeyPressed ? 'grab' : 'crosshair',

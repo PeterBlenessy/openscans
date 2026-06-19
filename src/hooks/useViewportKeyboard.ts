@@ -94,7 +94,9 @@ export function useViewportKeyboard(options: UseViewportKeyboardOptions) {
         setIsModifierKeyPressed(true)
       }
 
-      // Ignore shortcuts while typing into inputs/textareas.
+      // Don't handle shortcuts if user is typing in an input field
+      // (mirrors the guard in useKeyboardShortcuts.ts). Without this, the M/N
+      // AI shortcuts fire while typing an API key, language, etc.
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return
       }

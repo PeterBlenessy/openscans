@@ -47,6 +47,9 @@ export function Modal({
 }: ModalProps) {
   const theme = useSettingsStore((s) => s.theme)
 
+  // Stable id linking the dialog to its title for aria-labelledby.
+  const titleId = `modal-title-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+
   // Close on Escape key
   useEffect(() => {
     if (!show) return
@@ -73,6 +76,9 @@ export function Modal({
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className={`${themeClasses.bg(theme)} border ${themeClasses.border(theme)} rounded-lg shadow-2xl ${maxWidth} w-full ${maxHeight} flex flex-col`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -80,7 +86,7 @@ export function Modal({
         <div className={`flex items-center justify-between p-4 border-b ${themeClasses.border(theme)}`}>
           <div className="flex items-center gap-2">
             {icon && <div className={`w-5 h-5 ${themeClasses.text(theme)}`}>{icon}</div>}
-            <h2 className={`text-lg font-semibold ${themeClasses.text(theme)}`}>{title}</h2>
+            <h2 id={titleId} className={`text-lg font-semibold ${themeClasses.text(theme)}`}>{title}</h2>
             {headerLeftActions}
           </div>
           <div className="flex items-center gap-2">

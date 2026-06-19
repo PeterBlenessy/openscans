@@ -171,6 +171,7 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
                   step="5"
                   value={jpegQuality}
                   onChange={(e) => setJpegQuality(parseInt(e.target.value))}
+                  aria-label="JPEG quality"
                   className={`flex-1 h-2 rounded-lg appearance-none cursor-pointer ${isDark ? 'bg-[#0f0f0f]' : 'bg-gray-200'}`}
                 />
                 <span className={`text-sm font-mono w-12 text-right ${isDark ? 'text-white' : 'text-gray-900'}`}>

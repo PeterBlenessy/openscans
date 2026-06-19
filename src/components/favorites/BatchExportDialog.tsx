@@ -81,10 +81,15 @@ export function BatchExportDialog({ show, onClose, favorites }: BatchExportDialo
       />
 
       {/* Modal */}
-      <div className={`relative rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border ${isDark ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="batch-export-title"
+        className={`relative rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border ${isDark ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}
+      >
         {/* Header */}
         <div className={`flex items-center justify-between p-4 border-b ${isDark ? 'border-[#2a2a2a]' : 'border-gray-200'}`}>
-          <h2 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          <h2 id="batch-export-title" className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
             Batch Export to PDF
           </h2>
           {!isExporting && (
