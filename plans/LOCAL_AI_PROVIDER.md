@@ -102,40 +102,60 @@ strong here" answer. Best suited to an **on-prem GPU server**, not a clinician l
 
 ---
 
-## 5. Recommendation — phased
+## 5. Product decisions (locked 2026-06-19)
 
-1. **Phase 1 — Local VLM via bundled llama-server (Path A, MedGemma 4B).**
-   Port Notesage's sidecar + OpenAI-compatible routing. Add `'local'` provider behind
-   the existing selector. Reuses the most code, ships the privacy win immediately, and
-   covers `analyzeImage`. *Highest value / lowest effort.*
+- **Bundle only the `llama-server` binary.** No model weights in the installer.
+- **Download models on demand** — the first time the user invokes an AI feature, fetch
+  the model (with progress), then run. Same philosophy applies to the MR segmentation
+  weights (and its runtime — see §6).
+- **Preconfigured model name, with manual override.** Ship a sensible default model id;
+  expose a text field where the user can type any other model id. **No model search /
+  browse UI.**
+- **MR precision is in scope** — we want clinically precise structured output on MR, not
+  just VLM-approximate markers. This requires the segmentation runtime (§6), not just
+  llama.cpp.
+
+## 6. Recommendation — phased
+
+1. **Phase 1 — Local VLM via bundled llama-server (Path A, MedGemma 4B default).**
+   Port Notesage's sidecar + OpenAI-compatible routing. Add `'local'` provider behind the
+   existing selector. **On first use**, download the preconfigured GGUF + `mmproj`
+   projector to `~/.openscans/models/` (model id editable, no search). Covers
+   `analyzeImage` and approximate `detectVertebrae`. *Highest value / lowest effort.*
 
 2. **Phase 2 — Network lockdown.** Drop `AiSendConfirmDialog` for `'local'` (nothing to
    confirm) and lock `capabilities/default.json` to localhost-only for the AI path —
    the auditable guarantee.
 
-3. **Phase 3 — MR-trained segmentation (Path B, TotalSegmentator-MRI / MONAI).** For
-   precise `detectVertebrae`-style structured output on MR, stand up the MONAI/PyTorch
-   sidecar from `PYTHON_ML_INTEGRATION.md`. Different runtime; keep it optional.
+3. **Phase 3 — MR precision (Path B, TotalSegmentator-MRI / MONAI Whole-Brain).** Precise
+   `detectVertebrae`-style structured output on MR. **Runtime is the open question (§6.1).**
+   Weights download on demand, consistent with the bundle-only rule.
 
 4. **Phase 4 (optional, on-prem GPU) — VILA-M3 agentic radiology.** Self-hosted NIM/Docker
    for institutions with a GPU server; OpenScans points at an in-network endpoint.
 
 **Key takeaway:** llama.cpp (from Notesage) gives us the *VLM/chat* layer cheaply, but
-the MR-trained, NVIDIA-grade segmentation models need a *second* runtime (MONAI/PyTorch
-or NIM). Don't conflate the two — sequence them.
+the MR-trained, NVIDIA-grade segmentation models need a *second* runtime. Don't conflate
+the two — sequence them.
 
----
+### 6.1 The one open decision — MR segmentation runtime
 
-## 6. Open decisions
+"Bundle only llama-server" collides with how MR segmentation models normally run.
+TotalSegmentator-MRI / MONAI are **PyTorch (nnU-Net)** models — llama.cpp cannot run them.
+Two ways to deliver MR precision while keeping the installer to just `llama-server`:
 
-- **Bundle vs. require**: ship `llama-server` + a default GGUF (bigger installer) vs.
-  detect an existing Ollama/LM Studio endpoint (Notesage supports both `local` and
-  `local_bundled`).
-- **Default medical model**: MedGemma 4B (medical-tuned) vs. a general Qwen2.5-VL.
-- **Windows/Linux sidecar binaries**: Notesage currently bundles macOS only; we'd add
-  the other triples to the download script + CI.
-- **Detection on MR**: accept VLM-approximate markers (Phase 1) or wait for the MONAI
-  sidecar (Phase 3) for clinically precise coordinates.
+| Option | How | Pros | Cons |
+|---|---|---|---|
+| **A. On-demand Python engine** | PyInstaller'd MONAI/TotalSegmentator-MRI CPU engine, **downloaded on first MR use** (not bundled) + weights | Proven accuracy (Dice 0.839), reuses `PYTHON_ML_INTEGRATION.md`, fastest to working | Pulls a Python runtime onto the machine (~300 MB), even if downloaded not bundled |
+| **B. ONNX-in-Rust** | Export the seg model to ONNX, run via the `ort` crate in `src-tauri` — no Python at all | Pure Rust, matches the "no Python" ethos of choosing llama.cpp | nnU-Net pre/post-processing is hard to reimplement faithfully; higher risk/effort; accuracy parity not guaranteed |
+
+This is the only thing blocking Phase 3 implementation; Phases 1–2 are fully specified.
+
+### 6.2 Remaining minor decisions (have sensible defaults)
+
+- **Default VLM model id**: MedGemma 4B-IT (medical-tuned) — recommended default.
+- **Windows/Linux sidecar binaries**: Notesage bundles macOS only; add other triples to
+  the download script + CI.
 
 ---
 
