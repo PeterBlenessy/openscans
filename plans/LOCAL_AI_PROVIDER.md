@@ -193,8 +193,22 @@ use, so the installer still bundles only `llama-server`.
   platform. TS typecheck/lint/tests pass.
 - Remaining polish: download-progress UI (currently console), win/linux sidecar CI.
 
-**Phase 2 — network lockdown:** restrict `capabilities/default.json` to localhost for the
-AI path (port Notesage's empty-allowlist pattern).
+**Phase 2 — network lockdown (in progress, this branch):**
+- Removed the `shell:default` webview capability — the sidecar is spawned from Rust, so
+  the webview now has *no* ability to execute processes (reduced attack surface).
+- Local provider proven zero-egress by tests (`useAiOperations.local.test.ts`): neither
+  detection nor analysis opens the cloud send-confirmation gate; the server is provisioned
+  before inference.
+- CSP already restricts the local path to `http://localhost:*` / `127.0.0.1:*`.
+- ⚠️ DECISION NEEDED: a *fully* locked local-only build would also drop the three cloud
+  hosts (`api.anthropic.com`, `api.openai.com`, `generativelanguage.googleapis.com`) from
+  the CSP `connect-src`. That removes cloud providers entirely — left in place for now so
+  cloud stays opt-in. Flip it if the goal is a local-only product.
+
+**Tests added (run in CI — web build + vitest):**
+- `localServer.test.ts` — `ensureLocalServer` download/start orchestration + guard rails.
+- `localVisionDetector.test.ts` — loopback client config, no API key, model-id resolution.
+- `useAiOperations.local.test.ts` — zero-egress guarantees for the local provider.
 
 **Phase 3 — MR precision:** on-demand PyInstaller MONAI/TotalSegmentator-MRI engine + weights.
 
