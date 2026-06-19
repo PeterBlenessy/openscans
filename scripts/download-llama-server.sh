@@ -11,8 +11,9 @@
 # fetched on a Windows host via this script under Git Bash, or downloaded
 # manually from the llama.cpp releases page.
 #
-# NOTE: not yet exercised in CI for every platform — verify the asset name and
-# the resulting binary before a release build.
+# NOTE: verified on macOS arm64 (asset + binary run); other platforms share the
+# same asset layout but have not been exercised end-to-end — confirm before a
+# release build.
 set -euo pipefail
 
 REPO="ggml-org/llama.cpp"
@@ -25,8 +26,15 @@ DEST_DIR="${ROOT_DIR}/src-tauri/binaries"
 VERSION="${1:-}"
 if [[ -z "${VERSION}" ]]; then
   echo "Resolving latest llama.cpp release tag..."
-  VERSION="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
-    | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')"
+  # Capture the full API response first. Piping curl straight into `grep -m1`
+  # makes grep close the pipe after the first match, so curl dies with a write
+  # error (SIGPIPE) that `set -o pipefail` then treats as a fatal failure.
+  release_json="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest")"
+  VERSION="$(printf '%s' "${release_json}" | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')"
+fi
+if [[ -z "${VERSION}" ]]; then
+  echo "Could not resolve a llama.cpp release tag." >&2
+  exit 1
 fi
 echo "Using llama.cpp version: ${VERSION}"
 
@@ -35,16 +43,20 @@ echo "Using llama.cpp version: ${VERSION}"
 # ---------------------------------------------------------------------------
 OS="$(uname -s)"
 ARCH="$(uname -m)"
+# NOTE: macOS and Linux assets ship as .tar.gz; only the Windows builds are .zip.
 case "${OS}-${ARCH}" in
   Darwin-arm64)
-    ASSET="llama-${VERSION}-bin-macos-arm64.zip"
+    ASSET="llama-${VERSION}-bin-macos-arm64.tar.gz"
     TRIPLE="aarch64-apple-darwin" ;;
   Darwin-x86_64)
-    ASSET="llama-${VERSION}-bin-macos-x64.zip"
+    ASSET="llama-${VERSION}-bin-macos-x64.tar.gz"
     TRIPLE="x86_64-apple-darwin" ;;
   Linux-x86_64)
-    ASSET="llama-${VERSION}-bin-ubuntu-x64.zip"
+    ASSET="llama-${VERSION}-bin-ubuntu-x64.tar.gz"
     TRIPLE="x86_64-unknown-linux-gnu" ;;
+  Linux-aarch64)
+    ASSET="llama-${VERSION}-bin-ubuntu-arm64.tar.gz"
+    TRIPLE="aarch64-unknown-linux-gnu" ;;
   *)
     echo "Unsupported host platform: ${OS}-${ARCH}" >&2
     echo "Download a matching asset manually from https://github.com/${REPO}/releases" >&2
@@ -60,9 +72,20 @@ echo "Asset: ${ASSET}"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "${TMP_DIR}"' EXIT
 
+ARCHIVE="${TMP_DIR}/${ASSET##*/}"
 echo "Downloading ${URL}..."
-curl -fSL "${URL}" -o "${TMP_DIR}/llama.zip"
-unzip -q "${TMP_DIR}/llama.zip" -d "${TMP_DIR}/extracted"
+curl -fSL "${URL}" -o "${ARCHIVE}"
+
+mkdir -p "${TMP_DIR}/extracted"
+case "${ASSET}" in
+  *.tar.gz|*.tgz)
+    tar -xzf "${ARCHIVE}" -C "${TMP_DIR}/extracted" ;;
+  *.zip)
+    unzip -q "${ARCHIVE}" -d "${TMP_DIR}/extracted" ;;
+  *)
+    echo "Unknown archive format: ${ASSET}" >&2
+    exit 1 ;;
+esac
 
 # The binary lives in build/bin/ (recent releases) or bin/ (older).
 SRC_BIN="$(find "${TMP_DIR}/extracted" -type f -name 'llama-server' | head -n1)"
