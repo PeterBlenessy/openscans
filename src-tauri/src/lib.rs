@@ -5,6 +5,11 @@ use keyring::Entry;
 #[cfg(desktop)]
 mod local_ai;
 
+/// MR-precision segmentation engine (Phase 3): on-demand download + run.
+/// Desktop-only.
+#[cfg(desktop)]
+mod mr_seg;
+
 // `AppHandle::state()` in the run-loop comes from the Manager trait.
 #[cfg(desktop)]
 use tauri::Manager;
@@ -131,7 +136,10 @@ pub fn run() {
       local_ai::local_ai_download_model,
       local_ai::local_ai_start,
       local_ai::local_ai_stop,
-      local_ai::local_ai_status
+      local_ai::local_ai_status,
+      mr_seg::mr_seg_status,
+      mr_seg::mr_seg_download,
+      mr_seg::mr_seg_run
     ]);
 
   #[cfg(not(desktop))]

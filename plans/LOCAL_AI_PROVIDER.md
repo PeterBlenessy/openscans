@@ -210,7 +210,23 @@ use, so the installer still bundles only `llama-server`.
 - `localVisionDetector.test.ts` — loopback client config, no API key, model-id resolution.
 - `useAiOperations.local.test.ts` — zero-egress guarantees for the local provider.
 
-**Phase 3 — MR precision:** on-demand PyInstaller MONAI/TotalSegmentator-MRI engine + weights.
+**Phase 3 — MR precision (first cut, this branch):**
+- `python-engine/mr_segmentation/` — TotalSegmentator-MRI CLI (`run.py`) that segments a
+  DICOM series and resolves each vertebra centroid back to a DICOM instance + pixel coord,
+  emitting the landmark JSON contract; `requirements.txt`, PyInstaller `.spec`, README.
+- `src-tauri/src/mr_seg.rs` — desktop commands: `mr_seg_status`, `mr_seg_download`
+  (on-demand per-platform engine binary), `mr_seg_run` (spawn engine over a series dir,
+  return JSON). Weights fetched by the engine on first run into the app dir
+  (`TOTALSEG_HOME_DIR`). Registered in `lib.rs`.
+- `src/lib/ai/mrSegmentation.ts` — contract types + validating parser + `segmentationToMarkers`
+  converter (markers span the series, one per slice). Fully unit-tested.
+- `src/lib/ai/segmentationServer.ts` — bridge + `ensureMrEngine` + `segmentSeries`. Unit-tested.
+- ✅ TS typecheck/lint/tests pass (28 new Phase-3 tests across the two suites).
+- ⚠️ Not runnable here: Rust not compiled (GTK/WebKit), Python ML stack not installed.
+  Remaining: (a) UI action to trigger `segmentSeries` with the loaded series' on-disk path
+  (desktop file-path plumbing); (b) build/publish the PyInstaller engine per platform and
+  fill the placeholder release URLs in `mr_seg.rs`; (c) validate the voxel→DICOM mapping
+  (axes/resampling) and PyInstaller hidden-imports on real MR data.
 
 ## 8. Sources
 
