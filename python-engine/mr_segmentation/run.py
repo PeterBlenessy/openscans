@@ -55,13 +55,15 @@ def short_label(seg_label: str) -> str:
     return seg_label.split("_", 1)[1] if seg_label.startswith("vertebrae_") else seg_label
 
 
-def load_series(series_dir: Path):
-    """Load + sort a DICOM series, returning slices ordered along the volume axis.
+def load_series(series_dir: Path, series_uid: str | None):
+    """Load + sort a DICOM series, returning (datasets, file_paths) ordered
+    along the volume axis.
 
-    Returns a list of (pydicom.Dataset) sorted by through-plane position, which
-    defines the k (slice) index used to map segmentation voxels back to slices.
+    `series_dir` may be a study folder containing multiple series; when
+    `series_uid` is given, only instances of that series are kept. The k (slice)
+    index used to map segmentation voxels back to slices is defined by this sort.
     """
-    datasets = []
+    items = []  # (dataset, path)
     for path in series_dir.iterdir():
         if not path.is_file():
             continue
@@ -71,12 +73,16 @@ def load_series(series_dir: Path):
             continue  # skip non-DICOM / unreadable files
         if "PixelData" not in ds:
             continue
-        datasets.append(ds)
+        if series_uid and str(getattr(ds, "SeriesInstanceUID", "")) != series_uid:
+            continue
+        items.append((ds, path))
 
-    if not datasets:
-        raise SystemExit(f"No DICOM image instances found in {series_dir}")
+    if not items:
+        where = f"series {series_uid} in " if series_uid else ""
+        raise SystemExit(f"No DICOM image instances found for {where}{series_dir}")
 
-    def sort_key(ds):
+    def sort_key(item):
+        ds = item[0]
         # Prefer ImagePositionPatient projected on the slice normal; fall back to
         # InstanceNumber. Most MR series sort cleanly by InstanceNumber.
         ipp = getattr(ds, "ImagePositionPatient", None)
@@ -84,8 +90,22 @@ def load_series(series_dir: Path):
             return float(ipp[2])
         return float(getattr(ds, "InstanceNumber", 0))
 
-    datasets.sort(key=sort_key)
-    return datasets
+    items.sort(key=sort_key)
+    datasets = [ds for ds, _ in items]
+    paths = [p for _, p in items]
+    return datasets, paths
+
+
+def stage_series(paths, work_dir: Path) -> Path:
+    """Copy the selected series' files into an isolated input dir so
+    TotalSegmentator reads exactly one series (not the whole study folder)."""
+    import shutil
+
+    input_dir = work_dir / "input"
+    input_dir.mkdir(parents=True, exist_ok=True)
+    for i, p in enumerate(paths):
+        shutil.copy2(str(p), str(input_dir / f"{i:05d}.dcm"))
+    return input_dir
 
 
 def run_totalsegmentator(series_dir: Path, work_dir: Path, task: str):
@@ -151,9 +171,10 @@ def centroid_to_landmark(volume, label_id, slices):
     }
 
 
-def segment(series_dir: Path, work_dir: Path, task: str) -> dict:
-    slices = load_series(series_dir)
-    volume, label_names, version = run_totalsegmentator(series_dir, work_dir, task)
+def segment(series_dir: Path, work_dir: Path, task: str, series_uid: str | None) -> dict:
+    slices, paths = load_series(series_dir, series_uid)
+    input_dir = stage_series(paths, work_dir)
+    volume, label_names, version = run_totalsegmentator(input_dir, work_dir, task)
 
     # Invert name->id, restricted to the vertebra labels we surface.
     name_to_id = {name: lid for lid, name in label_names.items()}
@@ -181,9 +202,14 @@ def segment(series_dir: Path, work_dir: Path, task: str) -> dict:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="OpenScans MR segmentation engine")
-    parser.add_argument("--series", required=True, help="DICOM series directory")
+    parser.add_argument("--series", required=True, help="DICOM series or study directory")
     parser.add_argument("--out", required=True, help="output JSON path")
     parser.add_argument("--task", default="total_mr", help="TotalSegmentator task")
+    parser.add_argument(
+        "--series-uid",
+        default=None,
+        help="restrict to this SeriesInstanceUID when --series is a study folder",
+    )
     parser.add_argument("--work-dir", default=None, help="scratch dir (default: temp)")
     args = parser.parse_args(argv)
 
@@ -196,7 +222,7 @@ def main(argv=None) -> int:
 
     work_dir = Path(args.work_dir) if args.work_dir else Path(tempfile.mkdtemp(prefix="mrseg-"))
     try:
-        result = segment(series_dir, work_dir, args.task)
+        result = segment(series_dir, work_dir, args.task, args.series_uid)
     except SystemExit as e:
         print(f"error: {e}", file=sys.stderr)
         return 1

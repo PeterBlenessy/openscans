@@ -39,9 +39,12 @@ export function downloadMrEngine(): Promise<void> {
   return invoke<void>('mr_seg_download')
 }
 
-/** Run inference over a DICOM series directory; returns raw (unvalidated) JSON. */
-export function runMrSegmentation(seriesDir: string): Promise<unknown> {
-  return invoke<unknown>('mr_seg_run', { seriesDir })
+/**
+ * Run inference over a DICOM series; returns raw (unvalidated) JSON.
+ * `seriesDir` may be a study folder — pass `seriesUid` to restrict to one series.
+ */
+export function runMrSegmentation(seriesDir: string, seriesUid?: string): Promise<unknown> {
+  return invoke<unknown>('mr_seg_run', { seriesDir, seriesUid })
 }
 
 export async function onMrDownloadProgress(
@@ -82,10 +85,10 @@ export async function ensureMrEngine(
 export async function segmentSeries(
   seriesDir: string,
   ctx: MarkerContext,
-  onProgress?: (progress: MrDownloadProgress) => void
+  options?: { seriesUid?: string; onProgress?: (progress: MrDownloadProgress) => void }
 ): Promise<MarkerAnnotation[]> {
-  await ensureMrEngine(onProgress)
-  const raw = await runMrSegmentation(seriesDir)
+  await ensureMrEngine(options?.onProgress)
+  const raw = await runMrSegmentation(seriesDir, options?.seriesUid)
   const result = parseSegmentationResult(raw)
   return segmentationToMarkers(result, ctx)
 }

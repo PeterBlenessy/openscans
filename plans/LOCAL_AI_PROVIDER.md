@@ -221,12 +221,27 @@ use, so the installer still bundles only `llama-server`.
 - `src/lib/ai/mrSegmentation.ts` — contract types + validating parser + `segmentationToMarkers`
   converter (markers span the series, one per slice). Fully unit-tested.
 - `src/lib/ai/segmentationServer.ts` — bridge + `ensureMrEngine` + `segmentSeries`. Unit-tested.
-- ✅ TS typecheck/lint/tests pass (28 new Phase-3 tests across the two suites).
-- ⚠️ Not runnable here: Rust not compiled (GTK/WebKit), Python ML stack not installed.
-  Remaining: (a) UI action to trigger `segmentSeries` with the loaded series' on-disk path
-  (desktop file-path plumbing); (b) build/publish the PyInstaller engine per platform and
-  fill the placeholder release URLs in `mr_seg.rs`; (c) validate the voxel→DICOM mapping
-  (axes/resampling) and PyInstaller hidden-imports on real MR data.
+- ✅ TS typecheck/lint/tests pass.
+
+**UI wiring + consistency (done, this branch):**
+- ViewportToolbar now uses the same local-provider rules as the keyboard hook: its
+  detection/analysis buttons skip the egress gate for `'local'` and provision the bundled
+  server first (fixes a real inconsistency — the buttons previously duplicated the cloud
+  logic and would have mis-prompted for the local provider).
+- New **MR segmentation toolbar button** → `handleMrSegmentation` → `segmentSeries` over the
+  current series (study `folderPath` + current `seriesInstanceUID`; the engine stages just
+  that series). Markers added across the series' slices.
+- Engine filters to one series (`--series-uid`) so a multi-series study folder is handled.
+- `DownloadProgressOverlay` shows live progress for both the local model and MR engine
+  downloads (subscribes to the Tauri progress events).
+
+**Truly remaining (infra / real-hardware — cannot be done in the dev container):**
+- (a) Build + publish the PyInstaller engine per platform and fill the placeholder release
+  URLs in `mr_seg.rs`; same for win/linux `llama-server` sidecar binaries + CI.
+- (b) Compile the Rust on a real platform (`cargo check` / `tauri build`) — the container
+  lacks GTK/WebKit.
+- (c) Validate the voxel→DICOM mapping (axes/resampling), PyInstaller hidden-imports, and
+  the MedGemma projector filename on real data.
 
 ## 8. Sources
 

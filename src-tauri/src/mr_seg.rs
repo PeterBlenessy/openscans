@@ -129,7 +129,11 @@ pub async fn mr_seg_download(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn mr_seg_run(app: AppHandle, series_dir: String) -> Result<serde_json::Value, String> {
+pub async fn mr_seg_run(
+    app: AppHandle,
+    series_dir: String,
+    series_uid: Option<String>,
+) -> Result<serde_json::Value, String> {
     let bin = engine_binary(&app)?;
     if !bin.exists() {
         return Err("MR engine not downloaded yet.".to_string());
@@ -140,15 +144,17 @@ pub async fn mr_seg_run(app: AppHandle, series_dir: String) -> Result<serde_json
 
     // Point TotalSegmentator's weights cache into our engine dir so first-run
     // weights land in a known place and later runs stay offline.
-    let status = tokio::process::Command::new(&bin)
-        .arg("--series")
+    let mut cmd = tokio::process::Command::new(&bin);
+    cmd.arg("--series")
         .arg(&series_dir)
         .arg("--out")
         .arg(&out)
-        .env("TOTALSEG_HOME_DIR", &weights)
-        .status()
-        .await
-        .map_err(|e| e.to_string())?;
+        .env("TOTALSEG_HOME_DIR", &weights);
+    if let Some(uid) = series_uid {
+        cmd.arg("--series-uid").arg(uid);
+    }
+
+    let status = cmd.status().await.map_err(|e| e.to_string())?;
     if !status.success() {
         return Err(format!("MR engine exited with status {}", status));
     }
