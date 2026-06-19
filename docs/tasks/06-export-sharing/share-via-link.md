@@ -5,6 +5,8 @@
 **Estimated Effort**: High (5-7 days)
 **Dependencies**: DICOMweb/PACS Integration (for server-stored studies)
 
+> ⚠️ **Server-requiring — conflicts with the privacy-first principle.** Shareable links require a persistent storage backend for the imaging data, which is at odds with OpenScans' "client-side only / no server / no PHI at rest" posture (see `CLAUDE.md` → "Privacy First"). Adopting it is a deliberate decision scoped to a backed deployment, not a default. The zero-footprint browser and local-only desktop modes must keep working with no backend.
+
 ## Overview
 
 Generate shareable URLs that open a specific study, series, or image in the viewer. Requires a persistent storage backend for the imaging data.
