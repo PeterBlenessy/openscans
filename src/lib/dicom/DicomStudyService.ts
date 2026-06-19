@@ -310,9 +310,35 @@ export class DicomStudyService {
       windowWidth = defaults.windowWidth
     }
 
+    // Parse a backslash-delimited numeric pair (e.g. Pixel Spacing "0.5\0.5")
+    // into a [row, col] tuple. Returns undefined when absent or malformed.
+    const getPair = (tag: string): [number, number] | undefined => {
+      try {
+        const value = dataSet.string(tag)
+        if (!value) return undefined
+        const parts = value.split('\\').map((p) => Number(p.trim()))
+        if (parts.length >= 2 && parts.every((n) => !isNaN(n))) {
+          return [parts[0], parts[1]]
+        }
+        return undefined
+      } catch {
+        return undefined
+      }
+    }
+
     // Extract pixel value range for performance optimization
     const minPixelValue = getNumber('x00280106', undefined)
     const maxPixelValue = getNumber('x00280107', undefined)
+
+    // Pixel spacing for measurement calibration:
+    // Pixel Spacing (0028,0030) is preferred; Imager Pixel Spacing (0018,1164)
+    // is the projection-radiography fallback.
+    const pixelSpacing = getPair('x00280030')
+    const imagerPixelSpacing = getPair('x00181164')
+
+    // Modality LUT rescale (CT/PET) for ROI Hounsfield/physical-value statistics.
+    const rescaleIntercept = getNumber('x00281052', undefined)
+    const rescaleSlope = getNumber('x00281053', undefined)
 
     return {
       patientName: getString('x00100010', 'Unknown'),
@@ -334,6 +360,10 @@ export class DicomStudyService {
       columns: getNumber('x00280011', 0),
       minPixelValue,
       maxPixelValue,
+      pixelSpacing,
+      imagerPixelSpacing,
+      rescaleIntercept,
+      rescaleSlope,
     }
   }
 

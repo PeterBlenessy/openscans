@@ -5,6 +5,8 @@
 **Estimated Effort**: Very High (3-4 weeks)
 **Dependencies**: None for basic implementation; Authentication feature for secured PACS
 
+> ⚠️ **Server-requiring — conflicts with the privacy-first principle.** This feature requires a remote PACS/DICOMweb server, which is at odds with OpenScans' "client-side only / no server / no PHI at rest" posture (see `CLAUDE.md` → "Privacy First"). Adopting it is a deliberate decision scoped to institutional/PACS deployments, not a default. The zero-footprint browser and local-only desktop modes must keep working with no backend.
+
 ## Overview
 
 Add the ability to connect to PACS servers via DICOMweb (WADO-RS, QIDO-RS) to query, retrieve, and display studies from centralized imaging archives.

@@ -21,7 +21,7 @@ Implementation task breakdowns for each unimplemented or partially implemented f
 | [Full-Screen Mode](03-advanced-viewing/fullscreen-mode.md) | Low (0.5-1d) | None | Advanced Viewing |
 | [Split / Comparison View](03-advanced-viewing/split-comparison-view.md) | High (5-8d) | None | Advanced Viewing |
 | [Ellipse / Rectangle ROI](04-annotations-measurements/ellipse-rectangle-roi.md) | Medium (3-4d) | Distance Measurement | Annotations |
-| [Subscription AI — Anthropic](07-ai-intelligence/subscription-ai-anthropic.md) | High (8-12d) | None | AI |
+| [Subscription AI — Anthropic](07-ai-intelligence/subscription-ai-anthropic.md) | High (6-8d) | None | AI |
 
 ### Tier 2 — Should Consider (Differentiating, medium demand)
 
@@ -64,6 +64,8 @@ Implementation task breakdowns for each unimplemented or partially implemented f
 | [Share via Link](06-export-sharing/share-via-link.md) | High (5-7d) | DICOMweb | Export |
 | [Authentication](09-privacy-security/authentication.md) | High (5-7d) | DICOMweb | Privacy |
 
+> ⚠️ **Server-requiring items conflict with the privacy-first principle.** **DICOMweb / PACS**, **Share via Link**, and **Authentication (OpenID Connect)** all require a server/backend (a PACS, a study-storage host, an identity provider). That conflicts with OpenScans' core "client-side only / no server / no PHI at rest" posture (see `CLAUDE.md` → "Privacy First"). Adopting any of them is a deliberate architectural decision — for institutional/PACS deployments — and **not** a default direction. Keep them clearly scoped to that opt-in deployment mode; the zero-footprint browser and local-only desktop modes must continue to work with no backend.
+
 ## Dependency Graph
 
 ```
@@ -93,7 +95,7 @@ Implementation task breakdowns for each unimplemented or partially implemented f
 │   │   └── GrowCut
 │   ├── DICOM-SEG Support
 │   └── RT Structure Set
-├── Subscription AI — Anthropic (proxy + auth + quota)
+├── Subscription AI — Anthropic (local Claude Code via Agent SDK; no server)
 ├── DICOMweb / PACS Integration
 │   ├── Share via Link
 │   └── Authentication (OpenID)

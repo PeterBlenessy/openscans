@@ -5,6 +5,8 @@
 **Estimated Effort**: High (5-7 days)
 **Dependencies**: DICOMweb/PACS Integration (primary use case for auth)
 
+> ⚠️ **Server-requiring — conflicts with the privacy-first principle.** OpenID Connect authentication requires an identity provider and a secured backend, which is at odds with OpenScans' "client-side only / no server / no PHI at rest" posture (see `CLAUDE.md` → "Privacy First"). It only makes sense alongside a server-backed (PACS) deployment and is a deliberate, opt-in decision, not a default. The zero-footprint browser and local-only desktop modes must keep working with no backend and no login.
+
 ## Overview
 
 Add user authentication via OpenID Connect for secured access in institutional deployments.

@@ -432,6 +432,58 @@ describe('viewportStore', () => {
     })
   })
 
+  describe('Cine Loop', () => {
+    it('toggles cine playback on and off', () => {
+      expect(useViewportStore.getState().cineEnabled).toBe(false)
+
+      useViewportStore.getState().toggleCine()
+      expect(useViewportStore.getState().cineEnabled).toBe(true)
+
+      useViewportStore.getState().toggleCine()
+      expect(useViewportStore.getState().cineEnabled).toBe(false)
+    })
+
+    it('sets cine enabled explicitly', () => {
+      useViewportStore.getState().setCineEnabled(true)
+      expect(useViewportStore.getState().cineEnabled).toBe(true)
+
+      useViewportStore.getState().setCineEnabled(false)
+      expect(useViewportStore.getState().cineEnabled).toBe(false)
+    })
+
+    it('sets and clamps the cine frame rate to 1-30', () => {
+      useViewportStore.getState().setCineFrameRate(15)
+      expect(useViewportStore.getState().cineFrameRate).toBe(15)
+
+      useViewportStore.getState().setCineFrameRate(0)
+      expect(useViewportStore.getState().cineFrameRate).toBe(1)
+
+      useViewportStore.getState().setCineFrameRate(100)
+      expect(useViewportStore.getState().cineFrameRate).toBe(30)
+    })
+
+    it('persists the frame rate to localStorage', () => {
+      useViewportStore.getState().setCineFrameRate(20)
+      expect(localStorage.getItem('openscans-cine-frame-rate')).toBe('20')
+    })
+
+    it('sets cine direction', () => {
+      useViewportStore.getState().setCineDirection('reverse')
+      expect(useViewportStore.getState().cineDirection).toBe('reverse')
+
+      useViewportStore.getState().setCineDirection('forward')
+      expect(useViewportStore.getState().cineDirection).toBe('forward')
+    })
+
+    it('sets cine loop mode', () => {
+      useViewportStore.getState().setCineLoopMode('bounce')
+      expect(useViewportStore.getState().cineLoopMode).toBe('bounce')
+
+      useViewportStore.getState().setCineLoopMode('once')
+      expect(useViewportStore.getState().cineLoopMode).toBe('once')
+    })
+  })
+
   describe('Edge Cases', () => {
     it('should handle zero window width', () => {
       useViewportStore.getState().setWindowLevel(100, 0)

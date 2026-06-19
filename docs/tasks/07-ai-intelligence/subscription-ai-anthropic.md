@@ -4,7 +4,14 @@
 **Priority**: Tier 1 — Should Implement
 **Estimated Effort**: High (6-8 days)
 **Dependencies**: None (builds alongside existing BYOK infrastructure)
-**Platform**: Desktop (Tauri) only
+**Platform**: Desktop (Tauri v2) only
+
+> **Verify against current code first (post-2026-06 security work).** This task predates the security hardening and the original draft referenced APIs/files that no longer match the codebase. Before implementing, confirm against the *current* AI architecture:
+> - **Cloud AI is desktop-only**, gated by `isTauri()` in `src/lib/utils/platform.ts` (NOT an invented `src/lib/platform.ts` `isTauriDesktop()`). The desktop gate already lives in `src/hooks/useAiOperations.ts`.
+> - **Every image send goes through a per-send consent dialog**: `confirmAiSend(provider)` in `src/lib/ai/ai-send-confirm.ts` (backed by `src/components/viewer/AiSendConfirmDialog.tsx`). The hook awaits this before any pixel data leaves the device. Do NOT re-specify a new consent UI — reuse `confirmAiSend`.
+> - **API keys live in the OS keychain** via Rust `store_credential` / `get_credential` / `delete_credential` (`src-tauri/src/lib.rs`) and the `src/lib/utils/credentials.ts` wrappers — never localStorage. Claude Code mode stores no key (the subscription is managed by Claude Code itself), so it does not touch this path, but BYOK still does.
+> - The app is **Tauri v2** (`tauri = 2.x`) and already depends on **`tauri-plugin-shell`** (registered in `src-tauri/src/lib.rs`). Sidecars/external processes go through the v2 shell API, NOT the removed Tauri v1 `tauri::api::process` module.
+> - Detectors are lazy-loaded through `src/lib/ai/aiDetectorManager.ts` and implement the `VisionDetector` interface in `src/lib/ai/types.ts` (`setApiKey`, `isConfigured`, `detectVertebrae`, `analyzeImage`). A Claude Code detector must implement the same interface to slot in.
 
 ## Overview
 
@@ -16,13 +23,21 @@ Integrate with a locally running Claude Code instance via the Claude Agent SDK s
 - **Agent SDK** (`@anthropic-ai/claude-agent-sdk`) is Anthropic's official SDK that spawns and communicates with Claude Code directly over stdio/JSON-RPC.
 - Since OpenScans only needs Claude Code, we use the **Agent SDK directly** — simpler, fewer dependencies, officially supported.
 
+## PHI-at-rest concern (must resolve before shipping)
+
+> ⚠️ **The temp-PNG hand-off conflicts with the project's "no PHI at rest" / privacy-first posture.** The original design rendered the patient image to a temp PNG on disk so Claude Code could `Read` it (Steps 4–5 below). Writing decoded DICOM pixel data — Protected Health Information — to a temp file, even briefly, means PHI lands on disk. This is exactly what the client-side-only / no-PHI-at-rest principle (see `CLAUDE.md` → "Privacy First") is meant to prevent.
+>
+> **Preferred:** an in-memory hand-off — pass the rendered image to the Agent SDK as inline base64 image content (the SDK / Claude Code multimodal content blocks) rather than a file the `Read` tool opens from disk. This keeps the image in process memory only, consistent with how the existing BYOK detectors (`claudeVisionDetector.ts`, etc.) already send base64 to the cloud APIs with no disk write.
+>
+> **If a file is genuinely unavoidable** (e.g. the installed Claude Code version can only ingest images via the `Read` tool on a path): scope writes to a single app-owned, restrictively-permissioned temp subdirectory, write with owner-only permissions, and **guarantee cleanup** via `try/finally` AND a best-effort sweep of the directory on app start/exit. Surface this disk write in the `confirmAiSend` consent copy so the user knows a temp file is created. Treat the in-memory path as the target and the temp file as a documented fallback, not the default.
+
 ## Implementation Steps
 
 ---
 
-### Step 1: Add Agent SDK as a Tauri Sidecar
+### Step 1: Add the Agent SDK as a Tauri v2 Sidecar
 
-The Agent SDK requires Node.js. In the Tauri desktop app, it runs as a **sidecar process** — a bundled Node.js script that Tauri spawns and communicates with via IPC.
+The Agent SDK requires Node.js. In the Tauri **v2** desktop app it runs as a **sidecar process** — a bundled script Tauri spawns and communicates with over stdio via `tauri-plugin-shell` (already a dependency).
 
 #### 1a: Create the Sidecar Script
 
@@ -31,44 +46,40 @@ The Agent SDK requires Node.js. In the Tauri desktop app, it runs as a **sidecar
 ```javascript
 import { query } from '@anthropic-ai/claude-agent-sdk'
 
-// Listen for requests from Tauri via stdin
+// Newline-delimited JSON requests arrive on stdin.
 process.stdin.setEncoding('utf-8')
 let buffer = ''
 
 process.stdin.on('data', (chunk) => {
   buffer += chunk
-  // Messages are newline-delimited JSON
   const lines = buffer.split('\n')
-  buffer = lines.pop() // keep incomplete line in buffer
+  buffer = lines.pop() // keep incomplete line buffered
   for (const line of lines) {
     if (line.trim()) handleRequest(JSON.parse(line))
   }
 })
 
 async function handleRequest(request) {
-  const { id, type, prompt, allowedTools } = request
-
+  const { id, prompt, allowedTools, systemPrompt, imageBase64 } = request
   try {
     let result = ''
-
+    // Prefer passing the image as inline multimodal content (in-memory, no
+    // temp file) — see the PHI-at-rest note above. Fall back to a Read-tool
+    // path only if the installed SDK/Claude Code cannot ingest inline images.
     for await (const message of query({
       prompt,
       options: {
-        allowedTools: allowedTools || ['Read'],
+        allowedTools: allowedTools || [],
         maxTurns: 3,
-        systemPrompt: request.systemPrompt || undefined,
+        systemPrompt: systemPrompt || undefined,
       },
     })) {
-      // Collect text responses
       if (message.type === 'assistant') {
         for (const block of message.message?.content || []) {
-          if (block.type === 'text') {
-            result += block.text
-          }
+          if (block.type === 'text') result += block.text
         }
       }
     }
-
     send({ id, status: 'ok', result })
   } catch (error) {
     send({ id, status: 'error', error: error.message })
@@ -79,11 +90,12 @@ function send(message) {
   process.stdout.write(JSON.stringify(message) + '\n')
 }
 
-// Signal readiness
 send({ type: 'ready' })
 ```
 
-#### 1b: Install Agent SDK for Sidecar
+> The exact shape of inline image content (and whether `allowedTools` needs `Read`) depends on the installed `@anthropic-ai/claude-agent-sdk` version — verify against the SDK's current multimodal content API at implementation time. If inline images are not supported, fall back to the scoped-temp-file approach described in the PHI note.
+
+#### 1b: Install the Agent SDK for the sidecar
 
 **File**: `src-tauri/sidecars/package.json`
 
@@ -98,13 +110,13 @@ send({ type: 'ready' })
 }
 ```
 
-Run `cd src-tauri/sidecars && npm install` during build.
+Run `cd src-tauri/sidecars && npm install` (or bundle a prebuilt copy) during the build.
 
-#### 1c: Configure Tauri Sidecar
+#### 1c: Register the sidecar and grant the shell capability (Tauri v2)
 
 **File**: `src-tauri/tauri.conf.json`
 
-Add the sidecar to the Tauri configuration so it's bundled with the app:
+Register the binary under `bundle.externalBin`:
 
 ```json
 {
@@ -114,61 +126,80 @@ Add the sidecar to the Tauri configuration so it's bundled with the app:
 }
 ```
 
-Note: The sidecar requires Node.js on the user's system (same requirement as Claude Code itself).
+**File**: `src-tauri/capabilities/default.json` (Tauri v2 capabilities/ACL)
 
----
+Tauri v2 gates sidecar execution behind the shell plugin's permission set. Grant a scoped `shell:allow-execute` (or the sidecar-specific permission) for the `claude-bridge` sidecar only — do not grant blanket shell access:
 
-### Step 2: Create Tauri Commands for Claude Code Communication
-
-**File**: `src-tauri/src/commands/claude_code.rs`
-
-Create Rust Tauri commands that spawn and manage the sidecar:
-
-```rust
-use tauri::api::process::{Command, CommandEvent};
-
-#[tauri::command]
-async fn claude_code_available() -> Result<bool, String> {
-    // Check if Claude Code CLI is installed
-    let output = Command::new("claude")
-        .args(["--version"])
-        .output()
-        .map_err(|e| e.to_string())?;
-    Ok(output.status.success())
-}
-
-#[tauri::command]
-async fn claude_code_auth_status() -> Result<String, String> {
-    // Check if user is logged in
-    let output = Command::new("claude")
-        .args(["auth", "status"])
-        .output()
-        .map_err(|e| e.to_string())?;
-    // Parse output for auth status
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
-}
-
-#[tauri::command]
-async fn claude_code_query(
-    prompt: String,
-    system_prompt: Option<String>,
-    allowed_tools: Vec<String>,
-) -> Result<String, String> {
-    // Send request to the sidecar bridge
-    // ... spawn sidecar, send JSON, read response
+```json
+{
+  "permissions": [
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [{ "name": "sidecars/claude-bridge", "sidecar": true }]
+    }
+  ]
 }
 ```
 
+> Verify the exact permission identifier against the installed `tauri-plugin-shell` version's ACL schema. The principle is: scope the capability to the single sidecar, mirroring how the CSP `connect-src` is already scoped to the three known AI endpoints.
+>
+> Note: the sidecar requires Node.js on the user's machine — the same requirement as Claude Code itself.
+
 ---
 
-### Step 3: Create Frontend Claude Code Service
+### Step 2: Spawn and Drive the Sidecar (Tauri v2)
+
+The sidecar can be driven either from Rust (a `#[tauri::command]` that owns the child process) or directly from the frontend via the `@tauri-apps/plugin-shell` JS API. Both are valid in Tauri v2. Pick ONE and keep the process lifecycle in a single place.
+
+**Tauri v2 — Rust side** (replaces the removed v1 `tauri::api::process`):
+
+```rust
+// Tauri v2: use the tauri-plugin-shell sidecar API, NOT tauri::api::process.
+use tauri_plugin_shell::ShellExt;
+use tauri_plugin_shell::process::CommandEvent;
+
+#[tauri::command]
+async fn claude_code_query(
+    app: tauri::AppHandle,
+    request_json: String, // newline-free JSON request for the bridge
+) -> Result<String, String> {
+    let sidecar = app
+        .shell()
+        .sidecar("claude-bridge")
+        .map_err(|e| e.to_string())?;
+
+    let (mut rx, mut child) = sidecar.spawn().map_err(|e| e.to_string())?;
+
+    child
+        .write(format!("{request_json}\n").as_bytes())
+        .map_err(|e| e.to_string())?;
+
+    let mut response = String::new();
+    while let Some(event) = rx.recv().await {
+        if let CommandEvent::Stdout(line) = event {
+            response.push_str(&String::from_utf8_lossy(&line));
+            if response.contains('\n') {
+                break; // one newline-delimited JSON response
+            }
+        }
+    }
+    Ok(response)
+}
+```
+
+> Detecting whether Claude Code is installed/authenticated can likewise go through the shell API (`app.shell().command("claude").args(["--version"])`) or be inferred from the SDK's own error on first `query()`. Avoid the v1 `Command::new(...).output()` pattern from the old draft — that API does not exist in Tauri v2.
+
+---
+
+### Step 3: Frontend Claude Code Service
 
 **File**: `src/lib/ai/claudeCodeService.ts`
 
-This service handles communication with the Tauri sidecar. It is only loaded in the desktop build.
+Communicates with the sidecar (via the Rust command from Step 2 or directly via `@tauri-apps/plugin-shell`). Desktop-only; never imported on the web path.
 
 ```typescript
 import { invoke } from '@tauri-apps/api/core'
+import { isTauri } from '@/lib/utils/platform'
 
 interface ClaudeCodeStatus {
   installed: boolean
@@ -177,303 +208,139 @@ interface ClaudeCodeStatus {
 }
 
 export async function getClaudeCodeStatus(): Promise<ClaudeCodeStatus> {
+  if (!isTauri()) return { installed: false, authenticated: false, version: null }
   try {
-    const installed = await invoke<boolean>('claude_code_available')
-    if (!installed) return { installed: false, authenticated: false, version: null }
-
-    const authStatus = await invoke<string>('claude_code_auth_status')
-    const authenticated = authStatus.includes('authenticated')
-
-    return { installed, authenticated, version: authStatus }
+    return await invoke<ClaudeCodeStatus>('claude_code_status')
   } catch {
     return { installed: false, authenticated: false, version: null }
   }
 }
 
-export async function queryClaudeCode(
-  prompt: string,
+export async function queryClaudeCode(payload: {
+  prompt: string
   systemPrompt?: string
-): Promise<string> {
-  const result = await invoke<string>('claude_code_query', {
-    prompt,
-    systemPrompt,
-    allowedTools: ['Read'],  // Only need Read for image analysis
+  imageBase64?: string
+}): Promise<string> {
+  return invoke<string>('claude_code_query', {
+    requestJson: JSON.stringify({ id: crypto.randomUUID(), ...payload }),
   })
-  return result
 }
 ```
 
 ---
 
-### Step 4: Create Claude Code Detector
+### Step 4: Claude Code Detector
 
 **File**: `src/lib/ai/claudeCodeDetector.ts`
 
-Implements the same detector interface as other providers but routes through Claude Code.
+Implements the existing `VisionDetector` interface (`src/lib/ai/types.ts`) so it slots into `aiDetectorManager.ts` exactly like the BYOK detectors. For Claude Code mode `setApiKey` is a no-op and `isConfigured()` reflects Claude Code install + auth status.
 
 ```typescript
-import { queryClaudeCode } from './claudeCodeService'
-import { writeTemporaryImage, cleanupTemporaryImage } from './tempImageManager'
+import { VisionDetector, DetectionResult, AnalysisResult } from './types'
+import { DicomInstance } from '@/types'
+import { queryClaudeCode, getClaudeCodeStatus } from './claudeCodeService'
+import { dicomInstanceToPngBase64 } from './dicomImageUtils' // reuse existing render path
 
-const DETECTION_SYSTEM_PROMPT = `You are a medical imaging AI assistant specializing in vertebral body detection. You will be shown a medical image. Identify and label all visible vertebral bodies with their positions.`
+const DETECTION_SYSTEM_PROMPT = `You are a medical imaging AI assistant specializing in vertebral body detection...`
+const ANALYSIS_SYSTEM_PROMPT = `You are a medical imaging AI assistant. Analyze the provided medical image...`
 
-const ANALYSIS_SYSTEM_PROMPT = `You are a medical imaging AI assistant. Analyze the provided medical image and describe your findings in a structured radiology report format.`
+class ClaudeCodeDetector implements VisionDetector {
+  private ready = false
 
-export class ClaudeCodeDetector {
-  async detectVertebrae(instance: DicomInstance): Promise<Detection[]> {
-    // 1. Render the image to a temp file
-    const tempPath = await writeTemporaryImage(instance)
+  setApiKey(): void { /* no-op: Claude Code owns the subscription credential */ }
 
-    try {
-      // 2. Send prompt through Claude Code
-      const response = await queryClaudeCode(
-        `Read the medical image at ${tempPath} and identify all visible vertebral bodies. ` +
-        `For each vertebra, provide: label (e.g., L1, L2, T12), ` +
-        `approximate x,y position as percentage of image dimensions (0-100), ` +
-        `and confidence score (0-1). ` +
-        `Return ONLY a JSON array: [{"label":"L1","x":50,"y":30,"confidence":0.95}, ...]`,
-        DETECTION_SYSTEM_PROMPT
-      )
+  isConfigured(): boolean { return this.ready }
 
-      // 3. Parse the JSON response
-      return parseDetectionResponse(response)
-    } finally {
-      // 4. Clean up temp file
-      await cleanupTemporaryImage(tempPath)
-    }
+  async refreshStatus(): Promise<void> {
+    const s = await getClaudeCodeStatus()
+    this.ready = s.installed && s.authenticated
   }
 
-  async analyzeImage(instance: DicomInstance): Promise<string> {
-    const tempPath = await writeTemporaryImage(instance)
+  async detectVertebrae(instance: DicomInstance): Promise<DetectionResult> {
+    // In-memory base64 hand-off — no temp PNG on disk (see PHI note).
+    const imageBase64 = await dicomInstanceToPngBase64(instance)
+    const response = await queryClaudeCode({
+      prompt: 'Identify all visible vertebral bodies. Return ONLY a JSON array: ' +
+              '[{"label":"L1","x":50,"y":30,"confidence":0.95}, ...]',
+      systemPrompt: DETECTION_SYSTEM_PROMPT,
+      imageBase64,
+    })
+    return parseDetectionResponse(response, instance)
+  }
 
-    try {
-      const response = await queryClaudeCode(
-        `Read and analyze the medical image at ${tempPath}. ` +
-        `Provide a structured radiology analysis including: ` +
-        `findings, impression, and any notable observations.`,
-        ANALYSIS_SYSTEM_PROMPT
-      )
-      return response
-    } finally {
-      await cleanupTemporaryImage(tempPath)
-    }
+  async analyzeImage(instance: DicomInstance): Promise<AnalysisResult> {
+    const imageBase64 = await dicomInstanceToPngBase64(instance)
+    const response = await queryClaudeCode({
+      prompt: 'Analyze this medical image. Provide findings, impression, and notable observations.',
+      systemPrompt: ANALYSIS_SYSTEM_PROMPT,
+      imageBase64,
+    })
+    return parseAnalysisResponse(response)
   }
 }
+
+export const claudeCodeDetector = new ClaudeCodeDetector()
 ```
+
+> Reuse the existing DICOM→image render utility (`src/lib/ai/dicomImageUtils.ts`) that the BYOK detectors already use — do NOT introduce a separate temp-file image manager unless the temp-file fallback is required (PHI note).
 
 ---
 
-### Step 5: Create Temporary Image Manager
+### Step 5: Wire the Detector into the Manager and Settings
 
-**File**: `src/lib/ai/tempImageManager.ts`
+**File**: `src/lib/ai/aiDetectorManager.ts`
 
-Manages writing viewport images to temp files for Claude Code to read.
-
-```typescript
-import { writeFile, removeFile } from '@tauri-apps/plugin-fs'
-import { tempDir, join } from '@tauri-apps/api/path'
-
-export async function writeTemporaryImage(instance: DicomInstance): Promise<string> {
-  // Reuse existing image export infrastructure to render viewport to PNG
-  const imageData = await renderInstanceToPng(instance)
-
-  const tmpDir = await tempDir()
-  const filePath = await join(tmpDir, `openscans-ai-${Date.now()}.png`)
-
-  await writeFile(filePath, imageData)
-  return filePath
-}
-
-export async function cleanupTemporaryImage(path: string): Promise<void> {
-  try {
-    await removeFile(path)
-  } catch {
-    // Ignore cleanup errors
-  }
-}
-```
-
----
-
-### Step 6: Update Settings Store and UI
+Add a `'claude-code'` case to `getDetector()`, lazy-loading `claudeCodeDetector` the same way the other providers are loaded.
 
 **File**: `src/stores/settingsStore.ts`
 
-```typescript
-// Add to existing AI provider options:
-aiProvider: 'claude' | 'gemini' | 'openai' | 'claude-code' | 'none'
-//                                           ^^^^^^^^^^^^^ new option
-```
-
-**File**: `src/components/settings/SettingsPanel.tsx`
-
-Add Claude Code as a provider option in the AI settings section:
-
-```
-┌─ AI Detection ──────────────────────────────────────────┐
-│                                                          │
-│  Provider:  [Claude Code (Subscription) ▾]               │
-│                                                          │
-│  ┌── Claude Code Status ──────────────────────────────┐  │
-│  │  ✅ Claude Code installed (v2.1.x)                 │  │
-│  │  ✅ Authenticated (Pro subscription)               │  │
-│  │                                                    │  │
-│  │  Uses your Claude Pro/Max subscription.            │  │
-│  │  No API key needed.                                │  │
-│  └────────────────────────────────────────────────────┘  │
-│                                                          │
-│  Other providers:                                        │
-│  • Claude (API Key) — current BYOK                       │
-│  • OpenAI (API Key) — current BYOK                       │
-│  • Gemini (API Key) — current BYOK                       │
-│  • None (Mock Only) — offline                            │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
-```
-
-When Claude Code is not installed or not authenticated, show setup guidance:
-
-```
-┌── Claude Code Setup ───────────────────────────────────┐
-│  ❌ Claude Code not found                              │
-│                                                        │
-│  To use your Claude subscription:                      │
-│  1. Install: npm install -g @anthropic-ai/claude-code  │
-│  2. Log in: claude login                               │
-│  3. Restart OpenScans                                  │
-│                                                        │
-│  Requires Claude Pro ($20/mo) or Max subscription.     │
-└────────────────────────────────────────────────────────┘
-```
-
----
-
-### Step 7: Detect Platform and Conditionally Load
-
-**File**: `src/lib/platform.ts`
-
-```typescript
-export function isTauriDesktop(): boolean {
-  return '__TAURI__' in window
-}
-```
+Extend the `AIProvider` union with `'claude-code'`. Claude Code mode carries no API key, so `getApiKeyForProvider` returns `''` for it (and `initDetector` skips `setApiKey`).
 
 **File**: `src/hooks/useAiOperations.ts`
 
-Update detector initialization to include Claude Code:
+No new desktop gate or consent gate is needed — the hook ALREADY:
+- short-circuits cloud AI on the web via `if (!isTauri())`, and
+- awaits `confirmAiSend(providerDisplayName(provider))` before any cloud detector runs.
 
-```typescript
-import { isTauriDesktop } from '../lib/platform'
-
-function initDetector(settings: Settings): Detector {
-  switch (settings.aiProvider) {
-    case 'claude-code':
-      if (!isTauriDesktop()) {
-        // Fallback: Claude Code not available in browser
-        console.warn('Claude Code only available in desktop app')
-        return new MockVertebralDetector()
-      }
-      return new ClaudeCodeDetector()
-
-    case 'claude':
-      return new ClaudeVisionDetector(settings.aiApiKey)
-    case 'openai':
-      return new OpenAIVisionDetector(settings.openaiApiKey)
-    case 'gemini':
-      return new GeminiVisionDetector(settings.geminiApiKey)
-    default:
-      return new MockVertebralDetector()
-  }
-}
-```
+Just ensure `providerDisplayName` has a `'claude-code'` label and that the existing `usingCloudDetector` egress-consent branch treats Claude Code as a cloud send (because the image ultimately reaches `api.anthropic.com` through the user's subscription). Reuse the existing `confirmAiSend` flow verbatim — do not add a second consent dialog.
 
 ---
 
-### Step 8: Update AI Consent Flow
+### Step 6: Settings UI — provider option + status/setup guidance
 
 **File**: `src/components/settings/SettingsPanel.tsx`
 
-The consent dialog for Claude Code mode should differ from BYOK:
+- Add "Claude Code (Subscription)" to the provider list, shown ONLY on desktop (`isTauri()`), mirroring how the desktop-only nature of cloud AI is already handled.
+- Show install/auth status from `getClaudeCodeStatus()` and setup guidance when Claude Code is missing or not logged in:
 
-**Claude Code consent:**
-> "AI features will process images through your local Claude Code installation,
-> which uses your Claude Pro/Max subscription. Images are read locally by Claude Code
-> and sent to Anthropic's API using your subscription credentials.
-> No API key is stored in OpenScans."
-
-Key difference from BYOK: emphasize that it's the user's own subscription and their own local Claude Code, not a third-party API key.
-
----
-
-### Step 9: Handle Claude Code Errors Gracefully
-
-**File**: `src/lib/ai/claudeCodeDetector.ts`
-
-Handle common failure modes:
-
-```typescript
-try {
-  const result = await queryClaudeCode(prompt, systemPrompt)
-  return parseResult(result)
-} catch (error) {
-  if (error.message.includes('not found') || error.message.includes('ENOENT')) {
-    throw new Error(
-      'Claude Code is not installed. Install it with: npm install -g @anthropic-ai/claude-code'
-    )
-  }
-  if (error.message.includes('not authenticated') || error.message.includes('login')) {
-    throw new Error(
-      'Claude Code is not logged in. Run "claude login" in your terminal.'
-    )
-  }
-  if (error.message.includes('rate limit') || error.message.includes('quota')) {
-    throw new Error(
-      'Claude subscription rate limit reached. Try again later or switch to API key mode.'
-    )
-  }
-  throw error
-}
+```
+Claude Code not found — to use your Claude subscription:
+  1. Install: npm install -g @anthropic-ai/claude-code
+  2. Log in:  claude login
+  3. Restart OpenScans
+Requires Claude Pro or Max subscription.
 ```
 
----
-
-### Step 10: Hide Claude Code Option in Browser Build
-
-**File**: `src/components/settings/SettingsPanel.tsx`
-
-```typescript
-const providerOptions = [
-  // Only show Claude Code in desktop app
-  ...(isTauriDesktop() ? [{ value: 'claude-code', label: 'Claude Code (Subscription)' }] : []),
-  { value: 'claude', label: 'Claude (API Key)' },
-  { value: 'openai', label: 'OpenAI (API Key)' },
-  { value: 'gemini', label: 'Gemini (API Key)' },
-  { value: 'none', label: 'None (Mock Only)' },
-]
-```
+The per-send egress acknowledgement is handled by the existing `AiSendConfirmDialog` / `confirmAiSend` — the settings panel does NOT need its own consent toggle for Claude Code.
 
 ---
 
-### Step 11: Add Tests
+### Step 7: Error Handling
 
-**File**: `src/lib/ai/__tests__/claudeCodeDetector.test.ts`
+**File**: `src/lib/ai/claudeCodeDetector.ts` (or shared `errorHandler.ts`)
 
-1. Test detection prompt formatting
-2. Test response parsing (valid JSON, malformed JSON)
-3. Test error handling (not installed, not authenticated, rate limited)
-4. Test temp file creation and cleanup
+Map common failures to clear messages: not installed (`ENOENT` / "not found"), not authenticated ("login"), and subscription rate limit / quota. Surface them through the existing AI error path (`handleError` in the hook) so the UX matches the other detectors.
 
-**File**: `src/lib/ai/__tests__/claudeCodeService.test.ts`
+---
 
-1. Test `getClaudeCodeStatus()` — installed, not installed, authenticated, not authenticated
-2. Test `queryClaudeCode()` with mock Tauri invoke
-3. Test timeout handling
+### Step 8: Tests
 
-**File**: `src/lib/ai/__tests__/tempImageManager.test.ts`
+**Files**: `src/lib/ai/__tests__/claudeCodeDetector.test.ts`, `claudeCodeService.test.ts`
 
-1. Test temp file write
-2. Test cleanup on success and failure
-3. Test unique filename generation
+1. Detection/analysis prompt formatting and response parsing (valid + malformed JSON).
+2. Error mapping (not installed / not authenticated / rate limited).
+3. `getClaudeCodeStatus()` across install/auth permutations (mock the Tauri `invoke`, as the existing AI tests already do — see `useAiOperations.test.ts`).
+4. **PHI guard:** assert the in-memory base64 path performs NO disk write; if the temp-file fallback is implemented, assert the file is created in the scoped dir and removed in `finally` on both success and error.
 
 ---
 
@@ -483,22 +350,22 @@ const providerOptions = [
 
 | File | Purpose |
 |------|---------|
-| `src-tauri/sidecars/claude-bridge.mjs` | Node.js sidecar running Agent SDK |
+| `src-tauri/sidecars/claude-bridge.mjs` | Node.js sidecar running the Agent SDK |
 | `src-tauri/sidecars/package.json` | Sidecar dependencies |
-| `src-tauri/src/commands/claude_code.rs` | Tauri commands for Claude Code IPC |
-| `src/lib/ai/claudeCodeService.ts` | Frontend ↔ Tauri sidecar communication |
-| `src/lib/ai/claudeCodeDetector.ts` | Detector implementation via Claude Code |
-| `src/lib/ai/tempImageManager.ts` | Temp file management for image analysis |
+| `src/lib/ai/claudeCodeService.ts` | Frontend ↔ sidecar communication (via Rust command / plugin-shell) |
+| `src/lib/ai/claudeCodeDetector.ts` | `VisionDetector` implementation via Claude Code |
 
 ### Modified Files
 
 | File | Change |
 |------|--------|
-| `src/stores/settingsStore.ts` | Add `'claude-code'` provider option |
-| `src/hooks/useAiOperations.ts` | Route to Claude Code detector when selected |
-| `src/components/settings/SettingsPanel.tsx` | Claude Code provider UI, status display, setup guidance |
-| `src-tauri/tauri.conf.json` | Register sidecar binary |
-| `src-tauri/Cargo.toml` | Add sidecar process management (if not already present) |
+| `src/stores/settingsStore.ts` | Add `'claude-code'` to the `AIProvider` union |
+| `src/lib/ai/aiDetectorManager.ts` | Lazy-load the Claude Code detector |
+| `src/hooks/useAiOperations.ts` | Add `'claude-code'` to `providerDisplayName`; confirm it flows through the existing `isTauri()` gate + `confirmAiSend` egress consent |
+| `src/components/settings/SettingsPanel.tsx` | Desktop-only Claude Code provider option, status display, setup guidance |
+| `src-tauri/src/lib.rs` | Register `claude_code_query` / `claude_code_status` commands in `generate_handler!` |
+| `src-tauri/tauri.conf.json` | Register the sidecar under `bundle.externalBin` |
+| `src-tauri/capabilities/default.json` | Scoped shell permission for the `claude-bridge` sidecar |
 
 ### Unchanged Files
 
@@ -508,43 +375,41 @@ const providerOptions = [
 | `src/lib/ai/openaiVisionDetector.ts` | BYOK mode unchanged |
 | `src/lib/ai/geminiVisionDetector.ts` | BYOK mode unchanged |
 | `src/lib/ai/mockVertebralDetector.ts` | Offline fallback unchanged |
+| `src/lib/ai/ai-send-confirm.ts` / `AiSendConfirmDialog.tsx` | Existing per-send consent reused as-is |
+| `src/lib/utils/credentials.ts` | Keychain BYOK storage untouched (Claude Code stores no key) |
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Users can select "Claude Code (Subscription)" as an AI provider in settings
-- [ ] When selected, OpenScans detects Claude Code installation and auth status
-- [ ] Setup guidance shown when Claude Code is not installed or not authenticated
-- [ ] AI detection and analysis work through Claude Code using the user's subscription
-- [ ] Temp images are created, read by Claude Code, and cleaned up
-- [ ] Error messages are clear for: not installed, not logged in, rate limited
-- [ ] Claude Code option is hidden in browser builds
-- [ ] BYOK mode continues to work exactly as before (no regression)
-- [ ] Mock detector works offline regardless of Claude Code status
-- [ ] No API keys stored for Claude Code mode — subscription credentials managed by Claude Code itself
+- [ ] Users can select "Claude Code (Subscription)" as an AI provider in settings (desktop only).
+- [ ] When selected, OpenScans reports Claude Code install + auth status and shows setup guidance when missing.
+- [ ] AI detection and analysis work through Claude Code using the user's subscription.
+- [ ] The image hand-off is **in-memory (base64)** with no PHI written to disk; if a temp file is unavoidable, it is in a scoped, owner-only dir and is always cleaned up (verified by test).
+- [ ] Claude Code sends go through the EXISTING desktop gate (`isTauri()`) and the EXISTING per-send `confirmAiSend` egress consent — no new gate or consent dialog is added.
+- [ ] Error messages are clear for: not installed, not logged in, rate limited.
+- [ ] Claude Code option is hidden in browser builds; BYOK + mock continue to work unchanged.
+- [ ] No API key is stored for Claude Code mode — credentials are managed by Claude Code itself; BYOK keychain storage is unaffected.
+- [ ] Uses Tauri v2 APIs only (`tauri-plugin-shell` sidecar API + capabilities/ACL); no Tauri v1 `tauri::api::process` usage.
 
 ---
 
-## Dependency Graph
+## Implementation Order
 
 ```
-Step 1: Sidecar (Agent SDK bridge)
+Step 1: Sidecar (Agent SDK bridge) + v2 externalBin + scoped shell capability
     ↓
-Step 2: Tauri commands (Rust IPC)
+Step 2: Spawn/drive sidecar (Rust command via plugin-shell, or plugin-shell JS)
     ↓
 Step 3: Frontend service (invoke wrapper)
     ↓
-Step 4: Claude Code detector (implements existing interface)
-Step 5: Temp image manager
+Step 4: Claude Code detector (implements VisionDetector; in-memory image hand-off)
     ↓
-Step 6: Settings store + UI
-Step 7: Platform detection + conditional loading
-Step 8: Consent flow update
-Step 9: Error handling
-Step 10: Browser build exclusion
+Step 5: Wire into aiDetectorManager + settingsStore + useAiOperations (reuse existing gate/consent)
+Step 6: Settings UI (status + setup guidance)
+Step 7: Error handling
     ↓
-Step 11: Tests
+Step 8: Tests (incl. PHI no-disk-write guard)
 ```
 
-Steps 1-3 (backend) and steps 5-10 (frontend) can be developed in parallel.
+Steps 1–3 (backend/bridge) and Steps 4–7 (frontend) can be developed in parallel once the request/response JSON contract is fixed.

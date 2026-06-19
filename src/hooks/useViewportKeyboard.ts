@@ -15,6 +15,18 @@ interface UseViewportKeyboardOptions {
   deleteAnnotationsForInstance: (instanceUID: string, isAiGenerated: boolean) => void
   addAnalysis: (analysis: AiAnalysis) => void
   handleError: (error: Error | string, context: string, severity?: 'error' | 'warning' | 'info') => void
+  /** Toggle full-screen mode (Shift+F) */
+  onToggleFullscreen?: () => void
+  /** Toggle cine play/pause (Space) */
+  onToggleCine?: () => void
+  /** Increase cine frame rate (+/=) */
+  onCineFrameRateUp?: () => void
+  /** Decrease cine frame rate (-) */
+  onCineFrameRateDown?: () => void
+  /** Activate the distance/ruler tool (L) */
+  onActivateLength?: () => void
+  /** Activate the angle tool (Shift+A) */
+  onActivateAngle?: () => void
 }
 
 /**
@@ -51,7 +63,13 @@ export function useViewportKeyboard(options: UseViewportKeyboardOptions) {
     addAnnotations,
     deleteAnnotationsForInstance,
     addAnalysis,
-    handleError
+    handleError,
+    onToggleFullscreen,
+    onToggleCine,
+    onCineFrameRateUp,
+    onCineFrameRateDown,
+    onActivateLength,
+    onActivateAngle
   } = options
 
   const [isModifierKeyPressed, setIsModifierKeyPressed] = useState(false)
@@ -81,6 +99,54 @@ export function useViewportKeyboard(options: UseViewportKeyboardOptions) {
       // AI shortcuts fire while typing an API key, language, etc.
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return
+      }
+
+      // Full-screen toggle (Shift+F). Plain F is "toggle favorite" elsewhere.
+      if ((e.key === 'f' || e.key === 'F') && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (onToggleFullscreen) {
+          e.preventDefault()
+          onToggleFullscreen()
+        }
+      }
+
+      // Cine play/pause (Space)
+      if (e.code === 'Space' && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+        if (onToggleCine) {
+          e.preventDefault()
+          onToggleCine()
+        }
+      }
+
+      // Cine frame rate up (+ / =)
+      if ((e.key === '+' || e.key === '=') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (onCineFrameRateUp) {
+          e.preventDefault()
+          onCineFrameRateUp()
+        }
+      }
+
+      // Cine frame rate down (-)
+      if (e.key === '-' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (onCineFrameRateDown) {
+          e.preventDefault()
+          onCineFrameRateDown()
+        }
+      }
+
+      // Distance / ruler tool (L)
+      if ((e.key === 'l' || e.key === 'L') && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+        if (onActivateLength) {
+          e.preventDefault()
+          onActivateLength()
+        }
+      }
+
+      // Angle tool (Shift+A) — plain A toggles annotation visibility elsewhere.
+      if ((e.key === 'a' || e.key === 'A') && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (onActivateAngle) {
+          e.preventDefault()
+          onActivateAngle()
+        }
       }
 
       // AI detection keyboard shortcut (M)
@@ -115,7 +181,19 @@ export function useViewportKeyboard(options: UseViewportKeyboardOptions) {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('keyup', handleKeyUp)
     }
-  }, [currentInstance, isDetecting, isAnalyzing, handleAiDetection, handleAiAnalysis])
+  }, [
+    currentInstance,
+    isDetecting,
+    isAnalyzing,
+    handleAiDetection,
+    handleAiAnalysis,
+    onToggleFullscreen,
+    onToggleCine,
+    onCineFrameRateUp,
+    onCineFrameRateDown,
+    onActivateLength,
+    onActivateAngle
+  ])
 
   return { isModifierKeyPressed }
 }

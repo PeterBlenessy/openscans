@@ -2,12 +2,37 @@
 
 **Feature**: [Split / Comparison View](../../features/03-advanced-viewing/split-comparison-view.md)
 **Priority**: Tier 1 — Should Implement
-**Estimated Effort**: High (5-8 days)
-**Dependencies**: None (foundational for synchronized scrolling, reference lines)
+**Estimated Effort**: High — realistically larger than the original 5-8d estimate (see "Architectural reality" below)
+**Dependencies**: None to start, but it re-plumbs the single-viewport substrate the Tier-1 measurement/cine/full-screen tools stand on — best landed AFTER those (PR #19). Foundational for synchronized scrolling and reference lines.
 
 ## Overview
 
 Display two or more image series side by side in a configurable layout grid. Each viewport panel operates independently with its own zoom, W/L, and scroll position.
+
+## ⚠️ Architectural reality (read before starting)
+
+The step list below understates — and in one place contradicts — the hardest part of this feature. The app today is **single-viewport by construction**:
+
+- `viewportStore.settings` is a **single global** object (zoom, W/L, pan, rotation, flip, invert).
+- `studyStore` holds a **single** `currentInstance` / `currentSeries` / `currentInstanceIndex`.
+- One cornerstone element is enabled at a time; `AnnotationOverlay`, the AI detectors, favorites, keyboard nav, and the toolbar all read that single global current instance + settings.
+
+True per-panel independence ("each panel has its own zoom/W/L/scroll" — Overview + Step 3) is therefore **incompatible** with "no changes to existing stores/hooks; 1×1 unchanged" (Step 7 as originally written). You cannot get independent per-panel state without **relocating per-viewport state into per-panel state** and rewiring every consumer. Preserving 1×1 behaviour is a *goal achieved through* that refactor — not by avoiding it.
+
+### Interaction with the Tier-1 tools (PR #19)
+
+Everything in the Tier-1 batch assumes one cornerstone element / one current instance, so each becomes a per-panel concern:
+
+- **Measurement tools** (`useViewportTools`; Length/Angle/ROI) — tool activation, the W/L-drag yield, and the persisted SVG overlay are global today; they must target the active panel.
+- **Cine** (`useCinePlayback`) — "which panel is playing?" The interval driver, frame-rate state, and auto-pause are global.
+- **Full-screen** (`useFullscreen`) — panel vs. whole-grid scope.
+
+### Recommended phased approach
+
+1. **Phase 1** — layout grid + the per-panel viewport/current-instance state refactor, with toolbar, keyboard, cine, and measurement tools operating only on the **active** panel (other panels static). Ship + verify single-viewport parity first.
+2. **Phase 2** — per-panel tool/cine independence (each panel scrolls/measures/plays on its own), then synchronized scrolling and reference lines.
+
+The skeleton below is reasonable, but read Steps 3 and 7 in light of the above.
 
 ## Implementation Steps
 
@@ -67,7 +92,7 @@ Display two or more image series side by side in a configurable layout grid. Eac
 
 1. Extract the current `DicomViewport` rendering logic into a reusable `ViewportPanel`
 2. Each panel receives its own `ViewportConfig` specifying which series to display
-3. Each panel maintains independent viewport state (zoom, W/L, scroll position)
+3. Each panel maintains independent viewport state (zoom, W/L, scroll position) — **this is the load-bearing refactor**: today that state is global in `viewportStore.settings` + `studyStore.current*`. Move it into per-panel state (keyed by panel index in `layoutStore`, or a per-panel store instance) and update every consumer (toolbar, keyboard, `AnnotationOverlay`, AI, favorites, the Tier-1 tools) to read the **active** panel. See "Architectural reality" above.
 4. Add a visual border highlight on the active (focused) panel
 5. Click on a panel to make it the active viewport
 
@@ -105,7 +130,7 @@ Display two or more image series side by side in a configurable layout grid. Eac
 
 1. Wrap existing `DicomViewport` with `ViewportGrid`
 2. In `1x1` mode, behavior is identical to current implementation
-3. No changes needed in existing stores or hooks for single-viewport mode
+3. ⚠️ Correction: existing stores/hooks **do** change — per-panel state is the whole point (see "Architectural reality"). The goal is that 1×1 *behaviour* stays byte-for-byte identical, achieved by making the single panel the active panel and routing all global reads through the active-panel accessor. "No store changes" is not achievable alongside independent per-panel state.
 
 ### Step 8: Add Tests
 
