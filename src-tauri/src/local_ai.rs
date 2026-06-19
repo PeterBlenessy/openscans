@@ -13,12 +13,11 @@
 //! - `local_ai_status()` — current running state
 
 use std::path::{Path, PathBuf};
+use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
-use tauri_plugin_shell::process::{CommandChild, CommandEvent};
-use tauri_plugin_shell::ShellExt;
 
 /// Event channel for download progress updates.
 const DOWNLOAD_PROGRESS_EVENT: &str = "local-ai://download-progress";
@@ -31,7 +30,7 @@ pub struct LocalAiState {
 
 #[derive(Default)]
 struct LocalAiInner {
-    child: Option<CommandChild>,
+    child: Option<Child>,
     model: Option<String>,
     port: u16,
 }
@@ -178,8 +177,9 @@ pub async fn local_ai_download_model(app: AppHandle, model: String) -> Result<()
 /// Kill the running sidecar (if any) and clear state. Best-effort.
 fn shutdown_inner(state: &LocalAiState) {
     let mut inner = state.inner.lock().unwrap();
-    if let Some(child) = inner.child.take() {
+    if let Some(mut child) = inner.child.take() {
         let _ = child.kill();
+        let _ = child.wait();
     }
     inner.model = None;
     inner.port = 0;
@@ -202,6 +202,68 @@ async fn wait_until_ready(port: u16, max_secs: u64) -> Result<(), String> {
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     }
     Err("Local AI server did not become ready in time.".to_string())
+}
+
+/// Target-triple-suffixed sidecar filename, matching the `externalBin` entry
+/// (e.g. `llama-server-aarch64-apple-darwin`).
+fn sidecar_binary_name() -> String {
+    let os = match std::env::consts::OS {
+        "macos" => "apple-darwin",
+        "linux" => "unknown-linux-gnu",
+        "windows" => "pc-windows-msvc",
+        other => other,
+    };
+    let ext = if std::env::consts::OS == "windows" { ".exe" } else { "" };
+    format!("llama-server-{}-{}{}", std::env::consts::ARCH, os, ext)
+}
+
+/// Resolve the `llama-server` binary, preferring a location whose dylibs
+/// (`lib/`) are co-located so the binary's `@executable_path/lib` rpath resolves.
+///
+/// The recent llama.cpp macOS/Linux builds are dynamically linked (a thin
+/// launcher plus a dozen sibling dylibs), so we cannot lean on Tauri's sidecar
+/// copy in `target/<profile>/` — it ships only the binary, not `lib/`. Resolve
+/// order:
+///   1. Next to the app executable (bundled `.app` keeps `lib/` beside it; in
+///      dev that copy has no `lib/`, so it's skipped).
+///   2. Dev fallback — `src-tauri/binaries/`, where `download-llama-server.sh`
+///      installs the binary together with `lib/`.
+///   3. System `PATH` (a user-supplied server).
+fn resolve_llama_server_binary() -> Result<PathBuf, String> {
+    let name = sidecar_binary_name();
+    let exe_dir = std::env::current_exe()
+        .ok()
+        .and_then(|e| e.parent().map(Path::to_path_buf));
+
+    if let Some(dir) = &exe_dir {
+        // 1. Bundled sidecar next to the executable.
+        let bundled = dir.join(&name);
+        if bundled.exists() {
+            let is_dev = dir.to_string_lossy().contains("/target/");
+            if !is_dev || dir.join("lib").exists() {
+                return Ok(bundled);
+            }
+        }
+        // 2. Dev fallback: src-tauri/binaries/ (binary + lib/ live together).
+        if let Some(src_tauri) = dir.parent().and_then(Path::parent) {
+            let dev = src_tauri.join("binaries").join(&name);
+            if dev.exists() {
+                return Ok(dev);
+            }
+        }
+    }
+
+    // 3. System PATH.
+    if let Ok(out) = Command::new("which").arg("llama-server").output() {
+        if out.status.success() {
+            let p = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            if !p.is_empty() {
+                return Ok(PathBuf::from(p));
+            }
+        }
+    }
+
+    Err("llama-server binary not found (expected a bundled sidecar or one on PATH).".to_string())
 }
 
 #[tauri::command]
@@ -234,41 +296,45 @@ pub async fn local_ai_start(
         return Err("Model not downloaded yet.".to_string());
     }
 
-    // Spawn the bundled sidecar. Tauri resolves the target-triple-suffixed
-    // binary from `externalBin`; `--jinja` enables native tool/chat templates.
-    let sidecar = app
-        .shell()
-        .sidecar("llama-server")
-        .map_err(|e| e.to_string())?;
-    let (mut rx, child) = sidecar
-        .args([
-            "-m",
-            gguf.to_string_lossy().as_ref(),
-            "--mmproj",
-            mmproj.to_string_lossy().as_ref(),
-            "--host",
-            "127.0.0.1",
-            "--port",
-            &port.to_string(),
-            "--jinja",
-        ])
-        .spawn()
-        .map_err(|e| e.to_string())?;
+    // Resolve and spawn the bundled sidecar ourselves (not via Tauri's
+    // `externalBin` runner) so we run it from a directory that also has its
+    // `lib/` dylibs — Tauri's copy in `target/<profile>/` does not. `--jinja`
+    // enables native tool/chat templates.
+    let binary = resolve_llama_server_binary()?;
+    log::info!(target: "openscans::local_ai", "starting llama-server: {}", binary.display());
 
-    // Drain the sidecar's stdout/stderr into the log so it doesn't back-pressure.
-    tauri::async_runtime::spawn(async move {
-        while let Some(event) = rx.recv().await {
-            match event {
-                CommandEvent::Stderr(line) | CommandEvent::Stdout(line) => {
-                    log::debug!(target: "openscans::local_ai", "{}", String::from_utf8_lossy(&line));
-                }
-                CommandEvent::Error(err) => {
-                    log::error!(target: "openscans::local_ai", "sidecar error: {}", err);
-                }
-                _ => {}
-            }
+    let mut cmd = Command::new(&binary);
+    cmd.args([
+        "-m",
+        gguf.to_string_lossy().as_ref(),
+        "--mmproj",
+        mmproj.to_string_lossy().as_ref(),
+        "--host",
+        "127.0.0.1",
+        "--port",
+        &port.to_string(),
+        "--jinja",
+    ])
+    .stdout(Stdio::null())
+    .stderr(Stdio::inherit());
+
+    // Dynamically-linked builds keep their dylibs in `lib/` next to the binary.
+    // The binary's `@executable_path/lib` rpath already covers that; set the
+    // loader search path too as a belt-and-suspenders for servers whose rpath
+    // is absent (e.g. a user-supplied build with sibling dylibs).
+    if let Some(bin_dir) = binary.parent() {
+        let lib_dir = bin_dir.join("lib");
+        if lib_dir.exists() {
+            #[cfg(target_os = "macos")]
+            cmd.env("DYLD_LIBRARY_PATH", &lib_dir);
+            #[cfg(target_os = "linux")]
+            cmd.env("LD_LIBRARY_PATH", &lib_dir);
         }
-    });
+    }
+
+    let child = cmd
+        .spawn()
+        .map_err(|e| format!("Failed to start llama-server ({}): {e}", binary.display()))?;
 
     {
         let mut inner = state.inner.lock().unwrap();
