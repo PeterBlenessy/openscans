@@ -21,6 +21,12 @@ export function ViewportIndicators({
 }: ViewportIndicatorsProps) {
   return (
     <>
+      {/* Visually-hidden live region: announces window/level and zoom updates to
+          screen-reader users (the visible indicators below are aria-silent). */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {`Window ${Math.round(currentWL.width)}, Level ${Math.round(currentWL.center)}, Zoom ${zoom.toFixed(1)}x`}
+      </div>
+
       {/* Window/Level indicator - bottom-left corner (above zoom) */}
       <div
         className={`absolute bottom-[3.125rem] left-4 transition-all duration-300 ${

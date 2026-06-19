@@ -9,6 +9,7 @@ import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
 import { useStudyStore } from '@/stores/studyStore'
 import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { isTauri } from '@/lib/utils/platform'
+import { confirmDialog } from '@/lib/ui/confirm'
 
 export function AiAnalysisModal() {
   const isModalVisible = useAiAnalysisStore((state) => state.isModalVisible)
@@ -40,9 +41,13 @@ export function AiAnalysisModal() {
     // Store the ID before showing confirmation
     const analysisIdToDelete = currentAnalysis.id
 
-    // CRITICAL: In Tauri desktop, window.confirm() returns a Promise
-    // We must await it to get the actual boolean response
-    const confirmed = await window.confirm('Are you sure you want to delete this AI analysis?')
+    // Themed, always-async confirm (replaces native window.confirm, which
+    // behaved differently on web vs. the Tauri desktop build).
+    const confirmed = await confirmDialog({
+      title: 'Delete AI analysis',
+      message: 'Are you sure you want to delete this AI analysis?',
+      confirmLabel: 'Delete',
+    })
 
     if (!confirmed) {
       // User cancelled - do nothing
