@@ -1,5 +1,17 @@
 import { useState, useRef, useEffect } from 'react'
-import { MonitorCog, Target, FileText } from 'lucide-react'
+import {
+  MonitorCog,
+  Target,
+  FileText,
+  Maximize2,
+  Minimize2,
+  Play,
+  Pause,
+  Ruler,
+  Triangle,
+  Circle,
+  Square,
+} from 'lucide-react'
 import { useViewportStore } from '@/stores/viewportStore'
 import { useStudyStore } from '@/stores/studyStore'
 import { useFavoritesStore, FavoriteImage } from '@/stores/favoritesStore'
@@ -23,9 +35,20 @@ const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
 interface ViewportToolbarProps {
   className?: string
   onExportClick?: () => void
+  /** Whether the viewport is currently in full-screen mode */
+  isFullscreen?: boolean
+  /** Toggle full-screen mode */
+  onToggleFullscreen?: () => void
 }
 
-export function ViewportToolbar({ className = '', onExportClick }: ViewportToolbarProps) {
+const CINE_FPS_PRESETS = [5, 10, 15, 20, 30]
+
+export function ViewportToolbar({
+  className = '',
+  onExportClick,
+  isFullscreen = false,
+  onToggleFullscreen,
+}: ViewportToolbarProps) {
   const settings = useViewportStore((state) => state.settings)
   const resetSettings = useViewportStore((state) => state.resetSettings)
   const setRotation = useViewportStore((state) => state.setRotation)
@@ -36,6 +59,16 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
   const setWindowLevel = useViewportStore((state) => state.setWindowLevel)
   const isDetecting = useViewportStore((state) => state.isDetecting)
   const setDetecting = useViewportStore((state) => state.setDetecting)
+
+  // Cine + measurement tool state
+  const activeTool = useViewportStore((state) => state.activeTool)
+  const setActiveTool = useViewportStore((state) => state.setActiveTool)
+  const cineEnabled = useViewportStore((state) => state.cineEnabled)
+  const cineFrameRate = useViewportStore((state) => state.cineFrameRate)
+  const toggleCine = useViewportStore((state) => state.toggleCine)
+  const setCineFrameRate = useViewportStore((state) => state.setCineFrameRate)
+  const [showCineSpeed, setShowCineSpeed] = useState(false)
+  const cineSpeedRef = useRef<HTMLDivElement>(null)
 
   const [showPresets, setShowPresets] = useState(false)
   const presetsRef = useRef<HTMLDivElement>(null)
@@ -102,6 +135,11 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
     // Reset zoom and pan to defaults
     useViewportStore.getState().setZoom(1)
     useViewportStore.getState().setPan(0, 0)
+  }
+
+  // Toggle a measurement tool: clicking the active tool returns to Window/Level.
+  const handleToggleTool = (toolName: string) => {
+    setActiveTool(activeTool === toolName ? 'WindowLevel' : toolName)
   }
 
   const handleToggleFavorite = () => {
@@ -177,6 +215,20 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [showPresets])
+
+  // Close cine speed dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (cineSpeedRef.current && !cineSpeedRef.current.contains(event.target as Node)) {
+        setShowCineSpeed(false)
+      }
+    }
+
+    if (showCineSpeed) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showCineSpeed])
 
   const windowPresets = [
     { name: 'Soft Tissue', contrast: 400, brightness: 40 },
@@ -378,6 +430,94 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
         }
       />
 
+      <ToolbarDivider />
+
+      {/* Measurement & ROI tools */}
+      <ToolbarButton
+        onClick={() => handleToggleTool('Length')}
+        active={activeTool === 'Length'}
+        disabled={!currentInstance}
+        title="Distance measurement (L)"
+        data-testid="length-tool-button"
+        icon={<Ruler className="w-4 h-4" />}
+      />
+      <ToolbarButton
+        onClick={() => handleToggleTool('Angle')}
+        active={activeTool === 'Angle'}
+        disabled={!currentInstance}
+        title="Angle measurement (Shift+A)"
+        data-testid="angle-tool-button"
+        icon={<Triangle className="w-4 h-4" />}
+      />
+      <ToolbarButton
+        onClick={() => handleToggleTool('EllipticalRoi')}
+        active={activeTool === 'EllipticalRoi'}
+        disabled={!currentInstance}
+        title="Elliptical ROI"
+        data-testid="ellipse-roi-button"
+        icon={<Circle className="w-4 h-4" />}
+      />
+      <ToolbarButton
+        onClick={() => handleToggleTool('RectangleRoi')}
+        active={activeTool === 'RectangleRoi'}
+        disabled={!currentInstance}
+        title="Rectangle ROI"
+        data-testid="rectangle-roi-button"
+        icon={<Square className="w-4 h-4" />}
+      />
+
+      <ToolbarDivider />
+
+      {/* Cine play/pause */}
+      <ToolbarButton
+        onClick={toggleCine}
+        active={cineEnabled}
+        disabled={!currentInstance}
+        title={cineEnabled ? 'Pause cine (Space)' : 'Play cine (Space)'}
+        data-testid="cine-toggle-button"
+        icon={cineEnabled ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+      />
+
+      {/* Cine speed dropdown */}
+      <div className="relative" ref={cineSpeedRef}>
+        <button
+          onClick={() => setShowCineSpeed(!showCineSpeed)}
+          title="Cine speed (frames per second)"
+          disabled={!currentInstance}
+          data-testid="cine-speed-button"
+          className={`px-2 py-2 rounded text-xs font-mono transition-colors ${
+            !currentInstance
+              ? 'text-gray-600 cursor-not-allowed'
+              : cineEnabled
+              ? 'text-white hover:bg-[#2a2a2a]'
+              : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-white'
+          }`}
+        >
+          {cineFrameRate}fps
+        </button>
+        {showCineSpeed && (
+          <div className="absolute top-full left-0 mt-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl py-1 z-50 min-w-[120px]">
+            <div className="px-2 pb-0.5 mb-0.5 border-b border-[#2a2a2a]">
+              <p className="text-[11px] font-medium text-gray-400">Cine Speed</p>
+            </div>
+            {CINE_FPS_PRESETS.map((fps) => (
+              <button
+                key={fps}
+                onClick={() => {
+                  setCineFrameRate(fps)
+                  setShowCineSpeed(false)
+                }}
+                className={`w-full px-2 py-1 text-left text-xs transition-colors hover:bg-[#2a2a2a] ${
+                  cineFrameRate === fps ? 'text-white' : 'text-gray-300 hover:text-white'
+                }`}
+              >
+                {fps} fps
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Window Presets Dropdown */}
       <div className="relative" ref={presetsRef}>
         <button
@@ -496,6 +636,20 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
 
           {/* Per-send confirmation dialog (imperative, awaited by the handlers) */}
           <AiSendConfirmDialog />
+        </>
+      )}
+
+      {/* Full-screen toggle — rightmost */}
+      {onToggleFullscreen && (
+        <>
+          <ToolbarDivider />
+          <ToolbarButton
+            onClick={onToggleFullscreen}
+            active={isFullscreen}
+            title={isFullscreen ? 'Exit full screen (Shift+F)' : 'Full screen (Shift+F)'}
+            data-testid="fullscreen-button"
+            icon={isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          />
         </>
       )}
     </div>
