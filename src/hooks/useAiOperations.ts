@@ -7,6 +7,13 @@ import { mockDetector } from '../lib/ai/mockVertebralDetector'
 import { initDetector, getApiKeyForProvider } from '../lib/ai/aiDetectorManager'
 import { isTauri } from '../lib/utils/platform'
 import { confirmAiSend } from '../lib/ai/ai-send-confirm'
+import { ensureLocalServer, type DownloadProgress } from '../lib/ai/localServer'
+
+/** Log local-model download progress to the console (lightweight status). */
+function logLocalProgress(p: DownloadProgress): void {
+  const pct = p.total ? Math.round((p.downloaded / p.total) * 100) : 0
+  console.log(`[LocalAI] Downloading ${p.file}: ${pct}% (${p.downloaded}/${p.total})`)
+}
 
 /** Human-readable provider names for confirmation copy. */
 const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
@@ -134,6 +141,13 @@ export function useAiOperations(options: UseAiOperationsOptions): UseAiOperation
       }
 
       setDetecting(true)
+
+      // For the bundled local provider, make sure the model is downloaded and
+      // the loopback server is running before we issue the request.
+      if (aiSettings.aiProvider === 'local') {
+        await ensureLocalServer(aiSettings.localModel, aiSettings.localPort, logLocalProgress)
+      }
+
       deleteAnnotationsForInstance(currentInstance.sopInstanceUID, true)
 
       const result = await detector.detectVertebrae(currentInstance)
@@ -195,6 +209,12 @@ export function useAiOperations(options: UseAiOperationsOptions): UseAiOperation
 
     try {
       setAnalyzing(true)
+
+      // For the bundled local provider, make sure the model is downloaded and
+      // the loopback server is running before we issue the request.
+      if (aiSettings.aiProvider === 'local') {
+        await ensureLocalServer(aiSettings.localModel, aiSettings.localPort, logLocalProgress)
+      }
 
       // Dynamically load and initialize the AI detector
       const apiKey = getApiKeyForProvider(aiSettings.aiProvider, {

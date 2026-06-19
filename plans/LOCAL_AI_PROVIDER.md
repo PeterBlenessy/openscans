@@ -174,11 +174,24 @@ use, so the installer still bundles only `llama-server`.
 - Settings UI: provider option + editable model id field + on-device privacy notice.
 - ✅ `tsc --noEmit`, eslint, and the AI/settings unit tests all pass.
 
-**Remaining for a working Phase 1 (Tauri/Rust — needs a real build, not done here):**
-- Bundle `llama-server` as a Tauri `externalBin` sidecar (port Notesage's
-  `download-llama-server.sh` + `build.rs`; add win/linux triples).
-- Rust commands to spawn/stop the sidecar (PID-file lifecycle) + readiness probe.
-- On-demand model download manager (GGUF + `mmproj`) with progress → `~/.openscans/models/`.
+**Phase 1b — Tauri/Rust sidecar + downloads (done in code, not compile-verified here):**
+- `externalBin: ["binaries/llama-server"]` in `tauri.conf.json`; `build.rs` writes a
+  per-triple placeholder so dev/CI builds resolve the sidecar.
+- `src-tauri/src/local_ai.rs` — Tauri commands `local_ai_model_status`,
+  `local_ai_download_model` (streaming download + progress events to
+  `<app_data>/models/llm/`), `local_ai_start` (spawn sidecar via shell plugin,
+  `--mmproj`, `--jinja`, `--host 127.0.0.1`, then poll `/health`), `local_ai_stop`,
+  `local_ai_status`. Registered desktop-only in `lib.rs`; killed on `RunEvent::Exit`.
+- Built-in model registry (MedGemma 4B GGUF + mmproj). Manual model ids that aren't in
+  the registry are assumed to target a self-managed server.
+- `src/lib/ai/localServer.ts` — frontend bridge + `ensureLocalServer()` (download →
+  start → ready), wired into `useAiOperations` for the `'local'` provider.
+- `scripts/download-llama-server.sh` — host-platform sidecar fetch (macOS/Linux).
+- CSP `connect-src` allows `http://localhost:*` / `http://127.0.0.1:*` for loopback.
+- ⚠️ The Rust could NOT be compiled in the dev container (missing GTK/WebKit system
+  libs — a Linux Tauri prerequisite). Needs `cargo check` / `tauri build` on a real
+  platform. TS typecheck/lint/tests pass.
+- Remaining polish: download-progress UI (currently console), win/linux sidecar CI.
 
 **Phase 2 — network lockdown:** restrict `capabilities/default.json` to localhost for the
 AI path (port Notesage's empty-allowlist pattern).

@@ -1,5 +1,14 @@
 use keyring::Entry;
 
+/// Local AI (llama-server) sidecar lifecycle + on-demand model downloads.
+/// Desktop-only: it spawns a bundled `externalBin` sidecar.
+#[cfg(desktop)]
+mod local_ai;
+
+// `AppHandle::state()` in the run-loop comes from the Manager trait.
+#[cfg(desktop)]
+use tauri::Manager;
+
 /// Fixed keyring service namespace for all OpenScans credentials.
 const KEYRING_SERVICE: &str = "openscans";
 
@@ -105,17 +114,24 @@ pub fn run() {
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_shell::init());
 
-  // Desktop also ships the updater plugin + its commands; the web build never
-  // reaches this code, and mobile targets don't ship the updater plugin.
+  // Desktop also ships the updater plugin + its commands and the local AI
+  // sidecar commands; the web build never reaches this code, and mobile targets
+  // don't ship the updater plugin or the llama-server sidecar.
   #[cfg(desktop)]
   let builder = builder
     .plugin(tauri_plugin_updater::Builder::new().build())
+    .manage(local_ai::LocalAiState::default())
     .invoke_handler(tauri::generate_handler![
       store_credential,
       get_credential,
       delete_credential,
       check_for_update,
-      install_update
+      install_update,
+      local_ai::local_ai_model_status,
+      local_ai::local_ai_download_model,
+      local_ai::local_ai_start,
+      local_ai::local_ai_stop,
+      local_ai::local_ai_status
     ]);
 
   #[cfg(not(desktop))]
@@ -125,7 +141,7 @@ pub fn run() {
     delete_credential
   ]);
 
-  builder
+  let app = builder
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -136,6 +152,15 @@ pub fn run() {
       }
       Ok(())
     })
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    .build(tauri::generate_context!())
+    .expect("error while building tauri application");
+
+  app.run(|_app_handle, _event| {
+    // Kill the local AI sidecar when the app is exiting so it never lingers.
+    #[cfg(desktop)]
+    if let tauri::RunEvent::Exit = _event {
+      let state = _app_handle.state::<local_ai::LocalAiState>();
+      local_ai::shutdown(&state);
+    }
+  });
 }
