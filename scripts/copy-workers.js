@@ -4,7 +4,7 @@
  * This is needed for Tauri to load workers without blob URLs
  */
 
-import { copyFileSync, mkdirSync, existsSync } from 'fs';
+import { copyFileSync, mkdirSync, existsSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -30,8 +30,15 @@ try {
 
   // Copy worker file
   if (existsSync(workerSource)) {
-    copyFileSync(workerSource, workerDest);
-    console.log('✓ Copied Cornerstone web worker to public directory');
+    // Strip the trailing `//# sourceMappingURL=...` comment. The .map file is
+    // never copied alongside the worker, so the reference is dead — and in the
+    // Tauri WebView the worker runs from a blob, so the relative map URL
+    // resolves to a malformed `blob://null...` request that the webview blocks
+    // and logs as a (harmless but noisy) access-control error on every decode.
+    const worker = readFileSync(workerSource, 'utf8');
+    const stripped = worker.replace(/\n?\/\/# sourceMappingURL=\S+\s*$/, '\n');
+    writeFileSync(workerDest, stripped);
+    console.log('✓ Copied Cornerstone web worker to public directory (source-map ref stripped)');
   } else {
     console.warn('⚠ Cornerstone web worker not found, skipping copy');
   }
