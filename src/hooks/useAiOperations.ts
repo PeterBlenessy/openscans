@@ -121,10 +121,11 @@ export function useAiOperations(options: UseAiOperationsOptions): UseAiOperation
       }
 
       // A cloud provider will run only when we resolved a real (configured)
-      // detector. The mock detector runs locally with zero egress, so it must
-      // NOT trigger the confirmation/consent gate.
-      const usingCloudDetector = detector !== mockDetector
-      if (usingCloudDetector) {
+      // detector that actually sends data off-device. The mock detector and the
+      // bundled local LLM ('local') both run with zero egress, so neither must
+      // trigger the confirmation/consent gate.
+      const willEgress = detector !== mockDetector && aiSettings.aiProvider !== 'local'
+      if (willEgress) {
         const confirmed = await confirmAiSend(providerDisplayName(aiSettings.aiProvider))
         if (!confirmed) {
           // User aborted the send before any image left the device.
@@ -182,11 +183,14 @@ export function useAiOperations(options: UseAiOperationsOptions): UseAiOperation
       return
     }
 
-    // Analysis always sends the image to a cloud provider — confirm the egress
-    // (and, implicitly, consent) before anything leaves the device.
-    const confirmed = await confirmAiSend(providerDisplayName(aiSettings.aiProvider))
-    if (!confirmed) {
-      return
+    // Cloud analysis sends the image off-device — confirm the egress (and,
+    // implicitly, consent) before anything leaves. The bundled local LLM
+    // ('local') runs on loopback with zero egress, so it skips the gate.
+    if (aiSettings.aiProvider !== 'local') {
+      const confirmed = await confirmAiSend(providerDisplayName(aiSettings.aiProvider))
+      if (!confirmed) {
+        return
+      }
     }
 
     try {

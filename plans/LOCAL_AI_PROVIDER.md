@@ -128,8 +128,9 @@ strong here" answer. Best suited to an **on-prem GPU server**, not a clinician l
    the auditable guarantee.
 
 3. **Phase 3 — MR precision (Path B, TotalSegmentator-MRI / MONAI Whole-Brain).** Precise
-   `detectVertebrae`-style structured output on MR. **Runtime is the open question (§6.1).**
-   Weights download on demand, consistent with the bundle-only rule.
+   `detectVertebrae`-style structured output on MR. **Runtime decided: on-demand Python
+   engine (§6.1 Option A)** — a PyInstaller'd MONAI/TotalSegmentator-MRI CPU engine plus
+   weights, downloaded on first MR use. Reuses `PYTHON_ML_INTEGRATION.md`.
 
 4. **Phase 4 (optional, on-prem GPU) — VILA-M3 agentic radiology.** Self-hosted NIM/Docker
    for institutions with a GPU server; OpenScans points at an in-network endpoint.
@@ -146,10 +147,11 @@ Two ways to deliver MR precision while keeping the installer to just `llama-serv
 
 | Option | How | Pros | Cons |
 |---|---|---|---|
-| **A. On-demand Python engine** | PyInstaller'd MONAI/TotalSegmentator-MRI CPU engine, **downloaded on first MR use** (not bundled) + weights | Proven accuracy (Dice 0.839), reuses `PYTHON_ML_INTEGRATION.md`, fastest to working | Pulls a Python runtime onto the machine (~300 MB), even if downloaded not bundled |
-| **B. ONNX-in-Rust** | Export the seg model to ONNX, run via the `ort` crate in `src-tauri` — no Python at all | Pure Rust, matches the "no Python" ethos of choosing llama.cpp | nnU-Net pre/post-processing is hard to reimplement faithfully; higher risk/effort; accuracy parity not guaranteed |
+| **A. On-demand Python engine ✅ CHOSEN** | PyInstaller'd MONAI/TotalSegmentator-MRI CPU engine, **downloaded on first MR use** (not bundled) + weights | Proven accuracy (Dice 0.839), reuses `PYTHON_ML_INTEGRATION.md`, fastest to working | Pulls a Python runtime onto the machine (~300 MB), even if downloaded not bundled |
+| B. ONNX-in-Rust | Export the seg model to ONNX, run via the `ort` crate in `src-tauri` — no Python at all | Pure Rust, matches the "no Python" ethos of choosing llama.cpp | nnU-Net pre/post-processing is hard to reimplement faithfully; higher risk/effort; accuracy parity not guaranteed |
 
-This is the only thing blocking Phase 3 implementation; Phases 1–2 are fully specified.
+**Decision (2026-06-19): Option A.** Both the engine and weights download on first MR
+use, so the installer still bundles only `llama-server`.
 
 ### 6.2 Remaining minor decisions (have sensible defaults)
 
@@ -159,7 +161,31 @@ This is the only thing blocking Phase 3 implementation; Phases 1–2 are fully s
 
 ---
 
-## 7. Sources
+## 7. Implementation status
+
+**Phase 1 — application layer (done, this branch):**
+- `'local'` provider added to `AIProvider` + `settingsStore` (`localModel`
+  preconfigured to `medgemma-4b-it`, editable; `localPort` default 8080).
+- `localVisionDetector.ts` — extends `BaseVisionDetector`, points the OpenAI SDK at
+  `http://localhost:<port>/v1`, no API key, re-reads model/port from settings per call.
+- Wired into `aiDetectorManager.getDetector()` (`case 'local'`).
+- `useAiOperations` skips the `AiSendConfirmDialog` egress gate for `'local'` (zero egress).
+- `errorHandler` understands `'local'` (server-not-running / model-not-downloaded copy).
+- Settings UI: provider option + editable model id field + on-device privacy notice.
+- ✅ `tsc --noEmit`, eslint, and the AI/settings unit tests all pass.
+
+**Remaining for a working Phase 1 (Tauri/Rust — needs a real build, not done here):**
+- Bundle `llama-server` as a Tauri `externalBin` sidecar (port Notesage's
+  `download-llama-server.sh` + `build.rs`; add win/linux triples).
+- Rust commands to spawn/stop the sidecar (PID-file lifecycle) + readiness probe.
+- On-demand model download manager (GGUF + `mmproj`) with progress → `~/.openscans/models/`.
+
+**Phase 2 — network lockdown:** restrict `capabilities/default.json` to localhost for the
+AI path (port Notesage's empty-allowlist pattern).
+
+**Phase 3 — MR precision:** on-demand PyInstaller MONAI/TotalSegmentator-MRI engine + weights.
+
+## 8. Sources
 
 - Notesage: bundled llama-server sidecar, OpenAI-compatible routing, vision, network
   confinement (`PeterBlenessy/notesage`: `scripts/download-llama-server.sh`,

@@ -59,6 +59,11 @@ export async function getDetector(provider: AIProvider): Promise<VisionDetector 
       detectorCache.openai = openaiDetector
       return openaiDetector
     }
+    case 'local': {
+      const { localDetector } = await import('./localVisionDetector')
+      detectorCache.local = localDetector
+      return localDetector
+    }
     default:
       return null
   }

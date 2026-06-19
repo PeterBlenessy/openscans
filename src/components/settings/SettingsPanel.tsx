@@ -177,6 +177,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                     <option value="claude">Claude (Anthropic)</option>
                     <option value="gemini">Gemini (Google)</option>
                     <option value="openai">OpenAI (GPT-4o)</option>
+                    <option value="local">Local (on-device, no data leaves)</option>
                     <option value="none">None (Mock Only)</option>
                   </select>
                 </SettingsRow>
@@ -282,7 +283,37 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                   </SettingsRow>
                 )}
 
+                {settings.aiProvider === 'local' && (
+                  <SettingsRow
+                    label="Model"
+                    description="Local model id (downloaded on first use)"
+                    isDark={isDark}
+                  >
+                    <input
+                      type="text"
+                      value={settings.localModel}
+                      onChange={(e) => settings.setLocalModel(e.target.value)}
+                      placeholder="medgemma-4b-it"
+                      spellCheck={false}
+                      className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a] text-white focus:ring-[#3a3a3a] placeholder-gray-600' : 'bg-gray-100 border-gray-300 text-gray-900 focus:ring-gray-400 placeholder-gray-400'}`}
+                    />
+                  </SettingsRow>
+                )}
+
                 {/* AI Information */}
+                {settings.aiProvider === 'local' ? (
+                  <div className={`p-3 rounded-lg text-xs ${isDark ? 'bg-[#0f0f0f] border border-[#2a2a2a]' : 'bg-gray-50 border border-gray-200'}`}>
+                    <p className={`font-medium mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+                      🔒 Fully on-device
+                    </p>
+                    <ul className="space-y-1 text-gray-500">
+                      <li>• Runs on the bundled local AI server — no image or data leaves your device</li>
+                      <li>• The model is downloaded once, on first use</li>
+                      <li>• No API key, no cost, and no send-confirmation needed</li>
+                      <li>• Requires the OpenScans desktop app</li>
+                    </ul>
+                  </div>
+                ) : (
                 <div className={`p-3 rounded-lg text-xs ${isDark ? 'bg-[#0f0f0f] border border-[#2a2a2a]' : 'bg-gray-50 border border-gray-200'}`}>
                   <p className={`font-medium mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
                     ⚠️ Privacy & Security Notice
@@ -295,6 +326,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                     <li>• For production use, implement secure backend proxy</li>
                   </ul>
                 </div>
+                )}
               </>
             )}
           </SettingsSection>
