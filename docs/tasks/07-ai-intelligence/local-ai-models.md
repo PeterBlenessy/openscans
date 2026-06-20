@@ -5,6 +5,8 @@
 **Estimated Effort**: Very High (3-4 weeks)
 **Dependencies**: None (enhances existing AI infrastructure)
 
+> **Verify against current code (post-2026-06 security work).** The AI settings/provider plumbing has changed since this doc was written: cloud AI is desktop-only (`isTauri()` in `src/lib/utils/platform.ts`), every cloud send goes through the per-send `confirmAiSend` consent dialog (`src/lib/ai/ai-send-confirm.ts`), BYOK keys live in the OS keychain (`src/lib/utils/credentials.ts`), and detectors implement the `VisionDetector` interface via `src/lib/ai/aiDetectorManager.ts`. Local models run with zero egress, so the cloud consent gate does not apply — but the provider option, settings UI ("No API key needed"), and detector wiring must match the *current* `AIProvider` / `settingsStore` / detector-manager shapes, not the ones implied below. Confirm before implementing.
+
 ## Overview
 
 Run AI models directly in the browser using TensorFlow.js or ONNX Runtime Web, enabling AI-powered features without sending data to external APIs.

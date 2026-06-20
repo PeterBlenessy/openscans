@@ -24,7 +24,7 @@ export function AiStatusOverlays({
       {/* AI Detection Status */}
       {isDetecting && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-black/70 text-white px-6 py-3 rounded-lg shadow-xl">
+          <div role="status" className="bg-black/70 text-white px-6 py-3 rounded-lg shadow-xl">
             <div className="flex items-center gap-3">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 animate-spin">
                 <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39z" clipRule="evenodd" />
@@ -37,7 +37,7 @@ export function AiStatusOverlays({
 
       {detectionError && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-red-900/95 text-white px-6 py-4 rounded-lg shadow-2xl max-w-md border-2 border-red-500/50 pointer-events-auto">
+          <div role="alert" className="bg-red-900/95 text-white px-6 py-4 rounded-lg shadow-2xl max-w-md border-2 border-red-500/50 pointer-events-auto">
             <div className="flex items-start gap-3">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6 flex-shrink-0 text-red-300 mt-0.5">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
@@ -63,7 +63,7 @@ export function AiStatusOverlays({
       {/* AI Analysis Status */}
       {isAnalyzing && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-black/70 text-white px-6 py-3 rounded-lg shadow-xl">
+          <div role="status" className="bg-black/70 text-white px-6 py-3 rounded-lg shadow-xl">
             <div className="flex items-center gap-3">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 animate-spin">
                 <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39z" clipRule="evenodd" />
@@ -76,7 +76,7 @@ export function AiStatusOverlays({
 
       {analysisError && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-red-900/95 text-white px-6 py-4 rounded-lg shadow-2xl max-w-md border-2 border-red-500/50 pointer-events-auto">
+          <div role="alert" className="bg-red-900/95 text-white px-6 py-4 rounded-lg shadow-2xl max-w-md border-2 border-red-500/50 pointer-events-auto">
             <div className="flex items-start gap-3">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-6 h-6 flex-shrink-0 text-red-300 mt-0.5">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />

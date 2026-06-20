@@ -1,5 +1,5 @@
-import { useEffect, ReactNode } from 'react'
-import { createPortal } from 'react-dom'
+import { ReactNode } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { themeClasses } from '@/lib/utils'
 
@@ -17,18 +17,21 @@ interface ModalProps {
 }
 
 /**
- * Reusable modal component. Follows the active app theme (dark/light) and
- * handles backdrop clicks, escape key, and provides consistent layout.
+ * Reusable modal component, built on `@radix-ui/react-dialog`.
+ *
+ * Radix provides the accessibility primitives that the previous hand-rolled
+ * version lacked: a focus trap, focus restoration to the previously-focused
+ * element on close, `aria-modal`, and Escape-to-close — all for free. The
+ * public props API is unchanged, so every consumer (ExportDialog,
+ * ConfirmDialog, AiSendConfirmDialog, AiAnalysisModal, …) gains those
+ * behaviours without edits.
+ *
+ * Backdrop click and Escape both route through `onOpenChange → onClose`,
+ * preserving the original behaviour.
  *
  * @example
  * ```tsx
- * <Modal
- *   show={isOpen}
- *   onClose={() => setIsOpen(false)}
- *   title="Export Image"
- *   icon={<ExportIcon />}
- *   footer={<ActionButtons />}
- * >
+ * <Modal show={isOpen} onClose={() => setIsOpen(false)} title="Export Image">
  *   <ModalContent />
  * </Modal>
  * ```
@@ -47,75 +50,64 @@ export function Modal({
 }: ModalProps) {
   const theme = useSettingsStore((s) => s.theme)
 
-  // Close on Escape key
-  useEffect(() => {
-    if (!show) return
+  return (
+    <Dialog.Root open={show} onOpenChange={(open) => { if (!open) onClose() }}>
+      <Dialog.Portal>
+        {/* Backdrop. Pointer-down anywhere outside the content closes the
+            dialog (Radix's onPointerDownOutside → onOpenChange), preserving the
+            original backdrop-click behaviour. */}
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" />
 
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-      }
-    }
+        {/* Centering layer is non-interactive so outside pointer-downs reach the
+            overlay; the content itself re-enables pointer events. */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+          <Dialog.Content
+            // The app supplies its own description text; suppress Radix's
+            // missing-Description console warning.
+            aria-describedby={undefined}
+            className={`pointer-events-auto ${themeClasses.bg(theme)} border ${themeClasses.border(theme)} rounded-lg shadow-2xl ${maxWidth} w-full ${maxHeight} flex flex-col focus:outline-none`}
+          >
+            {/* Header */}
+            <div className={`flex items-center justify-between p-4 border-b ${themeClasses.border(theme)}`}>
+              <div className="flex items-center gap-2">
+                {icon && <div className={`w-5 h-5 ${themeClasses.text(theme)}`} aria-hidden="true">{icon}</div>}
+                <Dialog.Title className={`text-lg font-semibold ${themeClasses.text(theme)}`}>{title}</Dialog.Title>
+                {headerLeftActions}
+              </div>
+              <div className="flex items-center gap-2">
+                {headerRightActions}
+                <Dialog.Close
+                  title="Close"
+                  aria-label="Close dialog"
+                  className={`p-1.5 rounded transition-colors ${themeClasses.textSecondary(theme)} ${themeClasses.hoverText(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    className="w-4 h-4"
+                    aria-hidden="true"
+                  >
+                    <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                  </svg>
+                </Dialog.Close>
+              </div>
+            </div>
 
-    window.addEventListener('keydown', handleEscape)
-    return () => window.removeEventListener('keydown', handleEscape)
-  }, [show, onClose])
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {children}
+            </div>
 
-  if (!show) return null
-
-  // Render through a portal to document.body so the overlay escapes any
-  // ancestor stacking context (e.g. a toolbar with transform/backdrop-filter).
-  // Without this, a modal mounted inside such an ancestor can be painted
-  // *below* sibling overlays like the annotation/spine-marker layer.
-  return createPortal(
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div
-        className={`${themeClasses.bg(theme)} border ${themeClasses.border(theme)} rounded-lg shadow-2xl ${maxWidth} w-full ${maxHeight} flex flex-col`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className={`flex items-center justify-between p-4 border-b ${themeClasses.border(theme)}`}>
-          <div className="flex items-center gap-2">
-            {icon && <div className={`w-5 h-5 ${themeClasses.text(theme)}`}>{icon}</div>}
-            <h2 className={`text-lg font-semibold ${themeClasses.text(theme)}`}>{title}</h2>
-            {headerLeftActions}
-          </div>
-          <div className="flex items-center gap-2">
-            {headerRightActions}
-            <button
-              onClick={onClose}
-              title="Close"
-              aria-label="Close dialog"
-              className={`p-1.5 rounded transition-colors ${themeClasses.textSecondary(theme)} ${themeClasses.hoverText(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="w-4 h-4"
-              >
-                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-              </svg>
-            </button>
-          </div>
+            {/* Footer (optional) */}
+            {footer && (
+              <div className={`p-4 border-t ${themeClasses.border(theme)}`}>
+                {footer}
+              </div>
+            )}
+          </Dialog.Content>
         </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {children}
-        </div>
-
-        {/* Footer (optional) */}
-        {footer && (
-          <div className={`p-4 border-t ${themeClasses.border(theme)}`}>
-            {footer}
-          </div>
-        )}
-      </div>
-    </div>,
-    document.body
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }

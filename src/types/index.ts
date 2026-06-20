@@ -130,6 +130,8 @@ export interface DicomMetadata {
   sliceThickness?: number
   /** Physical spacing between pixel centers in mm [row, col] (0028,0030) */
   pixelSpacing?: [number, number]
+  /** Physical detector element spacing in mm [row, col] (0018,1164) - fallback for projection radiography */
+  imagerPixelSpacing?: [number, number]
   /** X, Y, Z coordinates of upper left pixel in mm (0020,0032) */
   imagePosition?: [number, number, number]
   /** Direction cosines of row and column (0020,0037) - [rowX, rowY, rowZ, colX, colY, colZ] */

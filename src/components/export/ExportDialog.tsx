@@ -171,6 +171,7 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
                   step="5"
                   value={jpegQuality}
                   onChange={(e) => setJpegQuality(parseInt(e.target.value))}
+                  aria-label="JPEG quality"
                   className={`flex-1 h-2 rounded-lg appearance-none cursor-pointer ${isDark ? 'bg-[#0f0f0f]' : 'bg-gray-200'}`}
                 />
                 <span className={`text-sm font-mono w-12 text-right ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -255,7 +256,7 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
             <div className={`p-3 rounded-lg font-mono text-sm ${isDark ? 'bg-[#0f0f0f] text-white' : 'bg-gray-100 text-gray-900'}`}>
               {filename}
             </div>
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-gray-400 mt-2">
               Estimated size: {estimatedSize}
             </p>
           </ExportSection>
@@ -316,7 +317,7 @@ function FormatButton({ label, description, selected, onClick, isDark }: FormatB
       <div className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
         {label}
       </div>
-      <div className="text-xs text-gray-500 mt-0.5">{description}</div>
+      <div className="text-xs text-gray-400 mt-0.5">{description}</div>
     </button>
   )
 }
@@ -348,7 +349,7 @@ function ResolutionButton({ label, description, selected, onClick, isDark }: Res
       <div className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
         {label}
       </div>
-      <div className="text-xs text-gray-500 mt-0.5">{description}</div>
+      <div className="text-xs text-gray-400 mt-0.5">{description}</div>
     </button>
   )
 }

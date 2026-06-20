@@ -103,7 +103,7 @@ export function FavoritesPanel() {
         <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
           No marked images yet
         </p>
-        <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-600' : 'text-gray-500'}`}>
+        <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
           Star or analyze images to see them here
         </p>
       </div>
@@ -124,13 +124,14 @@ export function FavoritesPanel() {
               onClick={() => setViewMode(viewMode === 'text' ? 'thumbnails' : 'text')}
               className={`transition-colors ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
               title={viewMode === 'text' ? 'Show thumbnails' : 'Show text'}
+              aria-label={viewMode === 'text' ? 'Show thumbnails' : 'Show text'}
             >
               {viewMode === 'text' ? (
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden="true">
                   <path fillRule="evenodd" d="M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-2.69l-2.22-2.219a.75.75 0 00-1.06 0l-1.91 1.909.47.47a.75.75 0 11-1.06 1.06L6.53 8.091a.75.75 0 00-1.06 0l-2.97 2.97zM12 7a1 1 0 11-2 0 1 1 0 012 0z" clipRule="evenodd" />
                 </svg>
               ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden="true">
                   <path fillRule="evenodd" d="M6 4.75A.75.75 0 016.75 4h10.5a.75.75 0 010 1.5H6.75A.75.75 0 016 4.75zM6 10a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H6.75A.75.75 0 016 10zm0 5.25a.75.75 0 01.75-.75h10.5a.75.75 0 010 1.5H6.75a.75.75 0 01-.75-.75zM1.99 4.75a1 1 0 011-1H3a1 1 0 011 1v.01a1 1 0 01-1 1h-.01a1 1 0 01-1-1v-.01zM1.99 15.25a1 1 0 011-1H3a1 1 0 011 1v.01a1 1 0 01-1 1h-.01a1 1 0 01-1-1v-.01zM1.99 10a1 1 0 011-1H3a1 1 0 011 1v.01a1 1 0 01-1 1h-.01a1 1 0 01-1-1V10z" clipRule="evenodd" />
                 </svg>
               )}
@@ -139,12 +140,14 @@ export function FavoritesPanel() {
               onClick={() => setShowBatchExport(true)}
               className={`transition-colors ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
               title="Export all to PDF"
+              aria-label="Export all to PDF"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 20 20"
                 fill="currentColor"
                 className="w-4 h-4"
+                aria-hidden="true"
               >
                 <path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z" />
                 <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.25 2.25 0 004.25 17.5h11.5A2.25 2.25 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .414-.336.75-.75.75H4.25a.75.75 0 01-.75-.75v-2.5z" />
@@ -185,21 +188,21 @@ export function FavoritesPanel() {
                     <div className="flex items-center gap-1">
                       {/* Indicators */}
                       {isFavorite && (
-                        <div className={`p-0.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} title="Favorited">
+                        <div aria-hidden="true" className={`p-0.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} title="Favorited">
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
                             <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401z" clipRule="evenodd" />
                           </svg>
                         </div>
                       )}
                       {hasAnalysis && (
-                        <div className={`p-0.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} title="Has AI analysis">
+                        <div aria-hidden="true" className={`p-0.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} title="Has AI analysis">
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
                             <path fillRule="evenodd" d="M4.5 2A1.5 1.5 0 003 3.5v13A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5V7.621a1.5 1.5 0 00-.44-1.06l-4.12-4.122A1.5 1.5 0 0011.378 2H4.5zm2.25 8.5a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5zm0 3a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5z" clipRule="evenodd" />
                           </svg>
                         </div>
                       )}
                       {hasAnnotations && (
-                        <div className={`p-0.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} title="Has markers">
+                        <div aria-hidden="true" className={`p-0.5 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} title="Has markers">
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
                             <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
                             <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
@@ -319,7 +322,7 @@ function FavoriteThumbnail({ favorite, isActive, onClick, theme: _theme }: Favor
       </div>
       {/* Star icon for favorites */}
       {isFavorite && (
-        <div className="absolute top-1 right-1 p-0.5 rounded bg-black/40" title="Favorited">
+        <div aria-hidden="true" className="absolute top-1 right-1 p-0.5 rounded bg-black/40" title="Favorited">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 20 20"
@@ -332,7 +335,7 @@ function FavoriteThumbnail({ favorite, isActive, onClick, theme: _theme }: Favor
       )}
       {/* AI Analysis indicator */}
       {hasAnalysis && (
-        <div className="absolute top-1 left-1 p-0.5 rounded bg-black/40" title="Has AI analysis">
+        <div aria-hidden="true" className="absolute top-1 left-1 p-0.5 rounded bg-black/40" title="Has AI analysis">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 20 20"
@@ -345,7 +348,7 @@ function FavoriteThumbnail({ favorite, isActive, onClick, theme: _theme }: Favor
       )}
       {/* Detector markers indicator */}
       {hasAnnotations && (
-        <div className="absolute bottom-1 left-1 p-0.5 rounded bg-black/60" title="Has markers">
+        <div aria-hidden="true" className="absolute bottom-1 left-1 p-0.5 rounded bg-black/60" title="Has markers">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 20 20"

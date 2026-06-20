@@ -33,6 +33,8 @@ export function ThumbnailStrip() {
     <div className="bg-[#0f0f0f] border-t border-[#2a2a2a] p-3 w-full">
       <div
         ref={scrollContainerRef}
+        role="list"
+        aria-label="Series images"
         className="flex gap-2 overflow-x-auto pb-2 max-w-full"
       >
         {currentSeries.instances.map((instance, index) => (
@@ -190,6 +192,16 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
           }
         }}
         onClick={onClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            if (e.key === ' ') e.preventDefault()
+            onClick()
+          }
+        }}
+        aria-current={isSelected ? 'true' : undefined}
+        aria-selected={isSelected}
         className={`flex-shrink-0 relative group cursor-pointer ${
           isSelected ? 'ring-2 ring-[#4a4a4a]' : 'ring-1 ring-[#2a2a2a]'
         } rounded overflow-hidden transition-all hover:ring-[#3a3a3a]`}

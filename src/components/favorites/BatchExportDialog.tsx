@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
 import { FavoriteImage } from '@/stores/favoritesStore'
 import { exportBatchPDF, GridLayout } from '@/lib/export/batchPdfExport'
 
@@ -14,22 +15,6 @@ export function BatchExportDialog({ show, onClose, favorites }: BatchExportDialo
   const [isExporting, setIsExporting] = useState(false)
   const [progress, setProgress] = useState({ current: 0, total: 0 })
   const [error, setError] = useState<string | null>(null)
-
-  // Close on Escape key (but not while exporting)
-  useEffect(() => {
-    if (!show) return
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isExporting) {
-        onClose()
-      }
-    }
-
-    window.addEventListener('keydown', handleEscape)
-    return () => window.removeEventListener('keydown', handleEscape)
-  }, [show, onClose, isExporting])
-
-  if (!show) return null
 
   const isDark = true
 
@@ -73,29 +58,34 @@ export function BatchExportDialog({ show, onClose, favorites }: BatchExportDialo
   const estimatedPages = Math.ceil(favorites.length / imagesPerPage)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={isExporting ? undefined : onClose}
-      />
+    <Dialog.Root open={show} onOpenChange={(open) => { if (!open && !isExporting) onClose() }}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" />
 
-      {/* Modal */}
-      <div className={`relative rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border ${isDark ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+          <Dialog.Content
+            aria-describedby={undefined}
+            // Block Escape / outside-pointer dismissal while a batch export is
+            // in flight (mirrors the previous `!isExporting` guards).
+            onEscapeKeyDown={(e) => { if (isExporting) e.preventDefault() }}
+            onPointerDownOutside={(e) => { if (isExporting) e.preventDefault() }}
+            onInteractOutside={(e) => { if (isExporting) e.preventDefault() }}
+            className={`pointer-events-auto relative rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border focus:outline-none ${isDark ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}
+          >
         {/* Header */}
         <div className={`flex items-center justify-between p-4 border-b ${isDark ? 'border-[#2a2a2a]' : 'border-gray-200'}`}>
-          <h2 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          <Dialog.Title id="batch-export-title" className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
             Batch Export to PDF
-          </h2>
+          </Dialog.Title>
           {!isExporting && (
-            <button
-              onClick={onClose}
+            <Dialog.Close
+              aria-label="Close dialog"
               className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-[#2a2a2a]' : 'hover:bg-gray-100'}`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} aria-hidden="true">
                 <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
               </svg>
-            </button>
+            </Dialog.Close>
           )}
         </div>
 
@@ -236,8 +226,10 @@ export function BatchExportDialog({ show, onClose, favorites }: BatchExportDialo
             )}
           </button>
         </div>
-      </div>
-    </div>
+          </Dialog.Content>
+        </div>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
 

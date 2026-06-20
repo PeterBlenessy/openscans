@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
 
 interface KeyboardShortcutsHelpProps {
   show: boolean
@@ -6,22 +6,6 @@ interface KeyboardShortcutsHelpProps {
 }
 
 export function KeyboardShortcutsHelp({ show, onClose }: KeyboardShortcutsHelpProps) {
-  // Close on Escape key
-  useEffect(() => {
-    if (!show) return
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-      }
-    }
-
-    window.addEventListener('keydown', handleEscape)
-    return () => window.removeEventListener('keydown', handleEscape)
-  }, [show, onClose])
-
-  if (!show) return null
-
   const shortcuts = [
     { category: 'Navigation', items: [
       { keys: ['←', '↑'], description: 'Previous image' },
@@ -37,6 +21,16 @@ export function KeyboardShortcutsHelp({ show, onClose }: KeyboardShortcutsHelpPr
       { keys: ['Scroll'], description: 'Zoom' },
       { keys: ['R'], description: 'Reset viewport' },
       { keys: ['I'], description: 'Invert colors' },
+      { keys: ['Shift', 'F'], description: 'Toggle full screen' },
+    ]},
+    { category: 'Cine', items: [
+      { keys: ['Space'], description: 'Play / pause cine loop' },
+      { keys: ['+'], description: 'Increase frame rate' },
+      { keys: ['-'], description: 'Decrease frame rate' },
+    ]},
+    { category: 'Measurements', items: [
+      { keys: ['L'], description: 'Distance / ruler tool' },
+      { keys: ['Shift', 'A'], description: 'Angle tool' },
     ]},
     { category: 'Annotations & AI', items: [
       { keys: ['A'], description: 'Toggle annotations' },
@@ -50,22 +44,23 @@ export function KeyboardShortcutsHelp({ show, onClose }: KeyboardShortcutsHelpPr
   ]
 
   return (
-    <div
-      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
-      onClick={onClose}
-    >
-      <div
-        className="bg-[#1a1a1a] rounded-lg p-6 max-w-2xl max-h-[80vh] overflow-y-auto border border-[#2a2a2a]"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Dialog.Root open={show} onOpenChange={(open) => { if (!open) onClose() }}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-black/80 z-50" />
+
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+          <Dialog.Content
+            aria-describedby={undefined}
+            className="pointer-events-auto bg-[#1a1a1a] rounded-lg p-6 max-w-2xl max-h-[80vh] overflow-y-auto border border-[#2a2a2a] focus:outline-none"
+          >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-gray-100">Keyboard Shortcuts</h2>
-          <button
-            onClick={onClose}
+          <Dialog.Title id="keyboard-shortcuts-title" className="text-2xl font-bold text-gray-100">Keyboard Shortcuts</Dialog.Title>
+          <Dialog.Close
+            aria-label="Close"
             className="text-gray-400 hover:text-gray-100 text-2xl leading-none transition-colors"
           >
             ×
-          </button>
+          </Dialog.Close>
         </div>
 
         <div className="space-y-4">
@@ -94,7 +89,9 @@ export function KeyboardShortcutsHelp({ show, onClose }: KeyboardShortcutsHelpPr
             </div>
           ))}
         </div>
-      </div>
-    </div>
+          </Dialog.Content>
+        </div>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }

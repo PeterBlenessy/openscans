@@ -43,7 +43,7 @@ export function ErrorToast() {
   }
 
   return (
-    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-md">
+    <div role="alert" aria-live="assertive" className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-md">
       {errors.map((error) => (
         <div
           key={error.id}

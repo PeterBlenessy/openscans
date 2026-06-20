@@ -1,5 +1,18 @@
 import { useState, useRef, useEffect } from 'react'
-import { MonitorCog, Target, FileText, ScanLine } from 'lucide-react'
+import {
+  MonitorCog,
+  Target,
+  FileText,
+  ScanLine,
+  Maximize2,
+  Minimize2,
+  Play,
+  Pause,
+  Ruler,
+  Triangle,
+  Circle,
+  Square,
+} from 'lucide-react'
 import { useViewportStore } from '@/stores/viewportStore'
 import { useStudyStore } from '@/stores/studyStore'
 import { useFavoritesStore, FavoriteImage } from '@/stores/favoritesStore'
@@ -34,9 +47,20 @@ const logLocalProgress = (p: { file: string; downloaded: number; total: number }
 interface ViewportToolbarProps {
   className?: string
   onExportClick?: () => void
+  /** Whether the viewport is currently in full-screen mode */
+  isFullscreen?: boolean
+  /** Toggle full-screen mode */
+  onToggleFullscreen?: () => void
 }
 
-export function ViewportToolbar({ className = '', onExportClick }: ViewportToolbarProps) {
+const CINE_FPS_PRESETS = [5, 10, 15, 20, 30]
+
+export function ViewportToolbar({
+  className = '',
+  onExportClick,
+  isFullscreen = false,
+  onToggleFullscreen,
+}: ViewportToolbarProps) {
   const settings = useViewportStore((state) => state.settings)
   const resetSettings = useViewportStore((state) => state.resetSettings)
   const setRotation = useViewportStore((state) => state.setRotation)
@@ -48,8 +72,20 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
   const isDetecting = useViewportStore((state) => state.isDetecting)
   const setDetecting = useViewportStore((state) => state.setDetecting)
 
+  // Cine + measurement tool state
+  const activeTool = useViewportStore((state) => state.activeTool)
+  const setActiveTool = useViewportStore((state) => state.setActiveTool)
+  const cineEnabled = useViewportStore((state) => state.cineEnabled)
+  const cineFrameRate = useViewportStore((state) => state.cineFrameRate)
+  const toggleCine = useViewportStore((state) => state.toggleCine)
+  const setCineFrameRate = useViewportStore((state) => state.setCineFrameRate)
+  const [showCineSpeed, setShowCineSpeed] = useState(false)
+  const cineSpeedRef = useRef<HTMLDivElement>(null)
+
   const [showPresets, setShowPresets] = useState(false)
   const presetsRef = useRef<HTMLDivElement>(null)
+  const presetsTriggerRef = useRef<HTMLButtonElement>(null)
+  const presetItemsRef = useRef<(HTMLButtonElement | null)[]>([])
   const currentInstance = useStudyStore((state) => state.currentInstance)
   const currentStudy = useStudyStore((state) => state.currentStudy)
   const currentSeries = useStudyStore((state) => state.currentSeries)
@@ -115,6 +151,11 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
     // Reset zoom and pan to defaults
     useViewportStore.getState().setZoom(1)
     useViewportStore.getState().setPan(0, 0)
+  }
+
+  // Toggle a measurement tool: clicking the active tool returns to Window/Level.
+  const handleToggleTool = (toolName: string) => {
+    setActiveTool(activeTool === toolName ? 'WindowLevel' : toolName)
   }
 
   const handleToggleFavorite = () => {
@@ -183,7 +224,7 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
     }
   }
 
-  // Close presets dropdown when clicking outside
+  // Close presets dropdown when clicking outside or pressing Escape
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (presetsRef.current && !presetsRef.current.contains(event.target as Node)) {
@@ -191,11 +232,60 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
       }
     }
 
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowPresets(false)
+      }
+    }
+
     if (showPresets) {
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('keydown', handleEscape)
+      // Move focus into the menu so arrow-key navigation works immediately.
+      presetItemsRef.current[0]?.focus()
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+        document.removeEventListener('keydown', handleEscape)
+      }
+    }
+  }, [showPresets])
+
+  // Close cine speed dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (cineSpeedRef.current && !cineSpeedRef.current.contains(event.target as Node)) {
+        setShowCineSpeed(false)
+      }
+    }
+
+    if (showCineSpeed) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [showPresets])
+  }, [showCineSpeed])
+
+  // Roving focus between menu items (ArrowUp/ArrowDown wrap; Escape returns
+  // focus to the trigger). Enter/Space activation is handled natively by the
+  // <button> items.
+  const handleMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const items = presetItemsRef.current.filter((el): el is HTMLButtonElement => el !== null)
+    if (items.length === 0) return
+    const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement)
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      const next = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length
+      items[next].focus()
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      const prev = currentIndex < 0 ? items.length - 1 : (currentIndex - 1 + items.length) % items.length
+      items[prev].focus()
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      setShowPresets(false)
+      presetsTriggerRef.current?.focus()
+    }
+  }
 
   const windowPresets = [
     { name: 'Soft Tissue', contrast: 400, brightness: 40 },
@@ -408,6 +498,7 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
       <ToolbarButton
         onClick={handleFlipHorizontal}
         active={settings.flipHorizontal}
+        isToggle
         title="Flip horizontal (H)"
         icon={
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -420,6 +511,7 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
       <ToolbarButton
         onClick={handleFlipVertical}
         active={settings.flipVertical}
+        isToggle
         title="Flip vertical (V)"
         icon={
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 rotate-90">
@@ -432,6 +524,7 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
       <ToolbarButton
         onClick={handleInvert}
         active={settings.invert}
+        isToggle
         title="Invert colors (I)"
         icon={
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -440,39 +533,135 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
         }
       />
 
+      <ToolbarDivider />
+
+      {/* Measurement & ROI tools */}
+      <ToolbarButton
+        onClick={() => handleToggleTool('Length')}
+        active={activeTool === 'Length'}
+        disabled={!currentInstance}
+        title="Distance measurement (L)"
+        data-testid="length-tool-button"
+        icon={<Ruler className="w-4 h-4" />}
+      />
+      <ToolbarButton
+        onClick={() => handleToggleTool('Angle')}
+        active={activeTool === 'Angle'}
+        disabled={!currentInstance}
+        title="Angle measurement (Shift+A)"
+        data-testid="angle-tool-button"
+        icon={<Triangle className="w-4 h-4" />}
+      />
+      <ToolbarButton
+        onClick={() => handleToggleTool('EllipticalRoi')}
+        active={activeTool === 'EllipticalRoi'}
+        disabled={!currentInstance}
+        title="Elliptical ROI"
+        data-testid="ellipse-roi-button"
+        icon={<Circle className="w-4 h-4" />}
+      />
+      <ToolbarButton
+        onClick={() => handleToggleTool('RectangleRoi')}
+        active={activeTool === 'RectangleRoi'}
+        disabled={!currentInstance}
+        title="Rectangle ROI"
+        data-testid="rectangle-roi-button"
+        icon={<Square className="w-4 h-4" />}
+      />
+
+      <ToolbarDivider />
+
+      {/* Cine play/pause */}
+      <ToolbarButton
+        onClick={toggleCine}
+        active={cineEnabled}
+        disabled={!currentInstance}
+        title={cineEnabled ? 'Pause cine (Space)' : 'Play cine (Space)'}
+        data-testid="cine-toggle-button"
+        icon={cineEnabled ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+      />
+
+      {/* Cine speed dropdown */}
+      <div className="relative" ref={cineSpeedRef}>
+        <button
+          onClick={() => setShowCineSpeed(!showCineSpeed)}
+          title="Cine speed (frames per second)"
+          disabled={!currentInstance}
+          data-testid="cine-speed-button"
+          className={`px-2 py-2 rounded text-xs font-mono transition-colors ${
+            !currentInstance
+              ? 'text-gray-600 cursor-not-allowed'
+              : cineEnabled
+              ? 'text-white hover:bg-[#2a2a2a]'
+              : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-white'
+          }`}
+        >
+          {cineFrameRate}fps
+        </button>
+        {showCineSpeed && (
+          <div className="absolute top-full left-0 mt-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl py-1 z-50 min-w-[120px]">
+            <div className="px-2 pb-0.5 mb-0.5 border-b border-[#2a2a2a]">
+              <p className="text-[11px] font-medium text-gray-400">Cine Speed</p>
+            </div>
+            {CINE_FPS_PRESETS.map((fps) => (
+              <button
+                key={fps}
+                onClick={() => {
+                  setCineFrameRate(fps)
+                  setShowCineSpeed(false)
+                }}
+                className={`w-full px-2 py-1 text-left text-xs transition-colors hover:bg-[#2a2a2a] ${
+                  cineFrameRate === fps ? 'text-white' : 'text-gray-300 hover:text-white'
+                }`}
+              >
+                {fps} fps
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Window Presets Dropdown */}
       <div className="relative" ref={presetsRef}>
         <button
+          ref={presetsTriggerRef}
           onClick={() => setShowPresets(!showPresets)}
           title="Window presets"
+          aria-label="Window presets"
+          aria-haspopup="menu"
+          aria-expanded={showPresets}
           disabled={!currentInstance}
           className={`p-2 rounded transition-colors ${
             !currentInstance
-              ? 'text-gray-600 cursor-not-allowed'
+              ? 'text-gray-500 cursor-not-allowed'
               : showPresets
               ? 'text-white hover:bg-[#2a2a2a]'
               : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-white'
           }`}
         >
-          <MonitorCog size={16} />
+          <MonitorCog size={16} aria-hidden="true" />
         </button>
         {showPresets && (
-          <div className="absolute top-full left-0 mt-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl py-1 z-50 min-w-[180px]">
+          <div role="menu" onKeyDown={handleMenuKeyDown} className="absolute top-full left-0 mt-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl py-1 z-50 min-w-[180px]">
             <div className="px-2 pb-0.5 mb-0.5 border-b border-[#2a2a2a]">
               <p className="text-[11px] font-medium text-gray-400">Window Presets</p>
             </div>
-            {windowPresets.map((preset) => (
+            {windowPresets.map((preset, presetIndex) => (
               <button
                 key={preset.name}
+                ref={(el) => (presetItemsRef.current[presetIndex] = el)}
+                role="menuitem"
                 onClick={() => handlePresetClick(preset.brightness, preset.contrast)}
                 className="w-full px-2 py-1 text-left text-xs text-gray-300 hover:bg-[#2a2a2a] hover:text-white transition-colors"
               >
                 <div className="font-medium">{preset.name}</div>
-                <div className="text-[11px] text-gray-500">C:{preset.contrast} B:{preset.brightness}</div>
+                <div className="text-[11px] text-gray-400">C:{preset.contrast} B:{preset.brightness}</div>
               </button>
             ))}
             <div className="border-t border-[#2a2a2a] mt-0.5 pt-0.5 px-2">
               <button
+                ref={(el) => (presetItemsRef.current[windowPresets.length] = el)}
+                role="menuitem"
                 onClick={() => {
                   resetSettings()
                   setShowPresets(false)
@@ -492,22 +681,24 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
       <button
         onClick={handleToggleFavorite}
         title={isCurrentFavorite ? "Remove from favorites" : "Add to favorites"}
+        aria-label={isCurrentFavorite ? "Remove from favorites" : "Add to favorites"}
+        aria-pressed={isCurrentFavorite}
         disabled={!currentInstance}
         data-testid="favorite-button"
         className={`p-2 rounded transition-colors ${
           !currentInstance
-            ? 'text-gray-600 cursor-not-allowed'
+            ? 'text-gray-500 cursor-not-allowed'
             : isCurrentFavorite
             ? 'text-white hover:bg-[#2a2a2a]'
             : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-white'
         }`}
       >
         {isCurrentFavorite ? (
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden="true">
             <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401z" clipRule="evenodd" />
           </svg>
         ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
           </svg>
         )}
@@ -576,6 +767,20 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
           <AiSendConfirmDialog />
         </>
       )}
+
+      {/* Full-screen toggle — rightmost */}
+      {onToggleFullscreen && (
+        <>
+          <ToolbarDivider />
+          <ToolbarButton
+            onClick={onToggleFullscreen}
+            active={isFullscreen}
+            title={isFullscreen ? 'Exit full screen (Shift+F)' : 'Full screen (Shift+F)'}
+            data-testid="fullscreen-button"
+            icon={isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          />
+        </>
+      )}
     </div>
   )
 }
@@ -586,25 +791,29 @@ interface ToolbarButtonProps {
   icon: React.ReactNode
   active?: boolean
   disabled?: boolean
+  /** When true, the button is a toggle and `active` is reflected via aria-pressed. */
+  isToggle?: boolean
   'data-testid'?: string
 }
 
-function ToolbarButton({ onClick, title, icon, active = false, disabled = false, 'data-testid': testId }: ToolbarButtonProps) {
+function ToolbarButton({ onClick, title, icon, active = false, disabled = false, isToggle = false, 'data-testid': testId }: ToolbarButtonProps) {
   return (
     <button
       onClick={onClick}
       title={title}
+      aria-label={title}
+      aria-pressed={isToggle ? active : undefined}
       disabled={disabled}
       data-testid={testId}
       className={`p-2 rounded transition-colors ${
         disabled
-          ? 'text-gray-600 cursor-not-allowed'
+          ? 'text-gray-500 cursor-not-allowed'
           : active
           ? 'text-white hover:bg-[#2a2a2a]'
           : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-white'
       }`}
     >
-      {icon}
+      <span aria-hidden="true">{icon}</span>
     </button>
   )
 }

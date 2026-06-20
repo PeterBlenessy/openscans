@@ -2,6 +2,7 @@
 import { RefObject, useEffect, useState, useRef } from 'react'
 import { useViewportStore } from '../stores/viewportStore'
 import { cornerstone } from '../lib/cornerstone/initCornerstone'
+import { isMeasurementTool } from '../lib/cornerstone/tools'
 
 /**
  * Hook for handling window/level mouse interactions on a DICOM viewport.
@@ -32,10 +33,15 @@ export function useViewportMouseInteraction(
 
   const settings = useViewportStore((s) => s.settings)
   const setWindowLevel = useViewportStore((s) => s.setWindowLevel)
+  const activeTool = useViewportStore((s) => s.activeTool)
+
+  // When a cornerstone-tools measurement/ROI tool owns the left button, the raw
+  // window/level drag must yield so it doesn't fight the tool's handle placement.
+  const measurementToolActive = isMeasurementTool(activeTool)
 
   useEffect(() => {
     const element = canvasRef.current
-    if (!element || !isInitialized) return
+    if (!element || !isInitialized || measurementToolActive) return
 
     let isCurrentlyDragging = false
 
@@ -114,7 +120,7 @@ export function useViewportMouseInteraction(
       window.removeEventListener('mouseup', handleMouseUp)
       element.removeEventListener('mouseleave', handleMouseLeave)
     }
-  }, [isInitialized, settings.windowWidth, settings.windowCenter, setWindowLevel])
+  }, [isInitialized, settings.windowWidth, settings.windowCenter, setWindowLevel, measurementToolActive])
 
   return { isDragging, currentWL }
 }

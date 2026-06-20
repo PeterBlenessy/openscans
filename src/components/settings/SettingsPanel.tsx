@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
 import { Theme, ScrollDirection, AIProvider } from '@/stores/settingsStore'
 import { themeClasses } from '@/lib/utils'
 import { useSettingsState } from '@/hooks/useSettingsState'
 import { isTauri } from '@/lib/utils/platform'
 import { MrEngineSettings } from './MrEngineSettings'
+import { confirmDialog } from '@/lib/ui/confirm'
 
 interface SettingsPanelProps {
   show: boolean
@@ -15,48 +17,32 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
 
   const [showApiKey, setShowApiKey] = useState(false)
 
-  // Close on Escape key
-  useEffect(() => {
-    if (!show) return
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-      }
-    }
-
-    window.addEventListener('keydown', handleEscape)
-    return () => window.removeEventListener('keydown', handleEscape)
-  }, [show, onClose])
-
-  if (!show) return null
-
   const isDark = settings.theme === 'dark'
   // Cloud AI is desktop-only — the entire AI section (provider picker, API-key
   // inputs, enable toggle) is hidden in the web build.
   const showAiSettings = isTauri()
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
-      />
+    <Dialog.Root open={show} onOpenChange={(open) => { if (!open) onClose() }}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" />
 
-      {/* Modal */}
-      <div className={`relative rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden border ${themeClasses.bg(settings.theme)} ${themeClasses.border(settings.theme)}`}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+          <Dialog.Content
+            aria-describedby={undefined}
+            className={`pointer-events-auto relative rounded-xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden border focus:outline-none ${themeClasses.bg(settings.theme)} ${themeClasses.border(settings.theme)}`}
+          >
         {/* Header */}
         <div className={`flex items-center justify-between p-4 border-b ${themeClasses.border(settings.theme)}`}>
-          <h2 className={`text-xl font-semibold ${themeClasses.text(settings.theme)}`}>Settings</h2>
-          <button
-            onClick={onClose}
+          <Dialog.Title id="settings-panel-title" className={`text-xl font-semibold ${themeClasses.text(settings.theme)}`}>Settings</Dialog.Title>
+          <Dialog.Close
+            aria-label="Close dialog"
             className={`p-2 rounded-lg transition-colors ${themeClasses.hoverBgSecondary(settings.theme)}`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 ${themeClasses.textSecondary(settings.theme)}`}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 ${themeClasses.textSecondary(settings.theme)}`} aria-hidden="true">
               <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
             </svg>
-          </button>
+          </Dialog.Close>
         </div>
 
         {/* Content */}
@@ -67,6 +53,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
               <select
                 value={settings.theme}
                 onChange={(e) => settings.setTheme(e.target.value as Theme)}
+                aria-label="Theme"
                 className={`border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${themeClasses.bgSecondary(settings.theme)} ${themeClasses.border(settings.theme)} ${themeClasses.text(settings.theme)} ${isDark ? 'focus:ring-[#3a3a3a]' : 'focus:ring-gray-400'}`}
               >
                 <option value="dark">Dark</option>
@@ -81,6 +68,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
               <select
                 value={settings.scrollDirection}
                 onChange={(e) => settings.setScrollDirection(e.target.value as ScrollDirection)}
+                aria-label="Scroll Direction"
                 className={`border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a] text-white focus:ring-[#3a3a3a]' : 'bg-gray-100 border-gray-300 text-gray-900 focus:ring-gray-400'}`}
               >
                 <option value="natural">Natural (scroll up = next)</option>
@@ -96,6 +84,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                 step="0.1"
                 value={settings.windowLevelSensitivity}
                 onChange={(e) => settings.setWindowLevelSensitivity(parseFloat(e.target.value))}
+                aria-label="Window/Level Sensitivity"
                 className={`w-32 h-2 rounded-lg appearance-none cursor-pointer ${isDark ? 'bg-[#0f0f0f]' : 'bg-gray-200'}`}
               />
             </SettingsRow>
@@ -108,6 +97,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                 step="0.01"
                 value={settings.zoomSensitivity}
                 onChange={(e) => settings.setZoomSensitivity(parseFloat(e.target.value))}
+                aria-label="Zoom Sensitivity"
                 className={`w-32 h-2 rounded-lg appearance-none cursor-pointer ${isDark ? 'bg-[#0f0f0f]' : 'bg-gray-200'}`}
               />
             </SettingsRow>
@@ -145,16 +135,20 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                 checked={settings.aiEnabled}
                 onChange={async (enabled) => {
                   if (enabled && !settings.aiConsentGiven) {
-                    // Show consent prompt. NOTE: in the Tauri desktop build
-                    // window.confirm() returns a Promise, so it must be awaited
-                    // (awaiting the plain boolean the browser returns is a no-op).
-                    const consent = await window.confirm(
-                      'AI Detection Privacy Notice:\n\n' +
-                      'When you explicitly use the AI analysis or detection features, DICOM images will be sent to external AI services (Claude, Gemini, or OpenAI API). ' +
-                      'Images are sent without patient metadata, but the pixel data itself leaves your device when you click the AI analysis button.\n\n' +
-                      'This is NOT HIPAA-compliant by default. Only use with de-identified images or in non-clinical settings.\n\n' +
-                      'Do you consent to sending image data to external AI services when using AI features?'
-                    )
+                    // Themed, always-async consent prompt (replaces the native
+                    // window.confirm, which was unstyled and behaved differently
+                    // on web vs. the Tauri desktop build).
+                    const consent = await confirmDialog({
+                      title: 'AI Detection Privacy Notice',
+                      message:
+                        'When you explicitly use the AI analysis or detection features, DICOM images will be sent to external AI services (Claude, Gemini, or OpenAI API).\n' +
+                        'Images are sent without patient metadata, but the pixel data itself leaves your device when you click the AI analysis button.\n' +
+                        'This is NOT HIPAA-compliant by default. Only use with de-identified images or in non-clinical settings.\n' +
+                        'Do you consent to sending image data to external AI services when using AI features?',
+                      confirmLabel: 'I consent',
+                      cancelLabel: 'Cancel',
+                      tone: 'default',
+                    })
                     if (consent) {
                       settings.setAiConsentGiven(true)
                       settings.setAiEnabled(true)
@@ -173,6 +167,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                   <select
                     value={settings.aiProvider}
                     onChange={(e) => settings.setAiProvider(e.target.value as AIProvider)}
+                    aria-label="AI Provider"
                     className={`border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a] text-white focus:ring-[#3a3a3a]' : 'bg-gray-100 border-gray-300 text-gray-900 focus:ring-gray-400'}`}
                   >
                     <option value="claude">Claude (Anthropic)</option>
@@ -187,6 +182,7 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                   <select
                     value={settings.aiResponseLanguage}
                     onChange={(e) => settings.setAiResponseLanguage(e.target.value)}
+                    aria-label="Response Language"
                     className={`border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a] text-white focus:ring-[#3a3a3a]' : 'bg-gray-100 border-gray-300 text-gray-900 focus:ring-gray-400'}`}
                   >
                     <option value="English">English</option>
@@ -218,9 +214,10 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                       />
                       <button
                         onClick={() => setShowApiKey(!showApiKey)}
+                        aria-label={showApiKey ? 'Hide API key' : 'Show API key'}
                         className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-[#2a2a2a]' : 'hover:bg-gray-200'}`}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden="true">
                           {showApiKey ? (
                             <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
                           ) : (
@@ -244,9 +241,10 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                       />
                       <button
                         onClick={() => setShowApiKey(!showApiKey)}
+                        aria-label={showApiKey ? 'Hide API key' : 'Show API key'}
                         className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-[#2a2a2a]' : 'hover:bg-gray-200'}`}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden="true">
                           {showApiKey ? (
                             <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
                           ) : (
@@ -270,9 +268,10 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                       />
                       <button
                         onClick={() => setShowApiKey(!showApiKey)}
+                        aria-label={showApiKey ? 'Hide API key' : 'Show API key'}
                         className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-[#2a2a2a]' : 'hover:bg-gray-200'}`}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden="true">
                           {showApiKey ? (
                             <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
                           ) : (
@@ -351,15 +350,20 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
               <p className={`text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                 Clear AI Data
               </p>
-              <p className="text-xs text-gray-500 mb-3">
+              <p className="text-xs text-gray-400 mb-3">
                 Remove all stored AI analyses and annotations from localStorage
               </p>
               <div className="flex justify-end">
                 <button
                   onClick={async () => {
-                    // window.confirm() returns a Promise in the Tauri desktop
-                    // build, so it must be awaited (no-op on web's boolean).
-                    if (await window.confirm('Clear all stored AI analyses and annotations? This cannot be undone.')) {
+                    if (
+                      await confirmDialog({
+                        title: 'Clear AI Data',
+                        message:
+                          'Clear all stored AI analyses and annotations? This cannot be undone.',
+                        confirmLabel: 'Clear All',
+                      })
+                    ) {
                       localStorage.removeItem('openscans-ai-analyses')
                       localStorage.removeItem('openscans-annotations')
                       // Reload page to clear in-memory state
@@ -390,8 +394,10 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
             Done
           </button>
         </div>
-      </div>
-    </div>
+          </Dialog.Content>
+        </div>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
 
