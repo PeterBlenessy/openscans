@@ -64,14 +64,19 @@ def load_series(series_dir: Path, series_uid: str | None):
     index used to map segmentation voxels back to slices is defined by this sort.
     """
     items = []  # (dataset, path)
-    for path in series_dir.iterdir():
+    # Walk RECURSIVELY: the selected folder is often a study/library root with
+    # the images nested (e.g. <study>/IMAGES/DICOM/S0001/SER0001/I0000001), and
+    # may hold several series — so we gather everything and filter by UID. Read
+    # metadata only (stop_before_pixels) for speed; TS reads the pixels later.
+    for path in series_dir.rglob("*"):
         if not path.is_file():
             continue
         try:
-            ds = pydicom.dcmread(str(path))
+            ds = pydicom.dcmread(str(path), stop_before_pixels=True)
         except Exception:
             continue  # skip non-DICOM / unreadable files
-        if "PixelData" not in ds:
+        # Image instances have Rows/Columns; skips reports (SR), DICOMDIR, etc.
+        if getattr(ds, "Rows", None) is None:
             continue
         if series_uid and str(getattr(ds, "SeriesInstanceUID", "")) != series_uid:
             continue

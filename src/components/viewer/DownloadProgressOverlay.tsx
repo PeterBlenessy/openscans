@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { isTauri } from '@/lib/utils/platform'
 import { onDownloadProgress } from '@/lib/ai/localServer'
-import { onMrDownloadProgress } from '@/lib/ai/segmentationServer'
 
 interface Progress {
   file: string
@@ -15,9 +14,13 @@ function formatMB(bytes: number): string {
 
 /**
  * Viewport overlay showing on-demand download progress for the bundled local
- * AI model and the MR segmentation engine. Self-contained: it subscribes to the
- * Tauri progress events directly, so it can be mounted without prop plumbing.
- * Renders nothing when no download is active (or on the web build).
+ * AI (llama) model. Self-contained: it subscribes to the Tauri progress event
+ * directly, so it can be mounted without prop plumbing. Renders nothing when no
+ * download is active (or on the web build).
+ *
+ * NOTE: MR-engine progress is intentionally NOT handled here — it has its own
+ * consent + minimizable progress UI (see MrEngineSetup); subscribing to it here
+ * too caused a duplicate "Downloading <stage>…" overlay.
  */
 export function DownloadProgressOverlay() {
   const [progress, setProgress] = useState<Progress | null>(null)
@@ -26,7 +29,6 @@ export function DownloadProgressOverlay() {
     if (!isTauri()) return
 
     let unlistenLocal: (() => void) | undefined
-    let unlistenMr: (() => void) | undefined
     let clearTimer: ReturnType<typeof setTimeout> | undefined
 
     const handle = (p: Progress) => {
@@ -41,13 +43,9 @@ export function DownloadProgressOverlay() {
     onDownloadProgress(handle).then((u) => {
       unlistenLocal = u
     })
-    onMrDownloadProgress(handle).then((u) => {
-      unlistenMr = u
-    })
 
     return () => {
       unlistenLocal?.()
-      unlistenMr?.()
       if (clearTimer) clearTimeout(clearTimer)
     }
   }, [])
