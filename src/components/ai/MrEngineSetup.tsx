@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Loader2, ScanLine, Minus, X, AlertTriangle } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { useMrEngineStore } from '@/stores/mrEngineStore'
@@ -30,6 +30,19 @@ export function MrEngineSetup() {
   useEffect(() => {
     void refreshStatus()
   }, [refreshStatus])
+
+  // Elapsed-time counter while a job runs — the long phases (engine install,
+  // segmentation) report no fine-grained progress, so this + the animated
+  // indeterminate bar make clear it's working, not stuck.
+  const active = !!job
+  const [elapsed, setElapsed] = useState(0)
+  useEffect(() => {
+    if (!active) return
+    setElapsed(0)
+    const id = setInterval(() => setElapsed((e) => e + 1), 1000)
+    return () => clearInterval(id)
+  }, [active])
+  const mmss = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`
 
   const pct = job && job.total > 0 ? Math.round((job.downloaded / job.total) * 100) : null
 
@@ -135,15 +148,24 @@ export function MrEngineSetup() {
                   <Minus className="w-4 h-4" />
                 </button>
               </div>
-              <p className={`text-xs ${themeClasses.textSecondary(theme)} mb-2 truncate`}>
-                {job?.stage}
-                {pct !== null && job ? ` · ${fmtBytes(job.downloaded)} / ${fmtBytes(job.total)}` : ''}
+              <p className={`text-xs ${themeClasses.textSecondary(theme)} mb-2 flex justify-between gap-2`}>
+                <span className="truncate">
+                  {job?.stage}
+                  {pct !== null && job ? ` · ${fmtBytes(job.downloaded)} / ${fmtBytes(job.total)}` : ''}
+                </span>
+                <span className="tabular-nums shrink-0">{mmss}</span>
               </p>
               <div className={`h-1.5 rounded-full overflow-hidden ${themeClasses.bgSecondary(theme)}`}>
-                <div
-                  className="h-full bg-blue-500 transition-all"
-                  style={pct !== null ? { width: `${pct}%` } : { width: '100%', opacity: 0.4 }}
-                />
+                {pct !== null ? (
+                  <div className="h-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
+                ) : (
+                  // Indeterminate: animated sliding segment (no fine-grained % for
+                  // the install / segmentation compute phases).
+                  <div
+                    className="h-full w-2/5 bg-blue-500 rounded-full"
+                    style={{ animation: 'mr-indeterminate 1.2s ease-in-out infinite' }}
+                  />
+                )}
               </div>
               <p className={`text-[11px] ${themeClasses.textSecondary(theme)} mt-2`}>
                 Runs on-device · you can minimize and keep working.

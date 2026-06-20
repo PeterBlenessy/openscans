@@ -61,3 +61,10 @@ body {
   background: #5a5a5a;
   transform: scale(1.1);
 }
+
+/* Indeterminate progress bar (MR engine install/segmentation phases that report
+   no fine-grained percentage) — a segment sliding across the track. */
+@keyframes mr-indeterminate {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(260%); }
+}
