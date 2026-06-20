@@ -40,6 +40,10 @@
     "externalBin": [
       "binaries/llama-server"
     ],
+    "resources": {
+      "../python-engine/mr_segmentation/run.py": "python-engine/mr_segmentation/run.py",
+      "../python-engine/mr_segmentation/requirements.txt": "python-engine/mr_segmentation/requirements.txt"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

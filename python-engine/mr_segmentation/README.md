@@ -37,27 +37,24 @@ pip install -r requirements.txt
 python run.py --series /path/to/series --out /tmp/result.json
 ```
 
-First run downloads the TotalSegmentator weights to its cache; for a fully
-offline engine, pre-fetch the weights and ship them alongside the binary.
+First run downloads the `vertebrae_mr` model weights into `TOTALSEG_HOME_DIR`
+(the app points this at its data dir); later runs are offline.
 
-## Package (per platform)
+## Packaging — the app owns the install (no bundling)
 
-```bash
-pip install pyinstaller
-pyinstaller mr_segmentation.spec     # -> dist/mr-segmentation
-```
+This engine is **not** frozen into a binary and **not** published as a release
+artifact. The desktop app provisions it at runtime (see
+`src-tauri/src/mr_seg.rs`): it downloads `uv`, runs `uv python install` +
+`uv venv` + `uv pip install -r requirements.txt` into its data dir, then runs
+`run.py` with the managed Python. `run.py` + `requirements.txt` ship as Tauri
+**resources** (they are the app's own code, not third-party libs). See
+plans/MR_SEGMENTATION_ENGINE.md.
 
-PyInstaller does not cross-compile — build on each target OS (macOS arm64/x64,
-Windows x64, Linux x64) in CI and publish to GitHub releases; the app's
-`mr_seg_download` command fetches the matching artifact.
-
-## Known validation gaps (see plans/LOCAL_AI_PROVIDER.md)
+## Known validation gaps (see plans/MR_SEGMENTATION_ENGINE.md)
 
 - **Voxel → DICOM mapping**: `run.py` assumes the segmentation is produced in the
   input series' geometry (`--ml`, no resampling) and that axes map as
   z→slice, y→row, x→col. Validate axis conventions / any resampling on real MR
   before relying on marker positions.
-- **PyInstaller hidden imports / data files** for torch + nnU-Net will likely
-  need extending on first build.
 - **Confidence** is a fixed placeholder (TotalSegmentator does not expose a
   per-structure probability through this path).
