@@ -62,6 +62,13 @@ body {
   transform: scale(1.1);
 }
 
+/* Indeterminate progress bar (MR engine install/segmentation phases that report
+   no fine-grained percentage) — a segment sliding across the track. */
+@keyframes mr-indeterminate {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(260%); }
+}
+
 /* Full-screen viewport: ensure the container truly fills the screen and the
    Cornerstone canvas expands with it. The native :fullscreen pseudo-class
    targets the element passed to requestFullscreen() (the viewport container). */

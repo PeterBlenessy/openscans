@@ -112,7 +112,7 @@ export abstract class BaseVisionDetector implements VisionDetector {
         processingTimeMs,
       }
     } catch (error) {
-      const errorDetails = parseApiError(error, this.getName().toLowerCase() as 'claude' | 'gemini' | 'openai')
+      const errorDetails = parseApiError(error, this.getName().toLowerCase() as 'claude' | 'gemini' | 'openai' | 'local')
       console.error(`[${this.getName()}Detector] Detection failed:`, errorDetails.message)
 
       // Create a user-friendly error
@@ -174,7 +174,7 @@ export abstract class BaseVisionDetector implements VisionDetector {
         processingTimeMs,
       }
     } catch (error) {
-      const errorDetails = parseApiError(error, this.getName().toLowerCase() as 'claude' | 'gemini' | 'openai')
+      const errorDetails = parseApiError(error, this.getName().toLowerCase() as 'claude' | 'gemini' | 'openai' | 'local')
       console.error(`[${this.getName()}Detector] Analysis failed:`, errorDetails.message)
 
       // Create a user-friendly error

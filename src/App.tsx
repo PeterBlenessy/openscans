@@ -6,6 +6,7 @@ import { StudySeriesBrowser } from './components/viewer/StudySeriesBrowser'
 import { ThumbnailStrip } from './components/viewer/ThumbnailStrip'
 import { KeyboardShortcutsHelp } from './components/viewer/KeyboardShortcutsHelp'
 import { HelpDialog } from './components/help/HelpDialog'
+import { MrEngineSetup } from './components/ai/MrEngineSetup'
 import { FavoritesPanel } from './components/favorites/FavoritesPanel'
 import { LeftDrawer, LeftDrawerState } from './components/layout/LeftDrawer'
 import { ResizeHandle } from './components/layout/ResizeHandle'
@@ -475,6 +476,9 @@ function App() {
 
       {/* Error Toast Notifications */}
       <ErrorToast />
+
+      {/* MR engine install consent + minimizable progress (desktop) */}
+      <MrEngineSetup />
 
       {/* Desktop auto-update notification (no-op in the browser) */}
       <UpdateNotification />

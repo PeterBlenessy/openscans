@@ -9,11 +9,15 @@
     "dev:tauri": "vite --port 5173",
     "build": "tsc && vite build",
     "dev:desktop": "tauri dev",
+    "dev:desktop:clean": "pnpm clean && tauri dev",
     "build:desktop": "tauri build",
+    "clean": "node scripts/clean.js",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "test": "vitest",
     "test:e2e": "playwright test",
+    "tauri:test": "tauri dev --features e2e-testing",
+    "test:e2e-local-ai": "./scripts/run-e2e-local-ai.sh",
     "prepare": "node scripts/copy-workers.js",
     "postinstall": "node scripts/copy-workers.js"
   },
@@ -27,7 +31,7 @@
     "@radix-ui/react-slider": "^1.1.2",
     "@radix-ui/react-toggle": "^1.0.3",
     "@radix-ui/react-tooltip": "^1.0.7",
-    "@tauri-apps/api": "^2.9.1",
+    "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-fs": "^2.4.5",
     "@tauri-apps/plugin-shell": "^2.3.4",
@@ -55,7 +59,7 @@
   "devDependencies": {
     "@playwright/test": "^1.41.0",
     "@tailwindcss/typography": "^0.5.19",
-    "@tauri-apps/cli": "^2.9.6",
+    "@tauri-apps/cli": "^2.11.3",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -79,7 +83,8 @@
     "vite": "^6.4.3",
     "vite-plugin-top-level-await": "^1.6.0",
     "vite-plugin-wasm": "^3.5.0",
-    "vitest": "^3.2.6"
+    "vitest": "^3.2.6",
+    "webdriverio": "^9.29.0"
   },
   "pnpm": {
     "overrides": {

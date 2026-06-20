@@ -7,6 +7,13 @@ import { mockDetector } from '../lib/ai/mockVertebralDetector'
 import { initDetector, getApiKeyForProvider } from '../lib/ai/aiDetectorManager'
 import { isTauri } from '../lib/utils/platform'
 import { confirmAiSend } from '../lib/ai/ai-send-confirm'
+import { ensureLocalServer, type DownloadProgress } from '../lib/ai/localServer'
+
+/** Log local-model download progress to the console (lightweight status). */
+function logLocalProgress(p: DownloadProgress): void {
+  const pct = p.total ? Math.round((p.downloaded / p.total) * 100) : 0
+  console.log(`[LocalAI] Downloading ${p.file}: ${pct}% (${p.downloaded}/${p.total})`)
+}
 
 /** Human-readable provider names for confirmation copy. */
 const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
@@ -121,10 +128,11 @@ export function useAiOperations(options: UseAiOperationsOptions): UseAiOperation
       }
 
       // A cloud provider will run only when we resolved a real (configured)
-      // detector. The mock detector runs locally with zero egress, so it must
-      // NOT trigger the confirmation/consent gate.
-      const usingCloudDetector = detector !== mockDetector
-      if (usingCloudDetector) {
+      // detector that actually sends data off-device. The mock detector and the
+      // bundled local LLM ('local') both run with zero egress, so neither must
+      // trigger the confirmation/consent gate.
+      const willEgress = detector !== mockDetector && aiSettings.aiProvider !== 'local'
+      if (willEgress) {
         const confirmed = await confirmAiSend(providerDisplayName(aiSettings.aiProvider))
         if (!confirmed) {
           // User aborted the send before any image left the device.
@@ -133,6 +141,13 @@ export function useAiOperations(options: UseAiOperationsOptions): UseAiOperation
       }
 
       setDetecting(true)
+
+      // For the bundled local provider, make sure the model is downloaded and
+      // the loopback server is running before we issue the request.
+      if (aiSettings.aiProvider === 'local') {
+        await ensureLocalServer(aiSettings.localModel, aiSettings.localPort, logLocalProgress)
+      }
+
       deleteAnnotationsForInstance(currentInstance.sopInstanceUID, true)
 
       const result = await detector.detectVertebrae(currentInstance)
@@ -182,15 +197,24 @@ export function useAiOperations(options: UseAiOperationsOptions): UseAiOperation
       return
     }
 
-    // Analysis always sends the image to a cloud provider — confirm the egress
-    // (and, implicitly, consent) before anything leaves the device.
-    const confirmed = await confirmAiSend(providerDisplayName(aiSettings.aiProvider))
-    if (!confirmed) {
-      return
+    // Cloud analysis sends the image off-device — confirm the egress (and,
+    // implicitly, consent) before anything leaves. The bundled local LLM
+    // ('local') runs on loopback with zero egress, so it skips the gate.
+    if (aiSettings.aiProvider !== 'local') {
+      const confirmed = await confirmAiSend(providerDisplayName(aiSettings.aiProvider))
+      if (!confirmed) {
+        return
+      }
     }
 
     try {
       setAnalyzing(true)
+
+      // For the bundled local provider, make sure the model is downloaded and
+      // the loopback server is running before we issue the request.
+      if (aiSettings.aiProvider === 'local') {
+        await ensureLocalServer(aiSettings.localModel, aiSettings.localPort, logLocalProgress)
+      }
 
       // Dynamically load and initialize the AI detector
       const apiKey = getApiKeyForProvider(aiSettings.aiProvider, {

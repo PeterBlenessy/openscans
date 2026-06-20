@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 /**
  * Copy Cornerstone WADO Image Loader web worker to public directory
- * This is needed for Tauri to load workers without blob URLs
+ * This is needed for Tauri to load workers without blob URLs.
+ *
+ * (The embedded blob-worker source-map ref that WKWebView complains about on
+ * startup is stripped at build time in vite.config.ts — NOT by patching
+ * node_modules, which pnpm reverts from its content-addressed store on install.)
  */
 
-import { copyFileSync, mkdirSync, existsSync } from 'fs';
+import { mkdirSync, existsSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -28,10 +32,12 @@ try {
     mkdirSync(publicDir, { recursive: true });
   }
 
-  // Copy worker file
+  // Copy worker file (strip its own trailing source-map comment).
   if (existsSync(workerSource)) {
-    copyFileSync(workerSource, workerDest);
-    console.log('✓ Copied Cornerstone web worker to public directory');
+    const worker = readFileSync(workerSource, 'utf8');
+    const stripped = worker.replace(/\n?\/\/# sourceMappingURL=\S+\s*$/, '\n');
+    writeFileSync(workerDest, stripped);
+    console.log('✓ Copied Cornerstone web worker to public directory (source-map ref stripped)');
   } else {
     console.warn('⚠ Cornerstone web worker not found, skipping copy');
   }

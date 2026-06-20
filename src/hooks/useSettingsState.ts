@@ -35,6 +35,8 @@ export function useSettingsState() {
   const openaiApiKey = useSettingsStore((state) => state.openaiApiKey)
   const aiConsentGiven = useSettingsStore((state) => state.aiConsentGiven)
   const aiResponseLanguage = useSettingsStore((state) => state.aiResponseLanguage)
+  const localModel = useSettingsStore((state) => state.localModel)
+  const localPort = useSettingsStore((state) => state.localPort)
 
   // Extract all setter functions
   const setTheme = useSettingsStore((state) => state.setTheme)
@@ -50,6 +52,8 @@ export function useSettingsState() {
   const setOpenaiApiKey = useSettingsStore((state) => state.setOpenaiApiKey)
   const setAiConsentGiven = useSettingsStore((state) => state.setAiConsentGiven)
   const setAiResponseLanguage = useSettingsStore((state) => state.setAiResponseLanguage)
+  const setLocalModel = useSettingsStore((state) => state.setLocalModel)
+  const setLocalPort = useSettingsStore((state) => state.setLocalPort)
   const resetToDefaults = useSettingsStore((state) => state.resetToDefaults)
 
   // Return all settings as a single object for convenient destructuring
@@ -68,6 +72,8 @@ export function useSettingsState() {
     openaiApiKey,
     aiConsentGiven,
     aiResponseLanguage,
+    localModel,
+    localPort,
 
     // Setter functions
     setTheme,
@@ -83,6 +89,8 @@ export function useSettingsState() {
     setOpenaiApiKey,
     setAiConsentGiven,
     setAiResponseLanguage,
+    setLocalModel,
+    setLocalPort,
     resetToDefaults,
   }
 }

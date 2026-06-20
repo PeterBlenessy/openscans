@@ -6,6 +6,7 @@ import { ExportDialog } from '@/components/export/ExportDialog'
 import { AnnotationOverlay } from './AnnotationOverlay'
 import { AiAnalysisModal } from './AiAnalysisModal'
 import { AiStatusOverlays } from './AiStatusOverlays'
+import { DownloadProgressOverlay } from './DownloadProgressOverlay'
 import { ViewportIndicators } from './ViewportIndicators'
 import { useAnnotationStore } from '@/stores/annotationStore'
 import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
@@ -190,6 +191,9 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
         onDismissDetectionError={() => setDetecting(false, null)}
         onDismissAnalysisError={() => setAnalyzing(false, null)}
       />
+
+      {/* On-demand download progress (local model / MR engine) */}
+      <DownloadProgressOverlay />
 
       {/* Viewport Indicators */}
       <ViewportIndicators

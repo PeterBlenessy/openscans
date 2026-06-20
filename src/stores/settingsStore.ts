@@ -3,7 +3,18 @@ import { storeKey, getKey, deleteKey } from '../lib/utils/credentials'
 
 export type Theme = 'dark' | 'light'
 export type ScrollDirection = 'natural' | 'inverted'
-export type AIProvider = 'claude' | 'gemini' | 'openai' | 'none'
+export type AIProvider = 'claude' | 'gemini' | 'openai' | 'local' | 'none'
+
+/**
+ * Default model id for the bundled local LLM (llama-server). Preconfigured but
+ * user-overridable in Settings. MedGemma 4B is a medical-tuned Gemma-3
+ * multimodal model available as GGUF for llama.cpp. The user may type any other
+ * model id (no model search/browse UI).
+ */
+export const DEFAULT_LOCAL_MODEL = 'medgemma-4b-it'
+
+/** Default loopback port the bundled llama-server listens on. */
+export const DEFAULT_LOCAL_PORT = 8080
 
 /**
  * Settings store state interface.
@@ -56,6 +67,13 @@ export interface SettingsState {
   aiConsentGiven: boolean
   /** Language for AI analysis responses (e.g., 'English', 'Swedish', 'German') */
   aiResponseLanguage: string
+  /**
+   * Model id for the bundled local LLM (llama-server). Preconfigured to
+   * DEFAULT_LOCAL_MODEL but freely editable. No API key or egress involved.
+   */
+  localModel: string
+  /** Loopback port the bundled llama-server listens on. */
+  localPort: number
 
   // Actions
   /** Set UI theme and apply to document root */
@@ -84,6 +102,10 @@ export interface SettingsState {
   setAiConsentGiven: (consent: boolean) => void
   /** Set AI response language */
   setAiResponseLanguage: (language: string) => void
+  /** Set the local LLM model id (empty falls back to the default at use time) */
+  setLocalModel: (model: string) => void
+  /** Set the local llama-server port */
+  setLocalPort: (port: number) => void
   /** Reset all settings to defaults */
   resetToDefaults: () => void
 }
@@ -117,6 +139,8 @@ const defaultSettings = {
   openaiApiKey: '',
   aiConsentGiven: false,
   aiResponseLanguage: 'English',
+  localModel: DEFAULT_LOCAL_MODEL,
+  localPort: DEFAULT_LOCAL_PORT,
 }
 
 /**
@@ -324,6 +348,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
     setAiResponseLanguage: (aiResponseLanguage) => {
       set({ aiResponseLanguage })
       saveSettings({ ...get(), aiResponseLanguage })
+    },
+
+    setLocalModel: (localModel) => {
+      set({ localModel })
+      saveSettings({ ...get(), localModel })
+    },
+
+    setLocalPort: (localPort) => {
+      set({ localPort })
+      saveSettings({ ...get(), localPort })
     },
 
     resetToDefaults: () => {

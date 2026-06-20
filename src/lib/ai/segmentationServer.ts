@@ -1,0 +1,109 @@
+/**
+ * Frontend bridge to the on-demand MR segmentation engine (Phase 3).
+ *
+ * Wraps the Tauri `mr_seg_*` commands (see `src-tauri/src/mr_seg.rs`). The app
+ * OWNS THE INSTALL: on first use it provisions a managed Python env (via uv) and
+ * pip-installs TotalSegmentator-MRI into its data dir — nothing is bundled. The
+ * model weights download on first run; inference runs locally over a DICOM
+ * series directory, so no data leaves the device.
+ */
+import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
+import { isTauri } from '@/lib/utils/platform'
+import { MarkerAnnotation } from '@/types/annotation'
+import {
+  parseSegmentationResult,
+  segmentationToMarkers,
+  type MarkerContext,
+} from './mrSegmentation'
+
+const MR_DOWNLOAD_PROGRESS_EVENT = 'mr-seg://download-progress'
+
+/**
+ * Whether MR-precision segmentation is exposed in the UI. Enabled: the engine,
+ * the app-owned uv install, and the install UX (consent + minimizable progress +
+ * Settings) are all validated end-to-end in-app (produces T11/T12/L1 markers on
+ * the fixture). The voxel→DICOM axis-mapping accuracy on real clinical MR is the
+ * remaining open item — see plans/MR_SEGMENTATION_ENGINE.md.
+ */
+export const MR_SEGMENTATION_AVAILABLE = true
+
+export interface MrEngineStatus {
+  /** The managed Python env (with the engine deps) is provisioned. */
+  engineReady: boolean
+  /** The model weights are present on disk. */
+  modelReady: boolean
+}
+
+export interface MrDownloadProgress {
+  file: string
+  downloaded: number
+  total: number
+}
+
+export function mrEngineStatus(): Promise<MrEngineStatus> {
+  return invoke<MrEngineStatus>('mr_seg_status')
+}
+
+export function downloadMrEngine(): Promise<void> {
+  return invoke<void>('mr_seg_download')
+}
+
+/** Remove the provisioned engine (venv, uv, weights) to reclaim disk. */
+export function removeMrEngine(): Promise<void> {
+  return invoke<void>('mr_seg_remove')
+}
+
+/**
+ * Run inference over a DICOM series; returns raw (unvalidated) JSON.
+ * `seriesDir` may be a study folder — pass `seriesUid` to restrict to one series.
+ */
+export function runMrSegmentation(seriesDir: string, seriesUid?: string): Promise<unknown> {
+  return invoke<unknown>('mr_seg_run', { seriesDir, seriesUid })
+}
+
+export async function onMrDownloadProgress(
+  handler: (progress: MrDownloadProgress) => void
+): Promise<() => void> {
+  return listen<MrDownloadProgress>(MR_DOWNLOAD_PROGRESS_EVENT, (e) => handler(e.payload))
+}
+
+/**
+ * Ensure the engine binary is downloaded (on first use). The model weights are
+ * fetched by the engine itself on its first run (reported via `modelReady` for
+ * UI display), so only the engine binary gates here.
+ * @throws outside the desktop app.
+ */
+export async function ensureMrEngine(
+  onProgress?: (progress: MrDownloadProgress) => void
+): Promise<void> {
+  if (!isTauri()) {
+    throw new Error('MR segmentation requires the OpenScans desktop app.')
+  }
+  const status = await mrEngineStatus()
+  if (status.engineReady) return
+
+  let unlisten: (() => void) | undefined
+  try {
+    if (onProgress) unlisten = await onMrDownloadProgress(onProgress)
+    await downloadMrEngine()
+  } finally {
+    unlisten?.()
+  }
+}
+
+/**
+ * End-to-end MR segmentation for a series: ensure the engine, run it, validate
+ * the output, and convert the resolved landmarks into marker annotations
+ * spanning the series.
+ */
+export async function segmentSeries(
+  seriesDir: string,
+  ctx: MarkerContext,
+  options?: { seriesUid?: string; onProgress?: (progress: MrDownloadProgress) => void }
+): Promise<MarkerAnnotation[]> {
+  await ensureMrEngine(options?.onProgress)
+  const raw = await runMrSegmentation(seriesDir, options?.seriesUid)
+  const result = parseSegmentationResult(raw)
+  return segmentationToMarkers(result, ctx)
+}

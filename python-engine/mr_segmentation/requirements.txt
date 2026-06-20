@@ -1,0 +1,7 @@
+# MR segmentation engine (Phase 3). CPU-only by default; install a CUDA torch
+# build separately for GPU. Pinned loosely — lock exact versions in CI when the
+# engine build pipeline is set up.
+totalsegmentator>=2.4.0
+pydicom>=2.4
+nibabel>=5.2
+numpy>=1.26

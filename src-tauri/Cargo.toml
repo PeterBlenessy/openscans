@@ -21,6 +21,11 @@ tauri-build = { version = "2.5.3", features = [] }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
+# Local AI model downloads (streaming) + async file/process helpers. rustls
+# avoids a system OpenSSL build dependency.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+futures-util = "0.3"
+tokio = { version = "1", features = ["time", "fs", "io-util", "process"] }
 tauri = { version = "2.9.5", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
@@ -31,6 +36,14 @@ dirs = "5"
 # - apple-native / windows-native use the OS keychain on those platforms
 # - sync-secret-service + crypto-rust use pure-Rust zbus (no libdbus at compile time) on Linux
 keyring = { version = "3", default-features = false, features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
+
+# Real-window e2e testing: embeds a WebDriver server in the app so wdio can
+# drive the WKWebView on macOS (where the official tauri-driver doesn't work).
+# Only compiled with `--features e2e-testing`.
+tauri-plugin-webdriver = { version = "0.2", optional = true }
+
+[features]
+e2e-testing = ["dep:tauri-plugin-webdriver"]
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-updater = "2"

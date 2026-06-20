@@ -3,6 +3,7 @@ import {
   MonitorCog,
   Target,
   FileText,
+  ScanLine,
   Maximize2,
   Minimize2,
   Play,
@@ -21,6 +22,9 @@ import { useSettingsStore } from '@/stores/settingsStore'
 import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { mockDetector } from '@/lib/ai/mockVertebralDetector'
 import { initDetector, getApiKeyForProvider } from '@/lib/ai/aiDetectorManager'
+import { ensureLocalServer } from '@/lib/ai/localServer'
+import { MR_SEGMENTATION_AVAILABLE } from '@/lib/ai/segmentationServer'
+import { useMrEngineStore } from '@/stores/mrEngineStore'
 import { isTauri } from '@/lib/utils/platform'
 import { AiSendConfirmDialog } from './AiSendConfirmDialog'
 import { confirmAiSend } from '@/lib/ai/ai-send-confirm'
@@ -31,6 +35,14 @@ const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   gemini: 'Gemini (Google)',
   openai: 'OpenAI',
 }
+
+/** Log on-demand download progress to the console (lightweight status). */
+function logDownloadProgress(prefix: string, p: { file: string; downloaded: number; total: number }) {
+  const pct = p.total ? Math.round((p.downloaded / p.total) * 100) : 0
+  console.log(`[${prefix}] ${p.file}: ${pct}% (${p.downloaded}/${p.total})`)
+}
+const logLocalProgress = (p: { file: string; downloaded: number; total: number }) =>
+  logDownloadProgress('LocalAI', p)
 
 interface ViewportToolbarProps {
   className?: string
@@ -94,6 +106,8 @@ export function ViewportToolbar({
   // AI settings
   const aiEnabled = useSettingsStore((state) => state.aiEnabled)
   const aiProvider = useSettingsStore((state) => state.aiProvider)
+  const localModel = useSettingsStore((state) => state.localModel)
+  const localPort = useSettingsStore((state) => state.localPort)
   const aiSettings = useSettingsStore((state) => ({
     aiApiKey: state.aiApiKey,
     geminiApiKey: state.geminiApiKey,
@@ -182,15 +196,21 @@ export function ViewportToolbar({
         }
       }
 
-      // The mock detector runs locally (no egress) — only confirm when a real
-      // cloud detector will actually send the image.
-      const usingCloudDetector = detector !== mockDetector
-      if (usingCloudDetector) {
+      // The mock detector and the bundled local LLM both run locally (no
+      // egress) — only confirm when a real cloud detector will send the image.
+      const willEgress = detector !== mockDetector && aiProvider !== 'local'
+      if (willEgress) {
         const confirmed = await confirmAiSend(PROVIDER_DISPLAY_NAMES[aiProvider] || aiProvider)
         if (!confirmed) return
       }
 
       setDetecting(true)
+
+      // Provision the bundled local server (download model + start) on first use.
+      if (aiProvider === 'local') {
+        await ensureLocalServer(localModel, localPort, logLocalProgress)
+      }
+
       deleteAnnotationsForInstance(currentInstance.sopInstanceUID, true)
 
       const result = await detector.detectVertebrae(currentInstance)
@@ -312,13 +332,20 @@ export function ViewportToolbar({
       return
     }
 
-    // Analysis always sends the image to a cloud provider — confirm the egress
-    // (and consent) before anything leaves the device.
-    const confirmed = await confirmAiSend(PROVIDER_DISPLAY_NAMES[aiProvider] || aiProvider)
-    if (!confirmed) return
+    // Cloud analysis sends the image off-device — confirm the egress (and
+    // consent) first. The bundled local provider runs on loopback (zero egress).
+    if (aiProvider !== 'local') {
+      const confirmed = await confirmAiSend(PROVIDER_DISPLAY_NAMES[aiProvider] || aiProvider)
+      if (!confirmed) return
+    }
 
     try {
       setAnalyzing(true)
+
+      // Provision the bundled local server (download model + start) on first use.
+      if (aiProvider === 'local') {
+        await ensureLocalServer(localModel, localPort, logLocalProgress)
+      }
 
       // Dynamically load and initialize the AI detector
       const apiKey = getApiKeyForProvider(aiProvider, aiSettings)
@@ -349,6 +376,42 @@ export function ViewportToolbar({
       console.error('AI analysis failed:', error)
       setAnalyzing(false, errorMessage)
     }
+  }
+
+  /**
+   * MR-precision segmentation (Phase 3): runs the on-demand local
+   * TotalSegmentator-MRI engine over the current series and adds precise
+   * vertebra markers across its slices. Desktop-only; needs a folder-loaded
+   * study (the engine reads the DICOM files on disk).
+   */
+  const handleMrSegmentation = async () => {
+    if (!currentInstance || isDetecting || isAnalyzing) return
+    if (!isTauri()) return
+
+    const folderPath = currentStudy?.folderPath
+    const seriesUID = currentSeries?.seriesInstanceUID
+    if (!folderPath || folderPath.startsWith('webkit:')) {
+      handleError(
+        'MR segmentation needs a study opened from a folder in the desktop app.',
+        'MR Segmentation',
+        'warning'
+      )
+      return
+    }
+    if (!seriesUID) {
+      handleError('No series selected for MR segmentation.', 'MR Segmentation', 'warning')
+      return
+    }
+
+    // Delegate to the global MR engine store: it gates first-run consent,
+    // provisions the engine, runs segmentation, and drives the minimizable
+    // progress UI — all in the background so the user can keep working. Markers
+    // are added to the annotation store on completion.
+    void useMrEngineStore.getState().requestSegmentation({
+      seriesDir: folderPath,
+      seriesUid: seriesUID,
+      ctx: { seriesInstanceUID: seriesUID, modelVersion: 'totalsegmentator-mri' },
+    })
   }
 
 
@@ -682,6 +745,22 @@ export function ViewportToolbar({
             disabled={!currentInstance || isDetecting || isAnalyzing}
             data-testid="ai-analysis-button"
             icon={<FileText className="w-4 h-4" />}
+          />
+
+          {/* MR-precision segmentation — local TotalSegmentator-MRI (Phase 3).
+              Gated until the engine is published (see MR_SEGMENTATION_AVAILABLE). */}
+          <ToolbarButton
+            onClick={handleMrSegmentation}
+            title={
+              MR_SEGMENTATION_AVAILABLE
+                ? 'MR-precision vertebra segmentation (local, on-device)'
+                : 'MR-precision segmentation — coming soon (engine not yet available)'
+            }
+            disabled={
+              !MR_SEGMENTATION_AVAILABLE || !currentInstance || isDetecting || isAnalyzing
+            }
+            data-testid="mr-segmentation-button"
+            icon={<ScanLine className="w-4 h-4" />}
           />
 
           {/* Per-send confirmation dialog (imperative, awaited by the handlers) */}

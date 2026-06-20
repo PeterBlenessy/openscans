@@ -13,7 +13,7 @@ export interface ApiErrorDetails {
 /**
  * Parse and convert API errors into user-friendly messages
  */
-export function parseApiError(error: unknown, provider: 'claude' | 'gemini' | 'openai'): ApiErrorDetails {
+export function parseApiError(error: unknown, provider: 'claude' | 'gemini' | 'openai' | 'local'): ApiErrorDetails {
   // Default error details
   const defaultError: ApiErrorDetails = {
     message: 'Unknown error',
@@ -209,6 +209,39 @@ export function parseApiError(error: unknown, provider: 'claude' | 'gemini' | 'o
     }
   }
 
+  // Parse local llama-server errors. The most common failure is the server not
+  // running yet (model not downloaded / sidecar not started) — a connection
+  // refused / network error to loopback rather than an auth or quota problem.
+  if (provider === 'local') {
+    if (
+      errorMessage.includes('connection refused') ||
+      errorMessage.includes('econnrefused') ||
+      errorMessage.includes('failed to fetch') ||
+      errorMessage.includes('network') ||
+      errorMessage.includes('fetch')
+    ) {
+      return {
+        message: error.message,
+        userMessage:
+          'Local AI is not ready. The model may still be downloading, or the local AI server has not started yet. Please wait for the download to finish and try again.',
+        isRetryable: true,
+        action: 'Check the model download in Settings → AI',
+      }
+    }
+
+    // Model id typo / not loaded by the server.
+    if (errorMessage.includes('model') || errorMessage.includes('not found')) {
+      return {
+        code: 404,
+        message: error.message,
+        userMessage:
+          'The selected local model is not available. Check the model name in Settings → AI, or download it first.',
+        isRetryable: false,
+        action: 'Verify the model id in Settings → AI',
+      }
+    }
+  }
+
   // Generic response parsing errors
   if (errorMessage.includes('json') || errorMessage.includes('parse')) {
     return {
@@ -242,7 +275,7 @@ export function parseApiError(error: unknown, provider: 'claude' | 'gemini' | 'o
 /**
  * Format error for user display
  */
-export function formatErrorForUser(error: unknown, provider: 'claude' | 'gemini' | 'openai'): string {
+export function formatErrorForUser(error: unknown, provider: 'claude' | 'gemini' | 'openai' | 'local'): string {
   const details = parseApiError(error, provider)
 
   let message = details.userMessage
