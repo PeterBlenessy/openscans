@@ -1,0 +1,10 @@
+# Python engine local build artifacts (never committed)
+.venv/
+**/__pycache__/
+*.pyc
+build/
+dist/
+*.spec.bak
+# PyInstaller / TotalSegmentator scratch + weights
+**/weights/
+*.part

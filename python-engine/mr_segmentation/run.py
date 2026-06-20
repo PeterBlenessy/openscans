@@ -121,19 +121,24 @@ def run_totalsegmentator(series_dir: Path, work_dir: Path, task: str):
     out_dir = work_dir / "seg"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # --ml writes a single multi-label volume; keep input geometry so voxel
-    # indices line up with the sorted DICOM slices.
+    # With ml=True TotalSegmentator writes a SINGLE multi-label volume and treats
+    # the output path as a FILE (it appends .nii), not a directory. Pass a file
+    # path and keep input geometry so voxel indices line up with the sorted DICOM
+    # slices.
+    seg_path = out_dir / "segmentation.nii"
     totalsegmentator(
         str(series_dir),
-        str(out_dir),
+        str(seg_path),
         task=task,
         ml=True,
     )
 
-    seg_files = list(out_dir.glob("*.nii*"))
-    if not seg_files:
+    # Be defensive about the exact name/extension TS chooses (.nii vs .nii.gz).
+    candidates = [seg_path, *out_dir.glob("*.nii*"), *work_dir.glob("seg*.nii*")]
+    seg_file = next((p for p in candidates if p.exists()), None)
+    if seg_file is None:
         raise SystemExit("TotalSegmentator produced no segmentation output")
-    seg = nib.load(str(seg_files[0]))
+    seg = nib.load(str(seg_file))
     # nibabel is (x, y, z); transpose to (z=slice, y=row, x=col).
     volume = np.asanyarray(seg.dataobj).transpose(2, 1, 0)
 
@@ -204,7 +209,11 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="OpenScans MR segmentation engine")
     parser.add_argument("--series", required=True, help="DICOM series or study directory")
     parser.add_argument("--out", required=True, help="output JSON path")
-    parser.add_argument("--task", default="total_mr", help="TotalSegmentator task")
+    # `vertebrae_mr` segments INDIVIDUAL vertebrae (vertebrae_L1, …); the broader
+    # `total_mr` task only emits a single merged `vertebrae` label, so it can't
+    # produce per-vertebra markers. Validated locally on example_mr_sm. It's also
+    # a single model (~1 min CPU) vs total_mr's 4 (which OOM'd on CPU here).
+    parser.add_argument("--task", default="vertebrae_mr", help="TotalSegmentator task")
     parser.add_argument(
         "--series-uid",
         default=None,
