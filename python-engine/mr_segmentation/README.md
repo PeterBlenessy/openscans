@@ -61,10 +61,14 @@ flip. **Validated on a real sagittal lumbar-spine MR** (`t2_space_sag_iso`):
 T8→L5 segmented in correct anatomical order, markers on the mid-sagittal slices,
 row increasing superior→inferior, X tracking the lordosis curve.
 
+Markers are centred on the vertebral **body**: `vertebrae_mr` labels the whole
+vertebra (body + posterior arch), so the raw centroid sits behind the body — the
+mapping biases it to the anterior half of each vertebra (anterior is derived
+from the affine, so it's orientation-correct). Validated on the real series:
+markers moved ~20–30 px anteriorly onto the bodies. (The dedicated
+`vertebrae_body` task would be cleaner but requires a TotalSegmentator license.)
+
 ## Known limitations
 
-- **Marker sits at the whole-vertebra centroid** (`vertebrae_mr` segments body +
-  posterior arch), so it can fall slightly posterior to the vertebral-body
-  centre. Switching to the `vertebrae_body` task would centre it on the body.
 - **Confidence** is a fixed placeholder (TotalSegmentator does not expose a
   per-structure probability through this path).

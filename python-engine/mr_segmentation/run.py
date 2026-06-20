@@ -108,7 +108,7 @@ def stage_series(paths, work_dir: Path) -> Path:
     return input_dir
 
 
-def run_totalsegmentator(series_dir: Path, work_dir: Path, task: str):
+def run_totalsegmentator(series_dir: Path, work_dir: Path, task: str, out_name: str = "seg"):
     """Run TotalSegmentator-MRI; return (seg_img, label_names, version).
 
     `seg_img` is the nibabel image (multi-label volume) with its affine, so
@@ -120,7 +120,7 @@ def run_totalsegmentator(series_dir: Path, work_dir: Path, task: str):
     import totalsegmentator as ts_pkg
     import nibabel as nib
 
-    out_dir = work_dir / "seg"
+    out_dir = work_dir / out_name
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # With ml=True TotalSegmentator writes a SINGLE multi-label volume and treats
@@ -136,7 +136,7 @@ def run_totalsegmentator(series_dir: Path, work_dir: Path, task: str):
     )
 
     # Be defensive about the exact name/extension TS chooses (.nii vs .nii.gz).
-    candidates = [seg_path, *out_dir.glob("*.nii*"), *work_dir.glob("seg*.nii*")]
+    candidates = [seg_path, *out_dir.glob("*.nii*"), *work_dir.glob(f"{out_name}*.nii*")]
     seg_file = next((p for p in candidates if p.exists()), None)
     if seg_file is None:
         raise SystemExit("TotalSegmentator produced no segmentation output")
@@ -201,22 +201,29 @@ def _world_to_pixel(world_lps, geoms):
     return idx, int(round(col)), int(round(row))
 
 
-def centroid_to_landmark(seg, label_id, slices, geoms):
-    """Resolve a structure's voxel centroid to a DICOM (instance, x, y).
+def landmark_from_mask(mask, affine, slices, geoms, anterior_bias=False):
+    """Resolve a boolean voxel mask's centroid to a DICOM (instance, x, y).
 
-    Uses the segmentation's affine to map the voxel centroid to patient space,
-    then each slice's DICOM geometry to find the slice + pixel — orientation-
-    agnostic, so it does NOT assume the NIfTI axes match the DICOM slice/row/col
-    order (they don't; dicom2nifti reorients). Returns a landmark dict or None.
+    Uses the segmentation's affine to map the centroid to patient space, then
+    each slice's DICOM geometry to find the slice + pixel — orientation-agnostic,
+    so it does NOT assume the NIfTI axes match the DICOM slice/row/col order
+    (they don't; dicom2nifti reorients). Returns a landmark dict or None.
+
+    With `anterior_bias`, the centroid is computed over the anterior ~half of the
+    mask so a whole-vertebra label (body + posterior arch) lands on the body.
+    "Anterior" is derived from the affine (RAS +Y), so it's orientation-correct.
     """
-    vol = np.asanyarray(seg.dataobj)
-    mask = vol == label_id
     if not mask.any():
         return None
     ii, jj, kk = np.nonzero(mask)
+    if anterior_bias and ii.size:
+        coords = np.vstack([ii, jj, kk, np.ones(ii.size)]).astype(float)
+        ras_y = (affine @ coords)[1]  # RAS +Y = anterior; larger = more anterior
+        sel = ras_y >= np.median(ras_y)  # keep the anterior half (the body)
+        if sel.any():
+            ii, jj, kk = ii[sel], jj[sel], kk[sel]
     centroid = np.array([ii.mean(), jj.mean(), kk.mean(), 1.0])
-    world_ras = seg.affine @ centroid
-    world_lps = world_ras[:3] * _RAS_TO_LPS
+    world_lps = (affine @ centroid)[:3] * _RAS_TO_LPS
     hit = _world_to_pixel(world_lps, geoms)
     if hit is None:
         return None
@@ -232,7 +239,8 @@ def centroid_to_landmark(seg, label_id, slices, geoms):
 def segment(series_dir: Path, work_dir: Path, task: str, series_uid: str | None) -> dict:
     slices, paths = load_series(series_dir, series_uid)
     input_dir = stage_series(paths, work_dir)
-    seg, label_names, version = run_totalsegmentator(input_dir, work_dir, task)
+    seg, label_names, version = run_totalsegmentator(input_dir, work_dir, task, out_name="seg")
+    vol = np.asanyarray(seg.dataobj)
 
     # Per-slice geometry for mapping voxel centroids back to DICOM space.
     geoms = [
@@ -249,7 +257,12 @@ def segment(series_dir: Path, work_dir: Path, task: str, series_uid: str | None)
         label_id = name_to_id.get(seg_label)
         if label_id is None:
             continue
-        landmark = centroid_to_landmark(seg, label_id, slices, geoms)
+        mask = vol == label_id
+        # `vertebrae_mr` labels the WHOLE vertebra (body + posterior arch), so its
+        # raw centroid sits behind the body. Bias toward the vertebral body, which
+        # is the ANTERIOR portion (the dedicated `vertebrae_body` task would be
+        # cleaner but requires a TotalSegmentator license).
+        landmark = landmark_from_mask(mask, seg.affine, slices, geoms, anterior_bias=True)
         if landmark is None or not landmark["sopInstanceUID"]:
             continue
         landmark["label"] = short_label(seg_label)
