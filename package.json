@@ -9,7 +9,7 @@
     "dev:tauri": "vite --port 5173",
     "build": "tsc && vite build",
     "dev:desktop": "tauri dev",
-    "dev:desktop:clean": "node scripts/clean.js && tauri dev",
+    "dev:desktop:clean": "pnpm clean && tauri dev",
     "build:desktop": "tauri build",
     "clean": "node scripts/clean.js",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
