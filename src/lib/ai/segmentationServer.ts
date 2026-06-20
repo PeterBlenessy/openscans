@@ -20,12 +20,13 @@ import {
 const MR_DOWNLOAD_PROGRESS_EVENT = 'mr-seg://download-progress'
 
 /**
- * Whether MR-precision segmentation is exposed in the UI. The engine + app-owned
- * install are validated; gated until the install UX (consent + minimizable
- * progress + Settings) is wired and verified in-app. See
- * plans/MR_SEGMENTATION_ENGINE.md.
+ * Whether MR-precision segmentation is exposed in the UI. Enabled: the engine,
+ * the app-owned uv install, and the install UX (consent + minimizable progress +
+ * Settings) are all validated end-to-end in-app (produces T11/T12/L1 markers on
+ * the fixture). The voxel→DICOM axis-mapping accuracy on real clinical MR is the
+ * remaining open item — see plans/MR_SEGMENTATION_ENGINE.md.
  */
-export const MR_SEGMENTATION_AVAILABLE = false
+export const MR_SEGMENTATION_AVAILABLE = true
 
 export interface MrEngineStatus {
   /** The managed Python env (with the engine deps) is provisioned. */

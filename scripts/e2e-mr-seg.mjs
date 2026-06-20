@@ -18,6 +18,9 @@ const browser = await remote({
   path: '/',
   capabilities: { browserName: 'webview', 'webdriver:newSessionParameters': { alwaysMatch: {} } },
   logLevel: 'error',
+  // Per-request HTTP timeout — must exceed the in-app provision+infer time
+  // (default is 120s, far too short for the first-run env install + weights).
+  connectionRetryTimeout: 900000,
 })
 
 let exitCode = 1
