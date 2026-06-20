@@ -264,14 +264,10 @@ async fn ensure_env(app: &AppHandle) -> Result<PathBuf, String> {
     let uv = ensure_uv(app).await?;
     let dir = engine_dir(app)?;
     let venv = dir.join(".venv");
-    // Standalone Python installs into the app dir (isolated); the package cache
-    // uses uv's default shared location (normal uv behaviour, avoids re-pulling
-    // torch per app).
-    let uv_pythons = dir.join("uv-python");
 
     // 1. Install a standalone Python (covers a host with none).
     emit_stage(app, "Installing Python");
-    run_uv(&uv, &["python", "install", PYTHON_VERSION], &uv_pythons).await?;
+    run_uv(&uv, &["python", "install", PYTHON_VERSION], &dir).await?;
 
     // 2. Create the venv with that Python.
     emit_stage(app, "Creating environment");
@@ -283,7 +279,7 @@ async fn ensure_env(app: &AppHandle) -> Result<PathBuf, String> {
             "--python",
             PYTHON_VERSION,
         ],
-        &uv_pythons,
+        &dir,
     )
     .await?;
 
@@ -300,18 +296,21 @@ async fn ensure_env(app: &AppHandle) -> Result<PathBuf, String> {
             "-r",
             requirements.to_string_lossy().as_ref(),
         ],
-        &uv_pythons,
+        &dir,
     )
     .await?;
 
     Ok(py)
 }
 
-/// Run a `uv` subcommand with an app-local Python install dir, capturing output.
-async fn run_uv(uv: &Path, args: &[&str], pythons: &Path) -> Result<(), String> {
+/// Run a `uv` subcommand fully isolated to the app's engine dir: the standalone
+/// Python (`uv-python`) and the package cache (`uv-cache`) both live under it,
+/// so nothing is shared with other apps and Remove reclaims everything.
+async fn run_uv(uv: &Path, args: &[&str], dir: &Path) -> Result<(), String> {
     let out = tokio::process::Command::new(uv)
         .args(args)
-        .env("UV_PYTHON_INSTALL_DIR", pythons)
+        .env("UV_PYTHON_INSTALL_DIR", dir.join("uv-python"))
+        .env("UV_CACHE_DIR", dir.join("uv-cache"))
         .output()
         .await
         .map_err(|e| e.to_string())?;
@@ -333,8 +332,9 @@ pub async fn mr_seg_download(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Remove the provisioned engine (venv, uv, weights) to reclaim disk. The shared
-/// uv package cache is left intact (it's not app-specific).
+/// Remove the entire provisioned engine — uv, the standalone Python, the venv,
+/// the package cache, and the weights all live under the app's engine dir, so
+/// this reclaims everything (nothing is shared with other apps).
 #[tauri::command]
 pub async fn mr_seg_remove(app: AppHandle) -> Result<(), String> {
     let dir = engine_dir(&app)?;

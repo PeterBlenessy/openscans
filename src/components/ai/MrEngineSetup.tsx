@@ -65,11 +65,18 @@ export function MrEngineSetup() {
             (TotalSegmentator-MRI) <strong>entirely on your device</strong>.
           </p>
           <p>
-            First use needs a <strong>one-time setup</strong> (~2&nbsp;GB
-            download, a few minutes): the app installs the on-device engine and
-            model. Nothing leaves your device, and you can keep working while it
-            installs.
+            First use needs a <strong>one-time setup</strong> — it downloads
+            about 2&nbsp;GB (a few GB on disk) and takes a few minutes.
           </p>
+          <ul className="space-y-1.5">
+            <li>🔒 Runs fully on-device — no images or data ever leave your computer.</li>
+            <li>
+              📦 Everything installs inside OpenScans’ own folder. It won’t touch
+              your system Python or any other app, and isn’t shared with them.
+            </li>
+            <li>🗑️ You can remove it anytime in Settings to free up the space.</li>
+            <li>⏳ You can minimize the progress and keep working while it installs.</li>
+          </ul>
         </div>
       </Modal>
 
