@@ -10,7 +10,7 @@ import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { mockDetector } from '@/lib/ai/mockVertebralDetector'
 import { initDetector, getApiKeyForProvider } from '@/lib/ai/aiDetectorManager'
 import { ensureLocalServer } from '@/lib/ai/localServer'
-import { segmentSeries, type MrDownloadProgress } from '@/lib/ai/segmentationServer'
+import { segmentSeries, MR_SEGMENTATION_AVAILABLE, type MrDownloadProgress } from '@/lib/ai/segmentationServer'
 import { isTauri } from '@/lib/utils/platform'
 import { AiSendConfirmDialog } from './AiSendConfirmDialog'
 import { confirmAiSend } from '@/lib/ai/ai-send-confirm'
@@ -564,11 +564,18 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
             icon={<FileText className="w-4 h-4" />}
           />
 
-          {/* MR-precision segmentation — local TotalSegmentator-MRI (Phase 3) */}
+          {/* MR-precision segmentation — local TotalSegmentator-MRI (Phase 3).
+              Gated until the engine is published (see MR_SEGMENTATION_AVAILABLE). */}
           <ToolbarButton
             onClick={handleMrSegmentation}
-            title="MR-precision vertebra segmentation (local, on-device)"
-            disabled={!currentInstance || isDetecting || isAnalyzing}
+            title={
+              MR_SEGMENTATION_AVAILABLE
+                ? 'MR-precision vertebra segmentation (local, on-device)'
+                : 'MR-precision segmentation — coming soon (engine not yet available)'
+            }
+            disabled={
+              !MR_SEGMENTATION_AVAILABLE || !currentInstance || isDetecting || isAnalyzing
+            }
             data-testid="mr-segmentation-button"
             icon={<ScanLine className="w-4 h-4" />}
           />

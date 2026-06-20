@@ -18,6 +18,15 @@ import {
 
 const MR_DOWNLOAD_PROGRESS_EVENT = 'mr-seg://download-progress'
 
+/**
+ * Whether MR-precision segmentation is shippable. The engine (TotalSegmentator-
+ * MRI / MONAI) is a separate per-platform build downloaded from the `mr-engine`
+ * GitHub release — which is NOT published yet, so the download 404s. Keep the
+ * feature gated (button disabled) until that release exists; flip to `true`
+ * once the engine is built and published. See plans/MR_SEGMENTATION_ENGINE.md.
+ */
+export const MR_SEGMENTATION_AVAILABLE = false
+
 export interface MrEngineStatus {
   /** The PyInstaller engine binary is present on disk. */
   engineReady: boolean
