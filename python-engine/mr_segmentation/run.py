@@ -109,10 +109,12 @@ def stage_series(paths, work_dir: Path) -> Path:
 
 
 def run_totalsegmentator(series_dir: Path, work_dir: Path, task: str):
-    """Run TotalSegmentator-MRI; return (label_volume, label_names, version).
+    """Run TotalSegmentator-MRI; return (seg_img, label_names, version).
 
-    `label_volume` is an int array shaped (slices, rows, cols) aligned to the
-    sorted input slices; `label_names` maps integer id -> structure name.
+    `seg_img` is the nibabel image (multi-label volume) with its affine, so
+    voxel centroids can be mapped to patient space — we deliberately do NOT
+    assume the NIfTI axes match the DICOM slice/row/col order (dicom2nifti
+    reorients to a canonical frame). `label_names` maps integer id -> name.
     """
     from totalsegmentator.python_api import totalsegmentator
     import totalsegmentator as ts_pkg
@@ -139,8 +141,6 @@ def run_totalsegmentator(series_dir: Path, work_dir: Path, task: str):
     if seg_file is None:
         raise SystemExit("TotalSegmentator produced no segmentation output")
     seg = nib.load(str(seg_file))
-    # nibabel is (x, y, z); transpose to (z=slice, y=row, x=col).
-    volume = np.asanyarray(seg.dataobj).transpose(2, 1, 0)
 
     # Map label ids -> names via the bundled class map for the task.
     try:
@@ -151,35 +151,95 @@ def run_totalsegmentator(series_dir: Path, work_dir: Path, task: str):
         label_names = {}
 
     version = getattr(ts_pkg, "__version__", "unknown")
-    return volume, label_names, version
+    return seg, label_names, version
 
 
-def centroid_to_landmark(volume, label_id, slices):
-    """Compute a structure centroid and resolve it to (slice, x, y).
+# nibabel affines are RAS+; DICOM patient space is LPS. Negate the first two axes.
+_RAS_TO_LPS = np.array([-1.0, -1.0, 1.0])
 
-    Returns a dict with sopInstanceUID / instanceNumber / position, or None if
-    the label is absent.
+
+def _slice_geometry(ds):
+    """Per-slice DICOM geometry in patient space (LPS, mm), or None if the slice
+    lacks the spatial tags. Returns (ipp, e_col, e_row, normal, col_sp, row_sp)
+    where e_col/e_row are the directions of increasing column/row index."""
+    iop = getattr(ds, "ImageOrientationPatient", None)
+    ipp = getattr(ds, "ImagePositionPatient", None)
+    ps = getattr(ds, "PixelSpacing", None)
+    if iop is None or ipp is None or ps is None:
+        return None
+    iop = np.asarray(iop, dtype=float)
+    e_col = iop[0:3]  # direction of increasing column index (along a row)
+    e_row = iop[3:6]  # direction of increasing row index (down columns)
+    normal = np.cross(e_col, e_row)
+    return (
+        np.asarray(ipp, dtype=float),
+        e_col,
+        e_row,
+        normal,
+        float(ps[1]),  # column spacing (along e_col)
+        float(ps[0]),  # row spacing (along e_row)
+    )
+
+
+def _world_to_pixel(world_lps, geoms):
+    """Map a patient-space point (LPS, mm) to the nearest slice + pixel.
+
+    `geoms` is a list of (slice_index, geometry). Returns (slice_index, col, row)
+    or None. Slices are parallel, so the nearest one is found by projecting onto
+    the shared slice normal.
     """
-    mask = volume == label_id
+    if not geoms:
+        return None
+    normal = geoms[0][1][3]
+    t_p = float(np.dot(world_lps, normal))
+    idx, (ipp, e_col, e_row, _n, col_sp, row_sp) = min(
+        geoms, key=lambda g: abs(float(np.dot(g[1][0], normal)) - t_p)
+    )
+    d = world_lps - ipp
+    col = float(np.dot(d, e_col)) / col_sp if col_sp else 0.0
+    row = float(np.dot(d, e_row)) / row_sp if row_sp else 0.0
+    return idx, int(round(col)), int(round(row))
+
+
+def centroid_to_landmark(seg, label_id, slices, geoms):
+    """Resolve a structure's voxel centroid to a DICOM (instance, x, y).
+
+    Uses the segmentation's affine to map the voxel centroid to patient space,
+    then each slice's DICOM geometry to find the slice + pixel — orientation-
+    agnostic, so it does NOT assume the NIfTI axes match the DICOM slice/row/col
+    order (they don't; dicom2nifti reorients). Returns a landmark dict or None.
+    """
+    vol = np.asanyarray(seg.dataobj)
+    mask = vol == label_id
     if not mask.any():
         return None
-    zs, ys, xs = np.nonzero(mask)
-    k = int(round(zs.mean()))
-    k = max(0, min(k, len(slices) - 1))
-    cx = int(round(xs.mean()))
-    cy = int(round(ys.mean()))
-    ds = slices[k]
+    ii, jj, kk = np.nonzero(mask)
+    centroid = np.array([ii.mean(), jj.mean(), kk.mean(), 1.0])
+    world_ras = seg.affine @ centroid
+    world_lps = world_ras[:3] * _RAS_TO_LPS
+    hit = _world_to_pixel(world_lps, geoms)
+    if hit is None:
+        return None
+    idx, col, row = hit
+    ds = slices[idx]
     return {
         "sopInstanceUID": str(getattr(ds, "SOPInstanceUID", "")),
-        "instanceNumber": int(getattr(ds, "InstanceNumber", k + 1)),
-        "position": {"x": cx, "y": cy},
+        "instanceNumber": int(getattr(ds, "InstanceNumber", idx + 1)),
+        "position": {"x": col, "y": row},
     }
 
 
 def segment(series_dir: Path, work_dir: Path, task: str, series_uid: str | None) -> dict:
     slices, paths = load_series(series_dir, series_uid)
     input_dir = stage_series(paths, work_dir)
-    volume, label_names, version = run_totalsegmentator(input_dir, work_dir, task)
+    seg, label_names, version = run_totalsegmentator(input_dir, work_dir, task)
+
+    # Per-slice geometry for mapping voxel centroids back to DICOM space.
+    geoms = [
+        (i, g)
+        for i, ds in enumerate(slices)
+        if (g := _slice_geometry(ds)) is not None
+    ]
 
     # Invert name->id, restricted to the vertebra labels we surface.
     name_to_id = {name: lid for lid, name in label_names.items()}
@@ -189,7 +249,7 @@ def segment(series_dir: Path, work_dir: Path, task: str, series_uid: str | None)
         label_id = name_to_id.get(seg_label)
         if label_id is None:
             continue
-        landmark = centroid_to_landmark(volume, label_id, slices)
+        landmark = centroid_to_landmark(seg, label_id, slices, geoms)
         if landmark is None or not landmark["sopInstanceUID"]:
             continue
         landmark["label"] = short_label(seg_label)

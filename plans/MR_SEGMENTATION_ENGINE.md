@@ -6,9 +6,10 @@ engine via `uv`) — it does NOT bundle/package the Python libs.** No PyInstalle
 no per-platform binary release.
 
 Status: **ENABLED** (`MR_SEGMENTATION_AVAILABLE = true`). Engine, app-owned uv
-install, and install UX (consent + minimizable progress + Settings) are validated
-end-to-end in the real desktop app (produces T11/T12/L1 markers on the fixture).
-Open item: voxel→DICOM axis-mapping accuracy on real clinical MR.
+install (fully isolated to the app dir), and install UX (consent + minimizable
+progress + Settings) are validated end-to-end in the real desktop app (produces
+T11/T12/L1 markers on the fixture). Voxel→DICOM mapping is now affine-based
+(fixed a row-axis flip); confirm on a real sagittal spine MR before clinical use.
 
 ## ✅ Validated locally (macOS arm64, Python 3.13)
 

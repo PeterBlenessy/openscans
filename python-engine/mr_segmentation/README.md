@@ -50,11 +50,18 @@ artifact. The desktop app provisions it at runtime (see
 **resources** (they are the app's own code, not third-party libs). See
 plans/MR_SEGMENTATION_ENGINE.md.
 
-## Known validation gaps (see plans/MR_SEGMENTATION_ENGINE.md)
+## Voxel → DICOM mapping
 
-- **Voxel → DICOM mapping**: `run.py` assumes the segmentation is produced in the
-  input series' geometry (`--ml`, no resampling) and that axes map as
-  z→slice, y→row, x→col. Validate axis conventions / any resampling on real MR
-  before relying on marker positions.
+`run.py` maps each vertebra's voxel centroid to a DICOM (instance, x, y) using
+the segmentation **affine** (voxel→patient, RAS→LPS) and each slice's DICOM
+geometry (`ImagePositionPatient` / `ImageOrientationPatient` / `PixelSpacing`).
+It does NOT assume the NIfTI axes match the DICOM slice/row/col order —
+dicom2nifti reorients to a canonical frame, which previously caused a row-axis
+flip. Verified on the synthetic axial fixture (corrected a `y → height − y`
+inversion). **Still worth confirming on a real sagittal spine MR** before
+clinical reliance.
+
+## Known limitations
+
 - **Confidence** is a fixed placeholder (TotalSegmentator does not expose a
   per-structure probability through this path).
