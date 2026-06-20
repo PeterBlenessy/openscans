@@ -8,8 +8,10 @@ no per-platform binary release.
 Status: **ENABLED** (`MR_SEGMENTATION_AVAILABLE = true`). Engine, app-owned uv
 install (fully isolated to the app dir), and install UX (consent + minimizable
 progress + Settings) are validated end-to-end in the real desktop app (produces
-T11/T12/L1 markers on the fixture). Voxel→DICOM mapping is now affine-based
-(fixed a row-axis flip); confirm on a real sagittal spine MR before clinical use.
+T11/T12/L1 markers on the fixture). Voxel→DICOM mapping is affine-based (fixed a
+row-axis flip) and **validated on a real sagittal lumbar-spine MR** (T8→L5 in
+correct anatomical order). Possible refinement: use the `vertebrae_body` task so
+the marker centres on the vertebral body rather than the whole-vertebra centroid.
 
 ## ✅ Validated locally (macOS arm64, Python 3.13)
 

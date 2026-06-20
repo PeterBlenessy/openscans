@@ -57,11 +57,14 @@ the segmentation **affine** (voxel→patient, RAS→LPS) and each slice's DICOM
 geometry (`ImagePositionPatient` / `ImageOrientationPatient` / `PixelSpacing`).
 It does NOT assume the NIfTI axes match the DICOM slice/row/col order —
 dicom2nifti reorients to a canonical frame, which previously caused a row-axis
-flip. Verified on the synthetic axial fixture (corrected a `y → height − y`
-inversion). **Still worth confirming on a real sagittal spine MR** before
-clinical reliance.
+flip. **Validated on a real sagittal lumbar-spine MR** (`t2_space_sag_iso`):
+T8→L5 segmented in correct anatomical order, markers on the mid-sagittal slices,
+row increasing superior→inferior, X tracking the lordosis curve.
 
 ## Known limitations
 
+- **Marker sits at the whole-vertebra centroid** (`vertebrae_mr` segments body +
+  posterior arch), so it can fall slightly posterior to the vertebral-body
+  centre. Switching to the `vertebrae_body` task would centre it on the body.
 - **Confidence** is a fixed placeholder (TotalSegmentator does not expose a
   per-structure probability through this path).
