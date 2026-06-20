@@ -81,6 +81,17 @@ async fn download_file(app: &AppHandle, url: &str, dest: &Path, label: &str) -> 
     let tmp = dest.with_extension("part");
     let resp = reqwest::get(url).await.map_err(|e| e.to_string())?;
     if !resp.status().is_success() {
+        // A 404 means the asset was never published — the MR-precision engine is
+        // a separate (Phase 3) build that may not exist yet. Say so plainly
+        // instead of surfacing a cryptic HTTP status to the user.
+        if resp.status() == reqwest::StatusCode::NOT_FOUND {
+            return Err(format!(
+                "MR-precision segmentation isn't available yet — the {} hasn't been \
+                 published for this platform. (Vertebra detection and radiology \
+                 analysis work without it.)",
+                label
+            ));
+        }
         return Err(format!("Download failed ({}): HTTP {}", label, resp.status()));
     }
     let total = resp.content_length().unwrap_or(0);
