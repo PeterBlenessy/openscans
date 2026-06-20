@@ -63,9 +63,29 @@ fn uv_asset() -> Option<(&'static str, &'static str)> {
     }
 }
 
-/// Resolve a bundled engine resource (`run.py`, `requirements.txt`): prefer the
-/// app's resource dir, fall back to the dev source tree (survives cargo clean).
+/// `<repo>/python-engine/mr_segmentation/<name>` derived from the dev exe path
+/// (`<repo>/src-tauri/target/<profile>/app`). None in a real bundle.
+fn dev_source(name: &str) -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let root = exe
+        .parent()
+        .and_then(Path::parent)
+        .and_then(Path::parent)
+        .and_then(Path::parent)?;
+    let p = root.join("python-engine").join("mr_segmentation").join(name);
+    p.exists().then_some(p)
+}
+
+/// Resolve an engine resource (`run.py`, `requirements.txt`).
+///
+/// In debug builds, prefer the live source tree so edits take effect without a
+/// rebuild — `tauri dev` stages a copy under `target/<profile>/` that otherwise
+/// goes stale and shadows the source. In release, use the bundled resource.
 fn engine_resource(app: &AppHandle, name: &str) -> Result<PathBuf, String> {
+    #[cfg(debug_assertions)]
+    if let Some(p) = dev_source(name) {
+        return Ok(p);
+    }
     if let Ok(p) = app.path().resolve(
         format!("python-engine/mr_segmentation/{name}"),
         BaseDirectory::Resource,
@@ -74,19 +94,8 @@ fn engine_resource(app: &AppHandle, name: &str) -> Result<PathBuf, String> {
             return Ok(p);
         }
     }
-    // Dev: <repo>/src-tauri/target/<profile>/app -> <repo>/python-engine/...
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(src_tauri) = exe.parent().and_then(Path::parent).and_then(Path::parent) {
-            if let Some(root) = src_tauri.parent() {
-                let p = root
-                    .join("python-engine")
-                    .join("mr_segmentation")
-                    .join(name);
-                if p.exists() {
-                    return Ok(p);
-                }
-            }
-        }
+    if let Some(p) = dev_source(name) {
+        return Ok(p);
     }
     Err(format!("MR engine resource not found: {name}"))
 }
