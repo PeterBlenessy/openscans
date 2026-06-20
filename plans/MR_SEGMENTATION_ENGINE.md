@@ -5,8 +5,10 @@ decision: the app OWNS THE INSTALLATION at runtime (provisions Python + the
 engine via `uv`) — it does NOT bundle/package the Python libs.** No PyInstaller,
 no per-platform binary release.
 
-Status: **gated off** in the UI (`MR_SEGMENTATION_AVAILABLE = false`,
-`src/lib/ai/segmentationServer.ts`) until the app-side provisioning lands.
+Status: **ENABLED** (`MR_SEGMENTATION_AVAILABLE = true`). Engine, app-owned uv
+install, and install UX (consent + minimizable progress + Settings) are validated
+end-to-end in the real desktop app (produces T11/T12/L1 markers on the fixture).
+Open item: voxel→DICOM axis-mapping accuracy on real clinical MR.
 
 ## ✅ Validated locally (macOS arm64, Python 3.13)
 
