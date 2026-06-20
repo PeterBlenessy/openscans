@@ -109,6 +109,35 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      # Build the self-contained llama-server sidecar from source (static, so
+      # it's a single signable binary — tauri-action signs it as the
+      # externalBin). Cached per target+version so repeat releases skip the
+      # compile and the one-time Metal toolchain download on macOS.
+      - name: Resolve sidecar target triple
+        id: sidecar
+        if: matrix.platform != 'windows-latest'
+        shell: bash
+        run: |
+          if [[ "${{ matrix.platform }}" == macos-* ]]; then
+            TRIPLE=$(echo "${{ matrix.args }}" | sed -n 's/.*--target \([^ ]*\).*/\1/p')
+          else
+            TRIPLE=x86_64-unknown-linux-gnu
+          fi
+          echo "triple=$TRIPLE" >> "$GITHUB_OUTPUT"
+
+      - name: Cache llama-server sidecar
+        id: cache-sidecar
+        if: matrix.platform != 'windows-latest'
+        uses: actions/cache@v4
+        with:
+          path: src-tauri/binaries/llama-server-${{ steps.sidecar.outputs.triple }}
+          key: llama-server-${{ steps.sidecar.outputs.triple }}-${{ hashFiles('src-tauri/binaries/LLAMA_CPP_VERSION', 'scripts/build-llama-server.sh') }}
+
+      - name: Build llama-server sidecar
+        if: matrix.platform != 'windows-latest' && steps.cache-sidecar.outputs.cache-hit != 'true'
+        shell: bash
+        run: ./scripts/build-llama-server.sh "" "${{ steps.sidecar.outputs.triple }}"
+
       - name: Update version from tag and configure signing
         shell: bash
         env:

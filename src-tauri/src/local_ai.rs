@@ -226,8 +226,8 @@ fn sidecar_binary_name() -> String {
 /// order:
 ///   1. Next to the app executable (bundled `.app` keeps `lib/` beside it; in
 ///      dev that copy has no `lib/`, so it's skipped).
-///   2. Dev fallback — `src-tauri/binaries/`, where `download-llama-server.sh`
-///      installs the binary together with `lib/`.
+///   2. Dev fallback — `src-tauri/binaries/`, where `build-llama-server.sh`
+///      installs the (self-contained) binary; any sibling `lib/` is honored too.
 ///   3. System `PATH` (a user-supplied server).
 fn resolve_llama_server_binary() -> Result<PathBuf, String> {
     let name = sidecar_binary_name();

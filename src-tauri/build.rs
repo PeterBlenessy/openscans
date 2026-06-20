@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 fn main() {
-    // The real `llama-server` sidecar is downloaded (per platform) by
-    // `scripts/download-llama-server.sh` before a release build. On dev
+    // The real `llama-server` sidecar is built from source (per platform) by
+    // `scripts/build-llama-server.sh` before a release build. On dev
     // machines and CI where it's absent, create an empty placeholder at the
     // target-triple-suffixed path so `tauri_build` doesn't fail resolving the
     // configured `externalBin`. A real build replaces it with the actual binary.

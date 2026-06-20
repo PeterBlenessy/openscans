@@ -53,7 +53,7 @@ Notesage already wires llama.cpp into a Tauri v2 app — the exact pattern we ne
 | Concern | Notesage implementation | Reuse for OpenScans |
 |---|---|---|
 | Local inference engine | Bundled **`llama-server`** (llama.cpp) as a Tauri **`externalBin` sidecar**, target-triple-suffixed (`llama-server-aarch64-apple-darwin`) | Same sidecar approach in `src-tauri` |
-| Binary acquisition | `scripts/download-llama-server.sh` pulls prebuilt llama.cpp release binaries; `build.rs` writes a placeholder on non-mac hosts so builds don't fail | Adapt script; add win/linux triples |
+| Binary acquisition | `scripts/build-llama-server.sh` builds a **self-contained static** `llama-server` from source (latest llama.cpp, Metal on macOS, vision/mtmd in, OpenSSL+curl out). One signable binary — tauri-action signs it as the externalBin. `build.rs` writes a placeholder when absent so builds don't fail. CI builds it per-triple (cached). | macOS arm64/x64 + Linux x64 wired; Windows still on placeholder (TODO) |
 | Routing | `local_bundled` / `local_ai` connection types call the OpenAI-compatible `/v1/chat/completions` (`src/lib/ai/connections.ts`) | Point our `openai` SDK at `http://localhost:<port>/v1` — reuse most of `openaiVisionDetector` |
 | **Vision** | Image attachments via OpenAI-compatible base64 images; vision-capable models detected (`segment_builder.rs`: moondream / llama-vision / smolvlm); `--mmproj` projector | Send the DICOM PNG as a base64 image part — same path |
 | Structured output | JSON-schema `response_format` forwarded verbatim to llama-server (`src/lib/ai/structured.ts`) | Use for `detectVertebrae`'s `VertebraResponse` schema |
@@ -186,7 +186,8 @@ use, so the installer still bundles only `llama-server`.
   the registry are assumed to target a self-managed server.
 - `src/lib/ai/localServer.ts` — frontend bridge + `ensureLocalServer()` (download →
   start → ready), wired into `useAiOperations` for the `'local'` provider.
-- `scripts/download-llama-server.sh` — host-platform sidecar fetch (macOS/Linux).
+- `scripts/build-llama-server.sh` — builds the self-contained static sidecar from
+  source for a target triple (macOS arm64/x64 with Metal, Linux x64 CPU).
 - CSP `connect-src` allows `http://localhost:*` / `http://127.0.0.1:*` for loopback.
 - ⚠️ The Rust could NOT be compiled in the dev container (missing GTK/WebKit system
   libs — a Linux Tauri prerequisite). Needs `cargo check` / `tauri build` on a real
