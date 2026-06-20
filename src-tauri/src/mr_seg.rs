@@ -264,18 +264,14 @@ async fn ensure_env(app: &AppHandle) -> Result<PathBuf, String> {
     let uv = ensure_uv(app).await?;
     let dir = engine_dir(app)?;
     let venv = dir.join(".venv");
-    let uv_cache = dir.join("uv-cache");
+    // Standalone Python installs into the app dir (isolated); the package cache
+    // uses uv's default shared location (normal uv behaviour, avoids re-pulling
+    // torch per app).
     let uv_pythons = dir.join("uv-python");
 
     // 1. Install a standalone Python (covers a host with none).
     emit_stage(app, "Installing Python");
-    run_uv(
-        &uv,
-        &["python", "install", PYTHON_VERSION],
-        &uv_cache,
-        &uv_pythons,
-    )
-    .await?;
+    run_uv(&uv, &["python", "install", PYTHON_VERSION], &uv_pythons).await?;
 
     // 2. Create the venv with that Python.
     emit_stage(app, "Creating environment");
@@ -287,7 +283,6 @@ async fn ensure_env(app: &AppHandle) -> Result<PathBuf, String> {
             "--python",
             PYTHON_VERSION,
         ],
-        &uv_cache,
         &uv_pythons,
     )
     .await?;
@@ -305,7 +300,6 @@ async fn ensure_env(app: &AppHandle) -> Result<PathBuf, String> {
             "-r",
             requirements.to_string_lossy().as_ref(),
         ],
-        &uv_cache,
         &uv_pythons,
     )
     .await?;
@@ -313,16 +307,10 @@ async fn ensure_env(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(py)
 }
 
-/// Run a `uv` subcommand with the managed cache/python dirs, capturing output.
-async fn run_uv(
-    uv: &Path,
-    args: &[&str],
-    cache: &Path,
-    pythons: &Path,
-) -> Result<(), String> {
+/// Run a `uv` subcommand with an app-local Python install dir, capturing output.
+async fn run_uv(uv: &Path, args: &[&str], pythons: &Path) -> Result<(), String> {
     let out = tokio::process::Command::new(uv)
         .args(args)
-        .env("UV_CACHE_DIR", cache)
         .env("UV_PYTHON_INSTALL_DIR", pythons)
         .output()
         .await
@@ -342,6 +330,15 @@ async fn run_uv(
 pub async fn mr_seg_download(app: AppHandle) -> Result<(), String> {
     // "Download" now means: provision the app-owned Python env + engine deps.
     ensure_env(&app).await?;
+    Ok(())
+}
+
+/// Remove the provisioned engine (venv, uv, weights) to reclaim disk. The shared
+/// uv package cache is left intact (it's not app-specific).
+#[tauri::command]
+pub async fn mr_seg_remove(app: AppHandle) -> Result<(), String> {
+    let dir = engine_dir(&app)?;
+    tokio::fs::remove_dir_all(&dir).await.map_err(|e| e.to_string())?;
     Ok(())
 }
 

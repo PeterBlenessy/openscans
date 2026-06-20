@@ -10,7 +10,8 @@ import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { mockDetector } from '@/lib/ai/mockVertebralDetector'
 import { initDetector, getApiKeyForProvider } from '@/lib/ai/aiDetectorManager'
 import { ensureLocalServer } from '@/lib/ai/localServer'
-import { segmentSeries, MR_SEGMENTATION_AVAILABLE, type MrDownloadProgress } from '@/lib/ai/segmentationServer'
+import { MR_SEGMENTATION_AVAILABLE } from '@/lib/ai/segmentationServer'
+import { useMrEngineStore } from '@/stores/mrEngineStore'
 import { isTauri } from '@/lib/utils/platform'
 import { AiSendConfirmDialog } from './AiSendConfirmDialog'
 import { confirmAiSend } from '@/lib/ai/ai-send-confirm'
@@ -312,24 +313,15 @@ export function ViewportToolbar({ className = '', onExportClick }: ViewportToolb
       return
     }
 
-    try {
-      setDetecting(true)
-      const markers = await segmentSeries(
-        folderPath,
-        { seriesInstanceUID: seriesUID, modelVersion: 'totalsegmentator-mri' },
-        {
-          seriesUid: seriesUID,
-          onProgress: (p: MrDownloadProgress) => logDownloadProgress('MR', p),
-        }
-      )
-      addAnnotations(markers)
-      console.log(`MR segmentation: ${markers.length} markers added`)
-      setDetecting(false)
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'MR segmentation failed'
-      console.error('MR segmentation failed:', error)
-      setDetecting(false, errorMessage)
-    }
+    // Delegate to the global MR engine store: it gates first-run consent,
+    // provisions the engine, runs segmentation, and drives the minimizable
+    // progress UI — all in the background so the user can keep working. Markers
+    // are added to the annotation store on completion.
+    void useMrEngineStore.getState().requestSegmentation({
+      seriesDir: folderPath,
+      seriesUid: seriesUID,
+      ctx: { seriesInstanceUID: seriesUID, modelVersion: 'totalsegmentator-mri' },
+    })
   }
 
 

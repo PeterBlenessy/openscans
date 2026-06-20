@@ -1,10 +1,11 @@
 /**
  * Frontend bridge to the on-demand MR segmentation engine (Phase 3).
  *
- * Wraps the Tauri `mr_seg_*` commands (see `src-tauri/src/mr_seg.rs`). The
- * engine (a PyInstaller'd TotalSegmentator-MRI / MONAI runtime) and its weights
- * are downloaded on first use — nothing is bundled — and inference runs locally
- * over a DICOM series directory, so no data leaves the device.
+ * Wraps the Tauri `mr_seg_*` commands (see `src-tauri/src/mr_seg.rs`). The app
+ * OWNS THE INSTALL: on first use it provisions a managed Python env (via uv) and
+ * pip-installs TotalSegmentator-MRI into its data dir — nothing is bundled. The
+ * model weights download on first run; inference runs locally over a DICOM
+ * series directory, so no data leaves the device.
  */
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
@@ -19,16 +20,15 @@ import {
 const MR_DOWNLOAD_PROGRESS_EVENT = 'mr-seg://download-progress'
 
 /**
- * Whether MR-precision segmentation is shippable. The engine (TotalSegmentator-
- * MRI / MONAI) is a separate per-platform build downloaded from the `mr-engine`
- * GitHub release — which is NOT published yet, so the download 404s. Keep the
- * feature gated (button disabled) until that release exists; flip to `true`
- * once the engine is built and published. See plans/MR_SEGMENTATION_ENGINE.md.
+ * Whether MR-precision segmentation is exposed in the UI. The engine + app-owned
+ * install are validated; gated until the install UX (consent + minimizable
+ * progress + Settings) is wired and verified in-app. See
+ * plans/MR_SEGMENTATION_ENGINE.md.
  */
 export const MR_SEGMENTATION_AVAILABLE = false
 
 export interface MrEngineStatus {
-  /** The PyInstaller engine binary is present on disk. */
+  /** The managed Python env (with the engine deps) is provisioned. */
   engineReady: boolean
   /** The model weights are present on disk. */
   modelReady: boolean
@@ -46,6 +46,11 @@ export function mrEngineStatus(): Promise<MrEngineStatus> {
 
 export function downloadMrEngine(): Promise<void> {
   return invoke<void>('mr_seg_download')
+}
+
+/** Remove the provisioned engine (venv, uv, weights) to reclaim disk. */
+export function removeMrEngine(): Promise<void> {
+  return invoke<void>('mr_seg_remove')
 }
 
 /**

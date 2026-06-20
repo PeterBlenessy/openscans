@@ -16,6 +16,7 @@ import { useStudyStore } from '@/stores/studyStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { ensureLocalServer } from '@/lib/ai/localServer'
 import { localDetector } from '@/lib/ai/localVisionDetector'
+import { segmentSeries } from '@/lib/ai/segmentationServer'
 
 type E2EResult =
   | { ok: true; findings: string; ms: number }
@@ -74,11 +75,32 @@ async function runLocalAi(base64Dicom: string): Promise<E2EResult> {
   }
 }
 
+/**
+ * Drive the real MR-precision segmentation path: provision the app-owned engine
+ * (uv → Python → venv → pip install) and run it over a DICOM series *folder*,
+ * returning the resulting vertebra markers. Slow on first run (env install +
+ * weights download). `seriesDir` is a real folder on disk.
+ */
+async function runMrSeg(seriesDir: string): Promise<{ ok: boolean; count?: number; labels?: string[]; error?: string }> {
+  try {
+    const markers = await segmentSeries(
+      seriesDir,
+      { seriesInstanceUID: 'e2e', modelVersion: 'totalsegmentator-mri' },
+      {}
+    )
+    return { ok: true, count: markers.length, labels: markers.map((m) => m.label ?? '?') }
+  } catch (e) {
+    const err = e as Error
+    return { ok: false, error: String(err?.stack || err?.message || e) }
+  }
+}
+
 export function installE2EHook(): void {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const w = window as any
   w.__E2E__ = {
     runLocalAi,
+    runMrSeg,
     settingsStore: useSettingsStore,
     studyStore: useStudyStore,
   }

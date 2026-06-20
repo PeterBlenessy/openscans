@@ -3,6 +3,7 @@ import { Theme, ScrollDirection, AIProvider } from '@/stores/settingsStore'
 import { themeClasses } from '@/lib/utils'
 import { useSettingsState } from '@/hooks/useSettingsState'
 import { isTauri } from '@/lib/utils/platform'
+import { MrEngineSettings } from './MrEngineSettings'
 
 interface SettingsPanelProps {
   show: boolean
@@ -327,6 +328,9 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
                   </ul>
                 </div>
                 )}
+
+                {/* MR-precision segmentation engine (on-device, opt-in install) */}
+                <MrEngineSettings isDark={isDark} />
               </>
             )}
           </SettingsSection>

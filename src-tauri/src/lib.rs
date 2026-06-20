@@ -139,6 +139,7 @@ pub fn run() {
       local_ai::local_ai_status,
       mr_seg::mr_seg_status,
       mr_seg::mr_seg_download,
+      mr_seg::mr_seg_remove,
       mr_seg::mr_seg_run
     ]);
 
