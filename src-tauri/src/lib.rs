@@ -149,6 +149,11 @@ pub fn run() {
     delete_credential
   ]);
 
+  // Real-window e2e testing: exposes a WebDriver endpoint so wdio can drive the
+  // webview. Only present in `--features e2e-testing` builds (never in release).
+  #[cfg(feature = "e2e-testing")]
+  let builder = builder.plugin(tauri_plugin_webdriver::init());
+
   let app = builder
     .setup(|app| {
       if cfg!(debug_assertions) {

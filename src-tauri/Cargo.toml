@@ -37,5 +37,13 @@ dirs = "5"
 # - sync-secret-service + crypto-rust use pure-Rust zbus (no libdbus at compile time) on Linux
 keyring = { version = "3", default-features = false, features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
 
+# Real-window e2e testing: embeds a WebDriver server in the app so wdio can
+# drive the WKWebView on macOS (where the official tauri-driver doesn't work).
+# Only compiled with `--features e2e-testing`.
+tauri-plugin-webdriver = { version = "0.2", optional = true }
+
+[features]
+e2e-testing = ["dep:tauri-plugin-webdriver"]
+
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-updater = "2"

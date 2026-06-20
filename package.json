@@ -16,6 +16,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:e2e": "playwright test",
+    "tauri:test": "tauri dev --features e2e-testing",
+    "test:e2e-local-ai": "./scripts/run-e2e-local-ai.sh",
     "prepare": "node scripts/copy-workers.js",
     "postinstall": "node scripts/copy-workers.js"
   },
@@ -79,7 +81,8 @@
     "vite": "^6.4.2",
     "vite-plugin-top-level-await": "^1.6.0",
     "vite-plugin-wasm": "^3.5.0",
-    "vitest": "^3.2.6"
+    "vitest": "^3.2.6",
+    "webdriverio": "^9.29.0"
   },
   "pnpm": {
     "overrides": {
