@@ -133,12 +133,9 @@ export function MrEngineSetup() {
               className={`p-4 rounded-lg shadow-2xl border ${themeClasses.border(theme)} ${themeClasses.bg(theme)} w-80`}
             >
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                  <span className={`text-sm font-medium ${themeClasses.text(theme)}`}>
-                    {job?.kind === 'install' ? 'Installing MR engine' : 'MR-precision segmentation'}
-                  </span>
-                </div>
+                <span className={`text-sm font-medium ${themeClasses.text(theme)}`}>
+                  {job?.kind === 'install' ? 'Installing MR engine' : 'MR-precision segmentation'}
+                </span>
                 <button
                   onClick={minimize}
                   aria-label="Minimize"
