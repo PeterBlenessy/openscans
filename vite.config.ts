@@ -1,12 +1,69 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
+import { readFileSync } from 'fs'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import wasm from 'vite-plugin-wasm'
 import topLevelAwait from 'vite-plugin-top-level-await'
 
+/**
+ * cornerstone-wado-image-loader embeds its decode worker as a string and runs
+ * it via `new Blob([...])` + `createObjectURL`. That string ends with
+ * `//# sourceMappingURL=index.worker.bundle.min.worker.js.map`; in the Tauri
+ * WKWebView the blob worker tries to fetch that (never-shipped) map and the
+ * webview spams "Not allowed to load local resource ... blob://null..." on
+ * startup. Strip the dead reference at build time.
+ *
+ * Done in two places because they handle cornerstone differently:
+ *  - rollup `transform` covers the production build,
+ *  - an esbuild `onLoad` plugin covers dev, where cornerstone is in
+ *    optimizeDeps.include and pre-bundled by esbuild (which bypasses vite
+ *    plugin transforms).
+ * (We deliberately do NOT patch node_modules — pnpm reverts that on install.)
+ */
+const WORKER_MAP_RE =
+  /(?:\\n|\n)?\/\/# sourceMappingURL=index\.worker\.bundle\.min\.worker\.js\.map/g
+const isCornerstoneMainBundle = (p: string) =>
+  p.includes('cornerstoneWADOImageLoader.bundle.min.js')
+
+function stripCornerstoneWorkerSourceMap(): Plugin {
+  return {
+    name: 'strip-cornerstone-worker-sourcemap',
+    enforce: 'pre',
+    // Production build (rollup).
+    transform(code, id) {
+      if (!isCornerstoneMainBundle(id) || !code.includes('index.worker.bundle.min.worker.js.map'))
+        return null
+      return code.replace(WORKER_MAP_RE, '')
+    },
+    // Dev: strip during esbuild dependency pre-bundling.
+    config() {
+      return {
+        optimizeDeps: {
+          esbuildOptions: {
+            plugins: [
+              {
+                name: 'strip-cornerstone-worker-sourcemap-esbuild',
+                setup(build) {
+                  build.onLoad(
+                    { filter: /cornerstoneWADOImageLoader\.bundle\.min\.js$/ },
+                    (args) => ({
+                      contents: readFileSync(args.path, 'utf8').replace(WORKER_MAP_RE, ''),
+                      loader: 'js',
+                    })
+                  )
+                },
+              },
+            ],
+          },
+        },
+      }
+    },
+  }
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), wasm(), topLevelAwait()],
+  plugins: [stripCornerstoneWorkerSourceMap(), react(), wasm(), topLevelAwait()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
