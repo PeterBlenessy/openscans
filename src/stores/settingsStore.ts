@@ -1,7 +1,10 @@
 import { create } from 'zustand'
 import { storeKey, getKey, deleteKey } from '../lib/utils/credentials'
 
+/** Resolved UI theme applied to the document root. */
 export type Theme = 'dark' | 'light'
+/** User-facing theme preference; 'system' follows the OS appearance. */
+export type ThemePreference = 'system' | 'light' | 'dark'
 export type ScrollDirection = 'natural' | 'inverted'
 export type AIProvider = 'claude' | 'gemini' | 'openai' | 'local' | 'none'
 
@@ -33,8 +36,11 @@ export const DEFAULT_LOCAL_PORT = 8080
  */
 export interface SettingsState {
   // Appearance
-  /** UI theme (dark or light) - applied to document root */
+  /** Resolved UI theme (dark or light) applied to document root. Derived from
+   *  themePreference + the OS appearance; NOT persisted directly. */
   theme: Theme
+  /** Persisted theme preference; 'system' tracks the OS light/dark setting. */
+  themePreference: ThemePreference
 
   // Viewport behavior
   /** Mouse wheel scroll direction for instance navigation */
@@ -76,7 +82,9 @@ export interface SettingsState {
   localPort: number
 
   // Actions
-  /** Set UI theme and apply to document root */
+  /** Set the theme preference ('system' follows the OS); applies the resolved theme. */
+  setThemePreference: (preference: ThemePreference) => void
+  /** Set an explicit UI theme (back-compat shim for setThemePreference). */
   setTheme: (theme: Theme) => void
   /** Set scroll direction for instance navigation */
   setScrollDirection: (direction: ScrollDirection) => void
@@ -118,6 +126,12 @@ const STORAGE_KEY = 'openscans-settings'
  */
 const SENSITIVE_KEYS = ['aiApiKey', 'geminiApiKey', 'openaiApiKey'] as const
 
+/**
+ * Fields derived at runtime that must NOT be persisted — they are recomputed on
+ * load. `theme` is resolved from `themePreference` + the OS appearance.
+ */
+const DERIVED_KEYS = ['theme'] as const
+
 /** Map of in-memory key field -> keychain credential name. */
 const KEYCHAIN_NAMES = {
   aiApiKey: 'claude',
@@ -127,6 +141,7 @@ const KEYCHAIN_NAMES = {
 
 const defaultSettings = {
   theme: 'dark' as Theme,
+  themePreference: 'system' as ThemePreference,
   scrollDirection: 'natural' as ScrollDirection,
   windowLevelSensitivity: 1.5,
   zoomSensitivity: 0.05,
@@ -179,9 +194,10 @@ function loadSettings(): Partial<typeof defaultSettings> {
  */
 function saveSettings(settings: Partial<typeof defaultSettings>) {
   try {
-    // Strip API keys before persisting — they must never hit localStorage.
+    // Strip API keys (never hit localStorage) and derived fields (recomputed
+    // on load) before persisting.
     const sanitized: Record<string, unknown> = { ...settings }
-    for (const k of SENSITIVE_KEYS) {
+    for (const k of [...SENSITIVE_KEYS, ...DERIVED_KEYS]) {
       delete sanitized[k]
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized))
@@ -222,6 +238,21 @@ function applyTheme(theme: Theme) {
   }
 }
 
+/** Whether the OS currently prefers dark mode (guarded for non-browser/test envs). */
+function prefersDark(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  )
+}
+
+/** Resolve a preference to a concrete light/dark theme. */
+function resolveTheme(preference: ThemePreference): Theme {
+  if (preference === 'system') return prefersDark() ? 'dark' : 'light'
+  return preference
+}
+
 /**
  * Zustand store for managing application settings.
  *
@@ -252,10 +283,24 @@ function applyTheme(theme: Theme) {
  */
 export const useSettingsStore = create<SettingsState>((set, get) => {
   const savedSettings = loadSettings()
-  const initialSettings = { ...defaultSettings, ...savedSettings }
+  // `theme` is derived; the persisted source of truth is `themePreference`.
+  // Pre-existing installs only stored `theme`, so they migrate to 'system'.
+  const themePreference = savedSettings.themePreference ?? defaultSettings.themePreference
+  const theme = resolveTheme(themePreference)
+  const initialSettings = { ...defaultSettings, ...savedSettings, themePreference, theme }
 
   // Apply initial theme
-  applyTheme(initialSettings.theme)
+  applyTheme(theme)
+
+  // Keep the resolved theme in sync with the OS while the preference is 'system'.
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (get().themePreference !== 'system') return
+      const resolved = resolveTheme('system')
+      applyTheme(resolved)
+      set({ theme: resolved })
+    })
+  }
 
   // Hydrate in-memory API keys from the OS keychain (desktop only). Runs
   // asynchronously so store creation stays synchronous; getKey() is a no-op
@@ -279,10 +324,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
   return {
     ...initialSettings,
 
-    setTheme: (theme) => {
+    setThemePreference: (themePreference) => {
+      const theme = resolveTheme(themePreference)
       applyTheme(theme)
-      set({ theme })
-      saveSettings({ ...get(), theme })
+      set({ themePreference, theme })
+      saveSettings({ ...get(), themePreference, theme })
+    },
+
+    // Back-compat: an explicit theme is just a non-'system' preference.
+    setTheme: (theme) => {
+      get().setThemePreference(theme)
     },
 
     setScrollDirection: (scrollDirection) => {
@@ -361,9 +412,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
     },
 
     resetToDefaults: () => {
-      applyTheme(defaultSettings.theme)
-      set(defaultSettings)
-      saveSettings(defaultSettings)
+      const theme = resolveTheme(defaultSettings.themePreference)
+      applyTheme(theme)
+      set({ ...defaultSettings, theme })
+      saveSettings({ ...defaultSettings, theme })
       // Clear any keychain-stored keys too (defaults are empty strings).
       void persistKey(KEYCHAIN_NAMES.aiApiKey, defaultSettings.aiApiKey)
       void persistKey(KEYCHAIN_NAMES.geminiApiKey, defaultSettings.geminiApiKey)

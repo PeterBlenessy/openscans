@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { Theme, ScrollDirection, AIProvider } from '@/stores/settingsStore'
+import { ThemePreference, ScrollDirection, AIProvider } from '@/stores/settingsStore'
 import { themeClasses } from '@/lib/utils'
 import { useSettingsState } from '@/hooks/useSettingsState'
 import { isTauri } from '@/lib/utils/platform'
@@ -154,15 +154,16 @@ function AppearanceSection({ settings }: { settings: SettingsState }) {
   const theme = settings.theme
   return (
     <div className="space-y-5">
-      <Field label="Theme" description="Choose between dark and light mode" theme={theme}>
+      <Field label="Theme" description="Follow the system appearance, or pick Light/Dark" theme={theme}>
         <Select
-          value={settings.theme}
-          onChange={(v) => settings.setTheme(v as Theme)}
+          value={settings.themePreference}
+          onChange={(v) => settings.setThemePreference(v as ThemePreference)}
           ariaLabel="Theme"
           theme={theme}
           options={[
-            { value: 'dark', label: 'Dark' },
+            { value: 'system', label: 'System' },
             { value: 'light', label: 'Light' },
+            { value: 'dark', label: 'Dark' },
           ]}
         />
       </Field>
