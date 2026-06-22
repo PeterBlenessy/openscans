@@ -1,4 +1,4 @@
-import { X, AlertCircle, AlertTriangle, Info } from 'lucide-react'
+import { X, AlertCircle, AlertTriangle, Info, CheckCircle2 } from 'lucide-react'
 import { useErrorStore, AppError } from '../stores/errorStore'
 
 export function ErrorToast() {
@@ -13,9 +13,11 @@ export function ErrorToast() {
       case 'error':
         return `${baseStyles} border-red-500 bg-red-50 dark:bg-red-950/50`
       case 'warning':
-        return `${baseStyles} border-yellow-500 bg-yellow-50 dark:bg-yellow-950/50`
+        return `${baseStyles} border-amber-500 bg-amber-50 dark:bg-amber-950/50`
       case 'info':
         return `${baseStyles} border-blue-500 bg-blue-50 dark:bg-blue-950/50`
+      case 'success':
+        return `${baseStyles} border-green-500 bg-green-50 dark:bg-green-950/50`
     }
   }
 
@@ -25,9 +27,11 @@ export function ErrorToast() {
       case 'error':
         return <AlertCircle className={`${iconClass} text-red-600 dark:text-red-400`} />
       case 'warning':
-        return <AlertTriangle className={`${iconClass} text-yellow-600 dark:text-yellow-400`} />
+        return <AlertTriangle className={`${iconClass} text-amber-600 dark:text-amber-400`} />
       case 'info':
         return <Info className={`${iconClass} text-blue-600 dark:text-blue-400`} />
+      case 'success':
+        return <CheckCircle2 className={`${iconClass} text-green-600 dark:text-green-400`} />
     }
   }
 
@@ -36,9 +40,11 @@ export function ErrorToast() {
       case 'error':
         return 'text-red-900 dark:text-red-100'
       case 'warning':
-        return 'text-yellow-900 dark:text-yellow-100'
+        return 'text-amber-900 dark:text-amber-100'
       case 'info':
         return 'text-blue-900 dark:text-blue-100'
+      case 'success':
+        return 'text-green-900 dark:text-green-100'
     }
   }
 

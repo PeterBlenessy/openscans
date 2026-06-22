@@ -8,6 +8,7 @@ import { previewFilename } from '@/lib/export/fileNaming'
 import { estimateFileSize } from '@/lib/export/imageCapture'
 import { exportImage } from '@/lib/export/imageExport'
 import { exportPDF } from '@/lib/export/pdfExport'
+import { useErrorHandler } from '@/hooks/useErrorHandler'
 
 interface ExportDialogProps {
   show: boolean
@@ -18,6 +19,7 @@ interface ExportDialogProps {
 export function ExportDialog({ show, onClose, viewportElement }: ExportDialogProps) {
   const currentInstance = useStudyStore((state) => state.currentInstance)
   const viewportSettings = useViewportStore((state) => state.settings)
+  const { handleError } = useErrorHandler()
 
   // Export options state
   const [format, setFormat] = useState<ExportFormat>('png')
@@ -79,7 +81,8 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
       }
 
       if (result.success) {
-        // Success - close dialog after short delay
+        // Success - confirm via toast, then close after a short delay
+        handleError(`Saved ${filename}`, 'Export', 'success')
         setTimeout(() => {
           onClose()
         }, 500)

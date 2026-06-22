@@ -36,10 +36,11 @@ export function useErrorHandler() {
     (
       error: Error | string,
       context: string,
-      severity: 'error' | 'warning' | 'info' = 'error'
+      severity: 'error' | 'warning' | 'info' | 'success' = 'error'
     ) => {
       const message = error instanceof Error ? error.message : error
-      console.error(`[${context}]`, error)
+      const log = severity === 'error' || severity === 'warning' ? console.error : console.log
+      log(`[${context}]`, error)
 
       addError({
         message,

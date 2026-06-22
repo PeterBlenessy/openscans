@@ -4,9 +4,11 @@ import { useStudyStore } from '@/stores/studyStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
 import { useAnnotationStore } from '@/stores/annotationStore'
+import { Star } from 'lucide-react'
 import { cornerstone } from '@/lib/cornerstone/initCornerstone'
 import { BatchExportDialog } from './BatchExportDialog'
 import { formatSeriesDescription } from '@/lib/utils/formatSeriesDescription'
+import { EmptyState } from '@/components/ui'
 
 type ViewMode = 'text' | 'thumbnails'
 
@@ -91,22 +93,13 @@ export function FavoritesPanel() {
 
   if (allMarkedImages.length === 0) {
     return (
-      <div className="text-center py-6">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          className={`w-10 h-10 mx-auto mb-2 opacity-20 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}
-        >
-          <path fillRule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z" clipRule="evenodd" />
-        </svg>
-        <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-          No marked images yet
-        </p>
-        <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-          Star or analyze images to see them here
-        </p>
-      </div>
+      <EmptyState
+        theme={theme}
+        icon={<Star className="w-10 h-10 opacity-40" aria-hidden="true" />}
+        title="No marked images yet"
+        description="Star or analyze images to see them here"
+        className="py-6"
+      />
     )
   }
 

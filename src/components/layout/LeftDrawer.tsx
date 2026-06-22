@@ -6,6 +6,7 @@ import { useLoadStudy } from '@/hooks/useLoadStudy'
 import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { LeftDrawerIconBar } from './LeftDrawerIconBar'
 import { themeClasses } from '@/lib/utils'
+import { Badge, EmptyState } from '@/components/ui'
 
 export type LeftDrawerState = 'expanded' | 'minimized' | 'hidden'
 
@@ -125,7 +126,7 @@ export function LeftDrawer({ state, onLoadNewFiles, onOpenSettings, onOpenKeyboa
             </div>
 
             {recentStudies.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">No recent studies</p>
+              <EmptyState title="No recent studies" theme={theme} className="py-6" />
             ) : (
               <ul className="space-y-2">
                 {recentStudies.map((entry) => {
@@ -174,10 +175,10 @@ export function LeftDrawer({ state, onLoadNewFiles, onOpenSettings, onOpenKeyboa
                               {formatDate(entry.loadedAt)}
                             </span>
                             {!isLoaded && canReload && (
-                              <span className="text-xs text-white">Click to reload</span>
+                              <Badge tone="accent" theme={theme}>Click to reload</Badge>
                             )}
                             {!isLoaded && !canReload && (
-                              <span className="text-xs text-yellow-500">Unavailable</span>
+                              <Badge tone="warn" theme={theme}>Unavailable</Badge>
                             )}
                           </div>
                         </div>

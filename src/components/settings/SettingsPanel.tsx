@@ -13,8 +13,8 @@ import {
   Toggle,
   ApiKeyField,
   TextField,
-  InlineNote,
 } from './controls'
+import { Callout } from '@/components/ui'
 
 interface SettingsPanelProps {
   show: boolean
@@ -230,16 +230,14 @@ function PrivacySection({ settings }: { settings: SettingsState }) {
         />
       </Field>
 
-      <InlineNote
-        theme={theme}
-        title="HIPAA-compliant by design"
-        points={[
+      <Callout theme={theme} title="HIPAA-compliant by design" collapsible>
+        <NoteList points={[
           'All processing happens locally in your browser',
           'No patient data is sent to external servers',
           'Console logs contain zero patient information',
           'Exported files exclude patient data by default',
-        ]}
-      />
+        ]} />
+      </Callout>
     </div>
   )
 }
@@ -340,29 +338,24 @@ function AiSection({ settings }: { settings: SettingsState }) {
           )}
 
           {settings.aiProvider === 'local' ? (
-            <InlineNote
-              theme={theme}
-              title="Fully on-device — nothing leaves your device"
-              points={[
+            <Callout theme={theme} title="Fully on-device — nothing leaves your device" collapsible>
+              <NoteList points={[
                 'Runs on the bundled local AI server — no image or data leaves your device',
                 'The model is downloaded once, on first use',
                 'No API key, no cost, and no send-confirmation needed',
                 'Requires the OpenScans desktop app',
-              ]}
-            />
+              ]} />
+            </Callout>
           ) : (
-            <InlineNote
-              theme={theme}
-              tone="warn"
-              title="Privacy & security notice"
-              points={[
+            <Callout theme={theme} tone="warn" title="Privacy & security notice" collapsible>
+              <NoteList points={[
                 'Image data is sent only when you click AI analysis buttons',
                 'Patient metadata (names, IDs) is stripped before sending',
                 'Cost: ~$0.004–0.01 per image analyzed',
                 'API keys are stored locally (not encrypted)',
                 'For production use, implement a secure backend proxy',
-              ]}
-            />
+              ]} />
+            </Callout>
           )}
 
           {/* MR-precision segmentation engine (on-device, opt-in install) */}
@@ -412,6 +405,17 @@ function DataSection({ settings }: { settings: SettingsState }) {
         </button>
       </div>
     </div>
+  )
+}
+
+/** Bulleted list rendered inside a Callout (replaces InlineNote's points prop). */
+function NoteList({ points }: { points: string[] }) {
+  return (
+    <ul className="list-disc list-outside ml-4 space-y-1">
+      {points.map((p, i) => (
+        <li key={i}>{p}</li>
+      ))}
+    </ul>
   )
 }
 

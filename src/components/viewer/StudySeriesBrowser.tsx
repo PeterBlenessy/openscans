@@ -3,6 +3,7 @@ import { useStudyStore } from '@/stores/studyStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { DicomStudy, DicomSeries } from '@/types'
 import { formatSeriesDescription } from '@/lib/utils/formatSeriesDescription'
+import { EmptyState } from '@/components/ui'
 
 export function StudySeriesBrowser() {
   const studies = useStudyStore((state) => state.studies)
@@ -37,11 +38,7 @@ export function StudySeriesBrowser() {
   }
 
   if (studies.length === 0) {
-    return (
-      <div className="text-gray-400 text-sm text-center py-8">
-        No DICOM files loaded
-      </div>
-    )
+    return <EmptyState title="No DICOM files loaded" className="py-8" />
   }
 
   return (

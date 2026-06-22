@@ -211,7 +211,7 @@ export function AiAnalysisModal() {
 
         if (filePath) {
           await writeFile(filePath, uint8Array)
-          handleError(`PDF saved to: ${filePath}`, 'PDF Export', 'info')
+          handleError(`PDF saved to: ${filePath}`, 'PDF Export', 'success')
         }
       } else {
         // In browser, open PDF in new tab

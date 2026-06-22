@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ScanLine, Minus, X, AlertTriangle } from 'lucide-react'
+import { ScanLine, Minus, X, AlertTriangle, Lock, Package, Trash2, Clock } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { Spinner, ProgressBar } from '@/components/ui'
 import { useMrEngineStore } from '@/stores/mrEngineStore'
@@ -82,14 +82,26 @@ export function MrEngineSetup() {
             First use needs a <strong>one-time setup</strong> — it downloads
             about 2&nbsp;GB (a few GB on disk) and takes a few minutes.
           </p>
-          <ul className="space-y-1.5">
-            <li>🔒 Runs fully on-device — no images or data ever leave your computer.</li>
-            <li>
-              📦 Everything installs inside OpenScans’ own folder. It won’t touch
-              your system Python or any other app, and isn’t shared with them.
+          <ul className="space-y-2">
+            <li className="flex items-start gap-2">
+              <Lock className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+              <span>Runs fully on-device — no images or data ever leave your computer.</span>
             </li>
-            <li>🗑️ You can remove it anytime in Settings to free up the space.</li>
-            <li>⏳ You can minimize the progress and keep working while it installs.</li>
+            <li className="flex items-start gap-2">
+              <Package className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+              <span>
+                Everything installs inside OpenScans’ own folder. It won’t touch
+                your system Python or any other app, and isn’t shared with them.
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <Trash2 className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+              <span>You can remove it anytime in Settings to free up the space.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <Clock className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+              <span>You can minimize the progress and keep working while it installs.</span>
+            </li>
           </ul>
         </div>
       </Modal>

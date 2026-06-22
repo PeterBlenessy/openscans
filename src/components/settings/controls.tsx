@@ -246,52 +246,6 @@ export function TextField({ value, onChange, placeholder, theme }: TextFieldProp
   )
 }
 
-// ── Inline note ──────────────────────────────────────────────────────────────
-
-interface InlineNoteProps {
-  title: string
-  /** Bullet points, shown when expanded. */
-  points: string[]
-  theme: Theme
-  /** 'info' (quiet) or 'warn' (amber accent). */
-  tone?: 'info' | 'warn'
-  /** Start expanded (default collapsed). */
-  defaultOpen?: boolean
-}
-
-/**
- * Quiet, collapsible note. Replaces the heavy emoji + bullet boxes — the title
- * line is always visible, details expand on demand.
- */
-export function InlineNote({ title, points, theme, tone = 'info', defaultOpen = false }: InlineNoteProps) {
-  const [open, setOpen] = useState(defaultOpen)
-  const accent = tone === 'warn'
-    ? 'text-amber-500'
-    : themeClasses.textSecondary(theme)
-  return (
-    <div className={`rounded-lg border ${themeClasses.bgSecondary(theme)} ${themeClasses.border(theme)}`}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left"
-      >
-        <span className={accent}>{tone === 'warn' ? <Warn /> : <Info />}</span>
-        <span className={`flex-1 text-xs font-medium ${themeClasses.text(theme)}`}>{title}</span>
-        <ChevronDown
-          className={`${themeClasses.textSecondary(theme)} transition-transform ${open ? 'rotate-180' : ''}`}
-        />
-      </button>
-      {open && (
-        <ul className={`px-3 pb-3 pl-9 space-y-1 text-xs ${themeClasses.textSecondary(theme)}`}>
-          {points.map((p, i) => (
-            <li key={i} className="list-disc list-outside ml-1">{p}</li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
-
 // ── Icons ────────────────────────────────────────────────────────────────────
 
 function ChevronDown({ className = '' }: { className?: string }) {
@@ -327,18 +281,3 @@ function EyeOff({ className = '' }: { className?: string }) {
   )
 }
 
-function Info({ className = '' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 20 20" fill="currentColor" className={`w-4 h-4 ${className}`} aria-hidden="true">
-      <path fillRule="evenodd" d="M18 10A8 8 0 11 2 10a8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
-    </svg>
-  )
-}
-
-function Warn({ className = '' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 20 20" fill="currentColor" className={`w-4 h-4 ${className}`} aria-hidden="true">
-      <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.515 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-    </svg>
-  )
-}

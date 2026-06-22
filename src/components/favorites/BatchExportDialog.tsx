@@ -3,6 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { Button, CardButton, Checkbox, ProgressBar } from '@/components/ui'
 import { FavoriteImage } from '@/stores/favoritesStore'
 import { exportBatchPDF, GridLayout } from '@/lib/export/batchPdfExport'
+import { useErrorHandler } from '@/hooks/useErrorHandler'
 
 interface BatchExportDialogProps {
   show: boolean
@@ -16,6 +17,7 @@ export function BatchExportDialog({ show, onClose, favorites }: BatchExportDialo
   const [isExporting, setIsExporting] = useState(false)
   const [progress, setProgress] = useState({ current: 0, total: 0 })
   const [error, setError] = useState<string | null>(null)
+  const { handleError } = useErrorHandler()
 
   const isDark = true
 
@@ -34,7 +36,8 @@ export function BatchExportDialog({ show, onClose, favorites }: BatchExportDialo
       })
 
       if (result.success) {
-        // Success - close after short delay
+        // Success - confirm via toast, then close after a short delay
+        handleError(`Exported ${favorites.length} image${favorites.length === 1 ? '' : 's'} to PDF`, 'Batch Export', 'success')
         setTimeout(() => {
           onClose()
           // Reset state

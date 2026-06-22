@@ -5,7 +5,7 @@ export interface AppError {
   message: string
   context: string
   timestamp: number
-  severity: 'error' | 'warning' | 'info'
+  severity: 'error' | 'warning' | 'info' | 'success'
 }
 
 interface ErrorState {
