@@ -1,4 +1,3 @@
-import { useState, useRef, useEffect } from 'react'
 import {
   MonitorCog,
   Target,
@@ -13,6 +12,7 @@ import {
   Circle,
   Square,
 } from 'lucide-react'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useViewportStore } from '@/stores/viewportStore'
 import { useStudyStore } from '@/stores/studyStore'
 import { useFavoritesStore, FavoriteImage } from '@/stores/favoritesStore'
@@ -79,13 +79,8 @@ export function ViewportToolbar({
   const cineFrameRate = useViewportStore((state) => state.cineFrameRate)
   const toggleCine = useViewportStore((state) => state.toggleCine)
   const setCineFrameRate = useViewportStore((state) => state.setCineFrameRate)
-  const [showCineSpeed, setShowCineSpeed] = useState(false)
-  const cineSpeedRef = useRef<HTMLDivElement>(null)
-
-  const [showPresets, setShowPresets] = useState(false)
-  const presetsRef = useRef<HTMLDivElement>(null)
-  const presetsTriggerRef = useRef<HTMLButtonElement>(null)
-  const presetItemsRef = useRef<(HTMLButtonElement | null)[]>([])
+  // Cine-speed and window-preset menus are Radix DropdownMenus — open/close,
+  // outside-click, Escape and arrow-key focus are handled by Radix.
   const currentInstance = useStudyStore((state) => state.currentInstance)
   const currentStudy = useStudyStore((state) => state.currentStudy)
   const currentSeries = useStudyStore((state) => state.currentSeries)
@@ -224,69 +219,6 @@ export function ViewportToolbar({
     }
   }
 
-  // Close presets dropdown when clicking outside or pressing Escape
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (presetsRef.current && !presetsRef.current.contains(event.target as Node)) {
-        setShowPresets(false)
-      }
-    }
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setShowPresets(false)
-      }
-    }
-
-    if (showPresets) {
-      document.addEventListener('mousedown', handleClickOutside)
-      document.addEventListener('keydown', handleEscape)
-      // Move focus into the menu so arrow-key navigation works immediately.
-      presetItemsRef.current[0]?.focus()
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside)
-        document.removeEventListener('keydown', handleEscape)
-      }
-    }
-  }, [showPresets])
-
-  // Close cine speed dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (cineSpeedRef.current && !cineSpeedRef.current.contains(event.target as Node)) {
-        setShowCineSpeed(false)
-      }
-    }
-
-    if (showCineSpeed) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [showCineSpeed])
-
-  // Roving focus between menu items (ArrowUp/ArrowDown wrap; Escape returns
-  // focus to the trigger). Enter/Space activation is handled natively by the
-  // <button> items.
-  const handleMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    const items = presetItemsRef.current.filter((el): el is HTMLButtonElement => el !== null)
-    if (items.length === 0) return
-    const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement)
-
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      const next = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length
-      items[next].focus()
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      const prev = currentIndex < 0 ? items.length - 1 : (currentIndex - 1 + items.length) % items.length
-      items[prev].focus()
-    } else if (e.key === 'Escape') {
-      e.preventDefault()
-      setShowPresets(false)
-      presetsTriggerRef.current?.focus()
-    }
-  }
-
   const windowPresets = [
     { name: 'Soft Tissue', contrast: 400, brightness: 40 },
     { name: 'Lung', contrast: 1500, brightness: -600 },
@@ -298,7 +230,6 @@ export function ViewportToolbar({
 
   const handlePresetClick = (brightness: number, contrast: number) => {
     setWindowLevel(brightness, contrast)
-    setShowPresets(false)
   }
 
   const handleAiAnalysis = async () => {
@@ -582,98 +513,92 @@ export function ViewportToolbar({
       />
 
       {/* Cine speed dropdown */}
-      <div className="relative" ref={cineSpeedRef}>
-        <button
-          onClick={() => setShowCineSpeed(!showCineSpeed)}
-          title="Cine speed (frames per second)"
-          disabled={!currentInstance}
-          data-testid="cine-speed-button"
-          className={`px-2 py-2 rounded text-xs font-mono transition-colors ${
-            !currentInstance
-              ? 'text-gray-600 cursor-not-allowed'
-              : cineEnabled
-              ? 'text-white hover:bg-[#2a2a2a]'
-              : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-white'
-          }`}
-        >
-          {cineFrameRate}fps
-        </button>
-        {showCineSpeed && (
-          <div className="absolute top-full left-0 mt-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl py-1 z-50 min-w-[120px]">
-            <div className="px-2 pb-0.5 mb-0.5 border-b border-[#2a2a2a]">
-              <p className="text-[11px] font-medium text-gray-400">Cine Speed</p>
-            </div>
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger asChild>
+          <button
+            title="Cine speed (frames per second)"
+            disabled={!currentInstance}
+            data-testid="cine-speed-button"
+            className={`px-2 py-2 rounded text-xs font-mono transition-colors ${
+              !currentInstance
+                ? 'text-gray-600 cursor-not-allowed'
+                : cineEnabled
+                ? 'text-white hover:bg-[#2a2a2a]'
+                : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-white data-[state=open]:text-white'
+            }`}
+          >
+            {cineFrameRate}fps
+          </button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            align="start"
+            sideOffset={8}
+            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl py-1 z-50 min-w-[120px]"
+          >
+            <DropdownMenu.Label className="px-2 pb-0.5 mb-0.5 border-b border-[#2a2a2a] text-[11px] font-medium text-gray-400">
+              Cine Speed
+            </DropdownMenu.Label>
             {CINE_FPS_PRESETS.map((fps) => (
-              <button
+              <DropdownMenu.Item
                 key={fps}
-                onClick={() => {
-                  setCineFrameRate(fps)
-                  setShowCineSpeed(false)
-                }}
-                className={`w-full px-2 py-1 text-left text-xs transition-colors hover:bg-[#2a2a2a] ${
-                  cineFrameRate === fps ? 'text-white' : 'text-gray-300 hover:text-white'
+                onSelect={() => setCineFrameRate(fps)}
+                className={`w-full cursor-pointer rounded px-2 py-1 text-left text-xs outline-none transition-colors data-[highlighted]:bg-[#2a2a2a] data-[highlighted]:text-white ${
+                  cineFrameRate === fps ? 'text-white' : 'text-gray-300'
                 }`}
               >
                 {fps} fps
-              </button>
+              </DropdownMenu.Item>
             ))}
-          </div>
-        )}
-      </div>
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
 
       {/* Window Presets Dropdown */}
-      <div className="relative" ref={presetsRef}>
-        <button
-          ref={presetsTriggerRef}
-          onClick={() => setShowPresets(!showPresets)}
-          title="Window presets"
-          aria-label="Window presets"
-          aria-haspopup="menu"
-          aria-expanded={showPresets}
-          disabled={!currentInstance}
-          className={`p-2 rounded transition-colors ${
-            !currentInstance
-              ? 'text-gray-500 cursor-not-allowed'
-              : showPresets
-              ? 'text-white hover:bg-[#2a2a2a]'
-              : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-white'
-          }`}
-        >
-          <MonitorCog size={16} aria-hidden="true" />
-        </button>
-        {showPresets && (
-          <div role="menu" onKeyDown={handleMenuKeyDown} className="absolute top-full left-0 mt-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl py-1 z-50 min-w-[180px]">
-            <div className="px-2 pb-0.5 mb-0.5 border-b border-[#2a2a2a]">
-              <p className="text-[11px] font-medium text-gray-400">Window Presets</p>
-            </div>
-            {windowPresets.map((preset, presetIndex) => (
-              <button
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger asChild>
+          <button
+            title="Window presets"
+            aria-label="Window presets"
+            disabled={!currentInstance}
+            className={`p-2 rounded transition-colors ${
+              !currentInstance
+                ? 'text-gray-500 cursor-not-allowed'
+                : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-white data-[state=open]:text-white'
+            }`}
+          >
+            <MonitorCog size={16} aria-hidden="true" />
+          </button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            align="start"
+            sideOffset={8}
+            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl py-1 z-50 min-w-[180px]"
+          >
+            <DropdownMenu.Label className="px-2 pb-0.5 mb-0.5 border-b border-[#2a2a2a] text-[11px] font-medium text-gray-400">
+              Window Presets
+            </DropdownMenu.Label>
+            {windowPresets.map((preset) => (
+              <DropdownMenu.Item
                 key={preset.name}
-                ref={(el) => (presetItemsRef.current[presetIndex] = el)}
-                role="menuitem"
-                onClick={() => handlePresetClick(preset.brightness, preset.contrast)}
-                className="w-full px-2 py-1 text-left text-xs text-gray-300 hover:bg-[#2a2a2a] hover:text-white transition-colors"
+                onSelect={() => handlePresetClick(preset.brightness, preset.contrast)}
+                className="w-full cursor-pointer px-2 py-1 text-left text-xs text-gray-300 outline-none transition-colors data-[highlighted]:bg-[#2a2a2a] data-[highlighted]:text-white"
               >
                 <div className="font-medium">{preset.name}</div>
                 <div className="text-[11px] text-gray-400">C:{preset.contrast} B:{preset.brightness}</div>
-              </button>
+              </DropdownMenu.Item>
             ))}
-            <div className="border-t border-[#2a2a2a] mt-0.5 pt-0.5 px-2">
-              <button
-                ref={(el) => (presetItemsRef.current[windowPresets.length] = el)}
-                role="menuitem"
-                onClick={() => {
-                  resetSettings()
-                  setShowPresets(false)
-                }}
-                className="w-full px-2 py-1 text-[11px] font-medium text-gray-400 hover:text-white hover:bg-[#2a2a2a] rounded transition-colors"
-              >
-                Reset to Default
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+            <DropdownMenu.Separator className="my-0.5 border-t border-[#2a2a2a]" />
+            <DropdownMenu.Item
+              onSelect={() => resetSettings()}
+              className="w-full cursor-pointer rounded px-2 py-1 text-[11px] font-medium text-gray-400 outline-none transition-colors data-[highlighted]:bg-[#2a2a2a] data-[highlighted]:text-white"
+            >
+              Reset to Default
+            </DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
 
       <ToolbarDivider />
 
