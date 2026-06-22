@@ -55,38 +55,6 @@ body {
   min-height: 100vh;
 }
 
-/* Custom slider styles */
-.slider::-webkit-slider-thumb {
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #4a4a4a;
-  cursor: pointer;
-  border: 2px solid #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.slider::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #4a4a4a;
-  cursor: pointer;
-  border: 2px solid #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.slider::-webkit-slider-thumb:hover {
-  background: #5a5a5a;
-  transform: scale(1.1);
-}
-
-.slider::-moz-range-thumb:hover {
-  background: #5a5a5a;
-  transform: scale(1.1);
-}
-
 /* Indeterminate progress bar (MR engine install/segmentation phases that report
    no fine-grained percentage) — a segment sliding across the track. */
 @keyframes mr-indeterminate {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/Modal'
-import { Spinner } from '@/components/ui'
+import { Button, CardButton, Checkbox } from '@/components/ui'
 import { useStudyStore } from '@/stores/studyStore'
 import { useViewportStore } from '@/stores/viewportStore'
 import { ExportFormat, ExportScale, ExportOptions } from '@/lib/export/types'
@@ -102,28 +102,18 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
       maxWidth="max-w-lg"
       footer={
         <div className="flex items-center justify-between">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm transition-colors text-gray-400 hover:text-white"
-            disabled={isExporting}
-          >
+          <Button variant="ghost" onClick={onClose} disabled={isExporting}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
             onClick={handleExport}
             disabled={isExporting || !currentInstance}
+            loading={isExporting}
             data-testid="export-confirm-button"
-            className="px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2 bg-[#2a2a2a] hover:bg-[#3a3a3a]"
           >
-            {isExporting ? (
-              <>
-                <Spinner size="sm" className="text-current" />
-                Exporting...
-              </>
-            ) : (
-              'Export'
-            )}
-          </button>
+            {isExporting ? 'Exporting...' : 'Export'}
+          </Button>
         </div>
       }
     >
@@ -137,7 +127,6 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
                 description="Lossless"
                 selected={format === 'png'}
                 onClick={() => setFormat('png')}
-                isDark={isDark}
               />
               <FormatButton
                 format="jpeg"
@@ -145,7 +134,6 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
                 description="Smaller size"
                 selected={format === 'jpeg'}
                 onClick={() => setFormat('jpeg')}
-                isDark={isDark}
               />
               <FormatButton
                 format="pdf"
@@ -153,7 +141,6 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
                 description="With metadata"
                 selected={format === 'pdf'}
                 onClick={() => setFormat('pdf')}
-                isDark={isDark}
               />
             </div>
           </ExportSection>
@@ -170,7 +157,7 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
                   value={jpegQuality}
                   onChange={(e) => setJpegQuality(parseInt(e.target.value))}
                   aria-label="JPEG quality"
-                  className={`flex-1 h-2 rounded-lg appearance-none cursor-pointer ${isDark ? 'bg-[#0f0f0f]' : 'bg-gray-200'}`}
+                  className="flex-1 h-2 cursor-pointer"
                 />
                 <span className={`text-sm font-mono w-12 text-right ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   {jpegQuality}%
@@ -188,7 +175,6 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
                 description="Original"
                 selected={scale === 1}
                 onClick={() => setScale(1)}
-                isDark={isDark}
               />
               <ResolutionButton
                 scale={2}
@@ -196,7 +182,6 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
                 description="High detail"
                 selected={scale === 2}
                 onClick={() => setScale(2)}
-                isDark={isDark}
               />
               <ResolutionButton
                 scale={4}
@@ -204,7 +189,6 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
                 description="Print quality"
                 selected={scale === 4}
                 onClick={() => setScale(4)}
-                isDark={isDark}
               />
             </div>
           </ExportSection>
@@ -223,27 +207,23 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
                   label="Include Patient Name"
                   checked={includePatientName}
                   onChange={setIncludePatientName}
-                  isDark={isDark}
                   data-testid="include-patient-name"
                 />
                 <MetadataCheckbox
                   label="Include Patient ID"
                   checked={includePatientID}
                   onChange={setIncludePatientID}
-                  isDark={isDark}
                   data-testid="include-patient-id"
                 />
                 <MetadataCheckbox
                   label="Include Study Description"
                   checked={includeStudyDescription}
                   onChange={setIncludeStudyDescription}
-                  isDark={isDark}
                 />
                 <MetadataCheckbox
                   label="Include Series Description"
                   checked={includeSeriesDescription}
                   onChange={setIncludeSeriesDescription}
-                  isDark={isDark}
                 />
               </div>
             </ExportSection>
@@ -288,6 +268,21 @@ function ExportSection({ title, children, isDark }: ExportSectionProps) {
   )
 }
 
+// A selectable card showing a label + short description (format / resolution).
+function CardOption({ label, description, selected, onClick }: {
+  label: string
+  description: string
+  selected: boolean
+  onClick: () => void
+}) {
+  return (
+    <CardButton selected={selected} onClick={onClick} ariaLabel={label}>
+      <div className="font-semibold">{label}</div>
+      <div className="text-xs opacity-70 mt-0.5">{description}</div>
+    </CardButton>
+  )
+}
+
 // Format button component
 interface FormatButtonProps {
   format: ExportFormat
@@ -295,29 +290,10 @@ interface FormatButtonProps {
   description: string
   selected: boolean
   onClick: () => void
-  isDark: boolean
 }
 
-function FormatButton({ label, description, selected, onClick, isDark }: FormatButtonProps) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex-1 p-3 rounded-lg border-2 transition-all ${
-        selected
-          ? isDark
-            ? 'border-[#4a4a4a] bg-[#2a2a2a]'
-            : 'border-gray-400 bg-gray-200'
-          : isDark
-          ? 'border-[#2a2a2a] bg-[#0f0f0f] hover:border-[#3a3a3a]'
-          : 'border-gray-300 bg-gray-50 hover:border-gray-400'
-      }`}
-    >
-      <div className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-        {label}
-      </div>
-      <div className="text-xs text-gray-400 mt-0.5">{description}</div>
-    </button>
-  )
+function FormatButton({ label, description, selected, onClick }: FormatButtonProps) {
+  return <CardOption label={label} description={description} selected={selected} onClick={onClick} />
 }
 
 // Resolution button component
@@ -327,29 +303,10 @@ interface ResolutionButtonProps {
   description: string
   selected: boolean
   onClick: () => void
-  isDark: boolean
 }
 
-function ResolutionButton({ label, description, selected, onClick, isDark }: ResolutionButtonProps) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex-1 p-3 rounded-lg border-2 transition-all ${
-        selected
-          ? isDark
-            ? 'border-[#4a4a4a] bg-[#2a2a2a]'
-            : 'border-gray-400 bg-gray-200'
-          : isDark
-          ? 'border-[#2a2a2a] bg-[#0f0f0f] hover:border-[#3a3a3a]'
-          : 'border-gray-300 bg-gray-50 hover:border-gray-400'
-      }`}
-    >
-      <div className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-        {label}
-      </div>
-      <div className="text-xs text-gray-400 mt-0.5">{description}</div>
-    </button>
-  )
+function ResolutionButton({ label, description, selected, onClick }: ResolutionButtonProps) {
+  return <CardOption label={label} description={description} selected={selected} onClick={onClick} />
 }
 
 // Metadata checkbox component
@@ -357,21 +314,9 @@ interface MetadataCheckboxProps {
   label: string
   checked: boolean
   onChange: (checked: boolean) => void
-  isDark: boolean
   'data-testid'?: string
 }
 
-function MetadataCheckbox({ label, checked, onChange, isDark, 'data-testid': testId }: MetadataCheckboxProps) {
-  return (
-    <label className="flex items-center gap-3 cursor-pointer">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="w-4 h-4 rounded border-gray-300 text-gray-600 focus:ring-gray-500"
-        data-testid={testId}
-      />
-      <span className={`text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{label}</span>
-    </label>
-  )
+function MetadataCheckbox({ label, checked, onChange, 'data-testid': testId }: MetadataCheckboxProps) {
+  return <Checkbox checked={checked} onChange={onChange} label={label} data-testid={testId} />
 }

@@ -1,9 +1,10 @@
-import { ReactNode, useId } from 'react'
+import { InputHTMLAttributes, ReactNode, useId } from 'react'
 import type { Theme } from '@/stores/settingsStore'
 import { themeClasses } from '@/lib/utils'
 import { useUiTheme } from './theme'
 
-interface CheckboxProps {
+interface CheckboxProps
+  extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'type' | 'checked'> {
   checked: boolean
   onChange: (checked: boolean) => void
   label?: ReactNode
@@ -18,7 +19,7 @@ interface CheckboxProps {
  * no new dependency, no hand-drawn indicator. Replaces the two ad-hoc native
  * checkboxes that weren't theme-aware.
  */
-export function Checkbox({ checked, onChange, label, theme, ariaLabel, className = '' }: CheckboxProps) {
+export function Checkbox({ checked, onChange, label, theme, ariaLabel, className = '', ...rest }: CheckboxProps) {
   const t = useUiTheme(theme)
   const id = useId()
   const input = (
@@ -29,6 +30,7 @@ export function Checkbox({ checked, onChange, label, theme, ariaLabel, className
       onChange={(e) => onChange(e.target.checked)}
       aria-label={label ? undefined : ariaLabel}
       className="h-4 w-4 cursor-pointer rounded"
+      {...rest}
     />
   )
   if (!label) return input

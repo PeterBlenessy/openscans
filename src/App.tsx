@@ -392,14 +392,12 @@ function App() {
                         const newIndex = parseInt(e.target.value)
                         useStudyStore.getState().setCurrentInstance(newIndex)
                       }}
-                      className={`flex-1 h-2 rounded-lg appearance-none cursor-pointer slider ${theme === 'dark' ? 'bg-[#0f0f0f]' : 'bg-gray-200'}`}
+                      // Native range, accent-colored by the global `accent-color`
+                      // (follows the OS accent). Kept native so the e2e can read
+                      // inputValue() and so it themes for free.
+                      className="flex-1 h-2 cursor-pointer"
                       data-testid="instance-slider"
                       aria-label="Navigate images in series"
-                      style={{
-                        background: theme === 'dark'
-                          ? `linear-gradient(to right, #4a4a4a 0%, #4a4a4a ${(currentInstanceIndex / (currentSeries.instances.length - 1)) * 100}%, #0f0f0f ${(currentInstanceIndex / (currentSeries.instances.length - 1)) * 100}%, #0f0f0f 100%)`
-                          : `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(currentInstanceIndex / (currentSeries.instances.length - 1)) * 100}%, #e5e7eb ${(currentInstanceIndex / (currentSeries.instances.length - 1)) * 100}%, #e5e7eb 100%)`
-                      }}
                     />
                   </div>
                 </div>
