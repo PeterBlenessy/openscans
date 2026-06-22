@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { useMrEngineStore } from '@/stores/mrEngineStore'
 import { MR_SEGMENTATION_AVAILABLE } from '@/lib/ai/segmentationServer'
 import { isTauri } from '@/lib/utils/platform'
+import type { Theme } from '@/stores/settingsStore'
+import { themeClasses } from '@/lib/utils'
 
 /**
  * Settings card for the MR-precision engine: shows install status and lets the
@@ -9,7 +11,7 @@ import { isTauri } from '@/lib/utils/platform'
  * surprise mid-workflow). The actual install runs in the global store and shows
  * the minimizable progress UI.
  */
-export function MrEngineSettings({ isDark }: { isDark: boolean }) {
+export function MrEngineSettings({ theme }: { theme: Theme }) {
   const { engineReady, modelReady, job, refreshStatus, install, remove } = useMrEngineStore()
 
   useEffect(() => {
@@ -27,14 +29,12 @@ export function MrEngineSettings({ isDark }: { isDark: boolean }) {
       : 'Not installed'
 
   return (
-    <div className={`p-3 rounded-lg border ${isDark ? 'bg-[#0f0f0f] border-[#2a2a2a]' : 'bg-gray-50 border-gray-200'}`}>
-      <p className={`text-sm font-medium mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-        MR-Precision Segmentation
-      </p>
-      <p className="text-xs text-gray-500 mb-3">
+    <div className={`p-4 rounded-lg border ${themeClasses.bgSecondary(theme)} ${themeClasses.border(theme)}`}>
+      <p className={`text-sm font-medium ${themeClasses.text(theme)}`}>MR-Precision Segmentation</p>
+      <p className={`text-xs mt-0.5 mb-3 ${themeClasses.textSecondary(theme)}`}>
         On-device vertebra segmentation for MR (TotalSegmentator-MRI). One-time
         setup (~2&nbsp;GB) installs the engine locally — nothing leaves your device.
-        Status: <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{status}</span>
+        Status: <span className={themeClasses.text(theme)}>{status}</span>
       </p>
       <div className="flex justify-end gap-2">
         {engineReady && !installing && (
@@ -42,7 +42,7 @@ export function MrEngineSettings({ isDark }: { isDark: boolean }) {
             onClick={() => {
               void remove()
             }}
-            className={`px-3 py-1.5 rounded text-sm ${isDark ? 'text-gray-300 hover:bg-[#1a1a1a]' : 'text-gray-700 hover:bg-gray-100'}`}
+            className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${themeClasses.textSecondary(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
           >
             Remove
           </button>
@@ -53,7 +53,7 @@ export function MrEngineSettings({ isDark }: { isDark: boolean }) {
               void install()
             }}
             disabled={installing}
-            className="px-3 py-1.5 rounded text-sm bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50"
+            className="px-3 py-1.5 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50 transition-colors"
           >
             {installing ? 'Installing…' : 'Install now'}
           </button>
