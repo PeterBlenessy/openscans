@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { isTauri } from '@/lib/utils/platform'
 import { onDownloadProgress } from '@/lib/ai/localServer'
+import { ProgressBar } from '@/components/ui'
 
 interface Progress {
   file: string
@@ -63,12 +64,7 @@ export function DownloadProgressOverlay() {
             {progress.total ? `${pct}%` : `${formatMB(progress.downloaded)} MB`}
           </span>
         </div>
-        <div className="h-1.5 w-full rounded bg-white/20 overflow-hidden">
-          <div
-            className="h-full bg-blue-400 transition-all"
-            style={{ width: progress.total ? `${pct}%` : '100%' }}
-          />
-        </div>
+        <ProgressBar value={progress.total ? pct : null} label={`Downloading ${progress.file}`} />
         {progress.total > 0 && (
           <div className="mt-1 text-xs text-white/60 tabular-nums">
             {formatMB(progress.downloaded)} / {formatMB(progress.total)} MB

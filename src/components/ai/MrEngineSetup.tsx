@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Loader2, ScanLine, Minus, X, AlertTriangle } from 'lucide-react'
+import { ScanLine, Minus, X, AlertTriangle } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
+import { Spinner, ProgressBar } from '@/components/ui'
 import { useMrEngineStore } from '@/stores/mrEngineStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { themeClasses } from '@/lib/utils'
@@ -122,7 +123,7 @@ export function MrEngineSetup() {
               className={`flex items-center gap-2 px-3 py-2 rounded-full shadow-2xl border ${themeClasses.border(theme)} ${themeClasses.bg(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
               title={job?.stage}
             >
-              <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+              <Spinner size="sm" />
               <span className={`text-xs ${themeClasses.text(theme)}`}>
                 MR engine{pct !== null ? ` · ${pct}%` : '…'}
               </span>
@@ -152,18 +153,7 @@ export function MrEngineSetup() {
                 </span>
                 <span className="tabular-nums shrink-0">{mmss}</span>
               </p>
-              <div className={`h-1.5 rounded-full overflow-hidden ${themeClasses.bgSecondary(theme)}`}>
-                {pct !== null ? (
-                  <div className="h-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
-                ) : (
-                  // Indeterminate: animated sliding segment (no fine-grained % for
-                  // the install / segmentation compute phases).
-                  <div
-                    className="h-full w-2/5 bg-blue-500 rounded-full"
-                    style={{ animation: 'mr-indeterminate 1.2s ease-in-out infinite' }}
-                  />
-                )}
-              </div>
+              <ProgressBar value={pct} theme={theme} label={job?.stage} />
               <p className={`text-[11px] ${themeClasses.textSecondary(theme)} mt-2`}>
                 Runs on-device · you can minimize and keep working.
               </p>

@@ -4,6 +4,7 @@ import { useFavoritesStore } from '@/stores/favoritesStore'
 import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
 import { useAnnotationStore } from '@/stores/annotationStore'
 import { cornerstone } from '@/lib/cornerstone/initCornerstone'
+import { Spinner } from '@/components/ui'
 import { DicomInstance } from '@/types'
 
 export function ThumbnailStrip() {
@@ -217,7 +218,7 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
         >
           {!isLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-[#0f0f0f]">
-              <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
+              <Spinner size="sm" />
             </div>
           )}
         </div>

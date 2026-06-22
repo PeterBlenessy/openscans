@@ -13,6 +13,7 @@ import { ResizeHandle } from './components/layout/ResizeHandle'
 import { SettingsPanel } from './components/settings/SettingsPanel'
 import { ErrorToast } from './components/ErrorToast'
 import { ConfirmDialog } from './components/ui/ConfirmDialog'
+import { Spinner } from './components/ui'
 import { UpdateNotification } from './components/UpdateNotification'
 import { useStudyStore } from './stores/studyStore'
 import { useRecentStudiesStore } from './stores/recentStudiesStore'
@@ -358,7 +359,7 @@ function App() {
           {isAutoLoading ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
+                <div className="mb-4 flex justify-center"><Spinner size="lg" /></div>
                 <p className="text-gray-400">Loading most recent study...</p>
               </div>
             </div>
