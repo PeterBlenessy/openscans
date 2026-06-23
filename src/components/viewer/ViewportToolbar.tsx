@@ -19,6 +19,7 @@ import { useFavoritesStore, FavoriteImage } from '@/stores/favoritesStore'
 import { useAnnotationStore } from '@/stores/annotationStore'
 import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { themeClasses } from '@/lib/utils'
 import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { mockDetector } from '@/lib/ai/mockVertebralDetector'
 import { initDetector, getApiKeyForProvider } from '@/lib/ai/aiDetectorManager'
@@ -99,6 +100,13 @@ export function ViewportToolbar({
   const showAiControls = isTauri()
 
   // AI settings
+  const theme = useSettingsStore((state) => state.theme)
+  // Shared dropdown-menu styling (themed). The data-[highlighted] variant must
+  // be a complete literal class per theme so Tailwind generates it.
+  const menuContentClass = `${themeClasses.bg(theme)} ${themeClasses.border(theme)} border rounded-lg shadow-xl py-1 z-50`
+  const menuItemHl = theme === 'dark'
+    ? 'data-[highlighted]:bg-[#2a2a2a] data-[highlighted]:text-white'
+    : 'data-[highlighted]:bg-gray-100 data-[highlighted]:text-gray-900'
   const aiEnabled = useSettingsStore((state) => state.aiEnabled)
   const aiProvider = useSettingsStore((state) => state.aiProvider)
   const localModel = useSettingsStore((state) => state.localModel)
@@ -347,7 +355,7 @@ export function ViewportToolbar({
 
 
   return (
-    <div className={`flex items-center gap-1 bg-[#1a1a1a]/90 backdrop-blur-sm rounded-lg p-1.5 shadow-lg border border-[#2a2a2a] ${className}`}>
+    <div className={`flex items-center gap-1 backdrop-blur-sm rounded-lg p-1.5 shadow-lg border ${themeClasses.bg(theme)} ${themeClasses.border(theme)} ${className}`}>
       {/* Reset */}
       <ToolbarButton
         onClick={resetSettings}
@@ -521,10 +529,10 @@ export function ViewportToolbar({
             data-testid="cine-speed-button"
             className={`px-2 py-2 rounded text-xs font-mono transition-colors ${
               !currentInstance
-                ? 'text-gray-600 cursor-not-allowed'
+                ? `${themeClasses.textTertiary(theme)} cursor-not-allowed`
                 : cineEnabled
-                ? 'text-white hover:bg-[#2a2a2a]'
-                : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-white data-[state=open]:text-white'
+                ? `${themeClasses.text(theme)} ${themeClasses.hoverBgSecondary(theme)}`
+                : `${themeClasses.textSecondary(theme)} ${themeClasses.hoverBgSecondary(theme)} ${themeClasses.hoverText(theme)}`
             }`}
           >
             {cineFrameRate}fps
@@ -534,17 +542,17 @@ export function ViewportToolbar({
           <DropdownMenu.Content
             align="start"
             sideOffset={8}
-            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl py-1 z-50 min-w-[120px]"
+            className={`${menuContentClass} min-w-[120px]`}
           >
-            <DropdownMenu.Label className="px-2 pb-0.5 mb-0.5 border-b border-[#2a2a2a] text-[11px] font-medium text-gray-400">
+            <DropdownMenu.Label className={`px-2 pb-0.5 mb-0.5 border-b text-[11px] font-medium ${themeClasses.border(theme)} ${themeClasses.textSecondary(theme)}`}>
               Cine Speed
             </DropdownMenu.Label>
             {CINE_FPS_PRESETS.map((fps) => (
               <DropdownMenu.Item
                 key={fps}
                 onSelect={() => setCineFrameRate(fps)}
-                className={`w-full cursor-pointer rounded px-2 py-1 text-left text-xs outline-none transition-colors data-[highlighted]:bg-[#2a2a2a] data-[highlighted]:text-white ${
-                  cineFrameRate === fps ? 'text-white' : 'text-gray-300'
+                className={`w-full cursor-pointer rounded px-2 py-1 text-left text-xs outline-none transition-colors ${menuItemHl} ${
+                  cineFrameRate === fps ? themeClasses.text(theme) : themeClasses.textSecondary(theme)
                 }`}
               >
                 {fps} fps
@@ -563,8 +571,8 @@ export function ViewportToolbar({
             disabled={!currentInstance}
             className={`p-2 rounded transition-colors ${
               !currentInstance
-                ? 'text-gray-500 cursor-not-allowed'
-                : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-white data-[state=open]:text-white'
+                ? `${themeClasses.textTertiary(theme)} cursor-not-allowed`
+                : `${themeClasses.textSecondary(theme)} ${themeClasses.hoverBgSecondary(theme)} ${themeClasses.hoverText(theme)}`
             }`}
           >
             <MonitorCog size={16} aria-hidden="true" />
@@ -574,25 +582,25 @@ export function ViewportToolbar({
           <DropdownMenu.Content
             align="start"
             sideOffset={8}
-            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg shadow-xl py-1 z-50 min-w-[180px]"
+            className={`${menuContentClass} min-w-[180px]`}
           >
-            <DropdownMenu.Label className="px-2 pb-0.5 mb-0.5 border-b border-[#2a2a2a] text-[11px] font-medium text-gray-400">
+            <DropdownMenu.Label className={`px-2 pb-0.5 mb-0.5 border-b text-[11px] font-medium ${themeClasses.border(theme)} ${themeClasses.textSecondary(theme)}`}>
               Window Presets
             </DropdownMenu.Label>
             {windowPresets.map((preset) => (
               <DropdownMenu.Item
                 key={preset.name}
                 onSelect={() => handlePresetClick(preset.brightness, preset.contrast)}
-                className="w-full cursor-pointer px-2 py-1 text-left text-xs text-gray-300 outline-none transition-colors data-[highlighted]:bg-[#2a2a2a] data-[highlighted]:text-white"
+                className={`w-full cursor-pointer px-2 py-1 text-left text-xs outline-none transition-colors ${themeClasses.text(theme)} ${menuItemHl}`}
               >
                 <div className="font-medium">{preset.name}</div>
-                <div className="text-[11px] text-gray-400">C:{preset.contrast} B:{preset.brightness}</div>
+                <div className={`text-[11px] ${themeClasses.textSecondary(theme)}`}>C:{preset.contrast} B:{preset.brightness}</div>
               </DropdownMenu.Item>
             ))}
-            <DropdownMenu.Separator className="my-0.5 border-t border-[#2a2a2a]" />
+            <DropdownMenu.Separator className={`my-0.5 border-t ${themeClasses.border(theme)}`} />
             <DropdownMenu.Item
               onSelect={() => resetSettings()}
-              className="w-full cursor-pointer rounded px-2 py-1 text-[11px] font-medium text-gray-400 outline-none transition-colors data-[highlighted]:bg-[#2a2a2a] data-[highlighted]:text-white"
+              className={`w-full cursor-pointer rounded px-2 py-1 text-[11px] font-medium outline-none transition-colors ${themeClasses.textSecondary(theme)} ${menuItemHl}`}
             >
               Reset to Default
             </DropdownMenu.Item>
@@ -612,10 +620,10 @@ export function ViewportToolbar({
         data-testid="favorite-button"
         className={`p-2 rounded transition-colors ${
           !currentInstance
-            ? 'text-gray-500 cursor-not-allowed'
+            ? `${themeClasses.textTertiary(theme)} cursor-not-allowed`
             : isCurrentFavorite
-            ? 'text-white hover:bg-[#2a2a2a]'
-            : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-white'
+            ? `${themeClasses.text(theme)} ${themeClasses.hoverBgSecondary(theme)}`
+            : `${themeClasses.textSecondary(theme)} ${themeClasses.hoverBgSecondary(theme)} ${themeClasses.hoverText(theme)}`
         }`}
       >
         {isCurrentFavorite ? (
@@ -722,6 +730,7 @@ interface ToolbarButtonProps {
 }
 
 function ToolbarButton({ onClick, title, icon, active = false, disabled = false, isToggle = false, 'data-testid': testId }: ToolbarButtonProps) {
+  const theme = useSettingsStore((s) => s.theme)
   return (
     <button
       onClick={onClick}
@@ -732,10 +741,10 @@ function ToolbarButton({ onClick, title, icon, active = false, disabled = false,
       data-testid={testId}
       className={`p-2 rounded transition-colors ${
         disabled
-          ? 'text-gray-500 cursor-not-allowed'
+          ? `${themeClasses.textTertiary(theme)} cursor-not-allowed`
           : active
-          ? 'text-white hover:bg-[#2a2a2a]'
-          : 'text-gray-400 hover:bg-[#2a2a2a] hover:text-white'
+          ? `${themeClasses.text(theme)} ${themeClasses.hoverBgSecondary(theme)}`
+          : `${themeClasses.textSecondary(theme)} ${themeClasses.hoverBgSecondary(theme)} ${themeClasses.hoverText(theme)}`
       }`}
     >
       <span aria-hidden="true">{icon}</span>
@@ -744,5 +753,6 @@ function ToolbarButton({ onClick, title, icon, active = false, disabled = false,
 }
 
 function ToolbarDivider() {
-  return <div className="w-px h-6 bg-[#3a3a3a] mx-1" />
+  const theme = useSettingsStore((s) => s.theme)
+  return <div className={`w-px h-6 mx-1 ${themeClasses.divider(theme)}`} />
 }

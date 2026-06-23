@@ -4,6 +4,8 @@ import { useFavoritesStore } from '@/stores/favoritesStore'
 import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
 import { useAnnotationStore } from '@/stores/annotationStore'
 import { cornerstone } from '@/lib/cornerstone/initCornerstone'
+import { useSettingsStore } from '@/stores/settingsStore'
+import { themeClasses } from '@/lib/utils'
 import { Spinner } from '@/components/ui'
 import { DicomInstance } from '@/types'
 
@@ -11,6 +13,7 @@ export function ThumbnailStrip() {
   const currentSeries = useStudyStore((state) => state.currentSeries)
   const currentInstanceIndex = useStudyStore((state) => state.currentInstanceIndex)
   const setCurrentInstance = useStudyStore((state) => state.setCurrentInstance)
+  const theme = useSettingsStore((state) => state.theme)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const thumbnailRefs = useRef<(HTMLDivElement | null)[]>([])
 
@@ -31,7 +34,7 @@ export function ThumbnailStrip() {
   }
 
   return (
-    <div className="bg-[#0f0f0f] border-t border-[#2a2a2a] p-3 w-full">
+    <div className={`border-t p-3 w-full ${themeClasses.bgSecondary(theme)} ${themeClasses.border(theme)}`}>
       <div
         ref={scrollContainerRef}
         role="list"
@@ -204,7 +207,7 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
         aria-current={isSelected ? 'true' : undefined}
         aria-selected={isSelected}
         className={`flex-shrink-0 relative group cursor-pointer ${
-          isSelected ? 'ring-2 ring-[#4a4a4a]' : 'ring-1 ring-[#2a2a2a]'
+          isSelected ? 'ring-2 ring-accent' : 'ring-1 ring-[#2a2a2a]'
         } rounded overflow-hidden transition-all hover:ring-[#3a3a3a]`}
       >
         <div
@@ -226,7 +229,7 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
           {index + 1}
         </div>
         {isSelected && (
-          <div className="absolute inset-0 border-2 border-[#4a4a4a] pointer-events-none" />
+          <div className="absolute inset-0 border-2 border-accent pointer-events-none" />
         )}
         {/* Star icon for favorites - clickable to toggle */}
         <button
