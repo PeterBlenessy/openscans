@@ -51,12 +51,12 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
   return (
     <Dialog.Root open={show} onOpenChange={(open) => { if (!open) onClose() }}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" />
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" />
 
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
           <Dialog.Content
             aria-describedby={undefined}
-            className={`pointer-events-auto relative flex flex-col rounded-xl shadow-2xl w-full max-w-3xl h-[34rem] max-h-[85vh] overflow-hidden border focus:outline-none ${themeClasses.bg(theme)} ${themeClasses.border(theme)}`}
+            className={`pointer-events-auto relative flex flex-col rounded-lg shadow-2xl w-full max-w-3xl h-[34rem] max-h-[85vh] overflow-hidden border focus:outline-none ${themeClasses.bg(theme)} ${themeClasses.border(theme)}`}
           >
             {/* Header */}
             <div className={`flex items-center justify-between px-5 py-4 border-b ${themeClasses.border(theme)}`}>
@@ -65,9 +65,9 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
               </Dialog.Title>
               <Dialog.Close
                 aria-label="Close dialog"
-                className={`p-2 rounded-lg transition-colors ${themeClasses.hoverBgSecondary(theme)}`}
+                className={`p-1.5 rounded transition-colors ${themeClasses.textSecondary(theme)} ${themeClasses.hoverText(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 ${themeClasses.textSecondary(theme)}`} aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden="true">
                   <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
                 </svg>
               </Dialog.Close>

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Button, CardButton, Checkbox } from '@/components/ui'
+import { useSettingsStore, Theme } from '@/stores/settingsStore'
+import { themeClasses } from '@/lib/utils'
 import { useStudyStore } from '@/stores/studyStore'
 import { useViewportStore } from '@/stores/viewportStore'
 import { ExportFormat, ExportScale, ExportOptions } from '@/lib/export/types'
@@ -49,7 +51,7 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
   const imageHeight = currentInstance?.metadata?.rows || 512
   const estimatedSize = estimateFileSize(imageWidth, imageHeight, scale, format)
 
-  const isDark = true // Always use dark theme to match app
+  const theme = useSettingsStore((s) => s.theme)
 
   // Handle export
   const handleExport = async () => {
@@ -122,7 +124,7 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
     >
       <div>
           {/* Format Selection */}
-          <ExportSection title="Format" isDark={isDark}>
+          <ExportSection title="Format" theme={theme}>
             <div className="flex gap-2">
               <FormatButton
                 format="png"
@@ -150,7 +152,7 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
 
           {/* JPEG Quality (only for JPEG) */}
           {format === 'jpeg' && (
-            <ExportSection title="JPEG Quality" isDark={isDark}>
+            <ExportSection title="JPEG Quality" theme={theme}>
               <div className="flex items-center gap-4">
                 <input
                   type="range"
@@ -162,7 +164,7 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
                   aria-label="JPEG quality"
                   className="flex-1 h-2 cursor-pointer"
                 />
-                <span className={`text-sm font-mono w-12 text-right ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                <span className={`text-sm font-mono w-12 text-right ${themeClasses.text(theme)}`}>
                   {jpegQuality}%
                 </span>
               </div>
@@ -170,7 +172,7 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
           )}
 
           {/* Resolution */}
-          <ExportSection title="Resolution" isDark={isDark}>
+          <ExportSection title="Resolution" theme={theme}>
             <div className="flex gap-2">
               <ResolutionButton
                 scale={1}
@@ -198,10 +200,10 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
 
           {/* Metadata Options (only for PDF) */}
           {format === 'pdf' && (
-            <ExportSection title="Include Metadata (Optional)" isDark={isDark}>
+            <ExportSection title="Include Metadata (Optional)" theme={theme}>
               <div className="space-y-3">
-                <div className={`p-3 rounded-lg ${isDark ? 'bg-amber-900/20 border border-amber-800/30' : 'bg-amber-50 border border-amber-200'}`}>
-                  <p className={`text-xs ${isDark ? 'text-amber-200' : 'text-amber-800'}`}>
+                <div className="p-3 rounded-lg border bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-800/30 dark:text-amber-200">
+                  <p className="text-xs">
                     Privacy Notice: Patient identifiable information is excluded by default. Only enable if required for your use case.
                   </p>
                 </div>
@@ -233,11 +235,11 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
           )}
 
           {/* Filename Preview */}
-          <ExportSection title="Filename Preview" isDark={isDark}>
-            <div className={`p-3 rounded-lg font-mono text-sm ${isDark ? 'bg-[#0f0f0f] text-white' : 'bg-gray-100 text-gray-900'}`}>
+          <ExportSection title="Filename Preview" theme={theme}>
+            <div className={`p-3 rounded-lg font-mono text-sm ${themeClasses.bgSecondary(theme)} ${themeClasses.text(theme)}`}>
               {filename}
             </div>
-            <p className="text-xs text-gray-400 mt-2">
+            <p className={`text-xs mt-2 ${themeClasses.textSecondary(theme)}`}>
               Estimated size: {estimatedSize}
             </p>
           </ExportSection>
@@ -245,7 +247,7 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
         {/* Error Message */}
         {error && (
           <div className="mt-4 p-3 rounded-lg bg-red-900/20 border border-red-800/30">
-            <p className="text-sm text-red-400">{error}</p>
+            <p className="text-sm text-error">{error}</p>
           </div>
         )}
       </div>
@@ -257,13 +259,13 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
 interface ExportSectionProps {
   title: string
   children: React.ReactNode
-  isDark: boolean
+  theme: Theme
 }
 
-function ExportSection({ title, children, isDark }: ExportSectionProps) {
+function ExportSection({ title, children, theme }: ExportSectionProps) {
   return (
     <div className="mb-6">
-      <h3 className={`text-sm font-medium uppercase tracking-wider mb-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+      <h3 className={`text-sm font-medium uppercase tracking-wider mb-3 ${themeClasses.textSecondary(theme)}`}>
         {title}
       </h3>
       {children}
