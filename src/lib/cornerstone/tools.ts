@@ -1,5 +1,7 @@
 import { MeasurementAnnotation, RegionAnnotation, Point2D } from '@/types/annotation'
 import { PixelSpacing } from '../dicom/pixelSpacing'
+import { useAnnotationStore } from '@/stores/annotationStore'
+import { clearMeasurementToolState } from './initCornerstone'
 
 /**
  * cornerstone-tools tool names for the measurement / ROI tools we register.
@@ -16,6 +18,16 @@ export const MEASUREMENT_TOOL_NAMES = {
 export type MeasurementToolName = keyof typeof MEASUREMENT_TOOL_NAMES
 
 const MEASUREMENT_TOOL_SET = new Set<string>(Object.values(MEASUREMENT_TOOL_NAMES))
+
+/**
+ * Remove all measurement / ROI annotations for an instance — both the persisted
+ * store overlay and cornerstone-tools' in-session copy. Backs the toolbar
+ * "Clear measurements" button and the Delete/Backspace shortcut.
+ */
+export function clearMeasurements(sopInstanceUID: string): void {
+  useAnnotationStore.getState().clearMeasurementsForInstance(sopInstanceUID)
+  clearMeasurementToolState()
+}
 
 /** True when `toolName` is one of the cornerstone-tools measurement/ROI tools. */
 export function isMeasurementTool(toolName: string): boolean {

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useStudyStore } from '@/stores/studyStore'
+import { clearMeasurements } from '@/lib/cornerstone/tools'
 import { useViewportStore } from '@/stores/viewportStore'
 import { ViewportToolbar } from './ViewportToolbar'
 import { ExportDialog } from '@/components/export/ExportDialog'
@@ -94,7 +95,11 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
     onCineFrameRateDown: () =>
       useViewportStore.getState().setCineFrameRate(useViewportStore.getState().cineFrameRate - 1),
     onActivateLength: () => useViewportStore.getState().setActiveTool('Length'),
-    onActivateAngle: () => useViewportStore.getState().setActiveTool('Angle')
+    onActivateAngle: () => useViewportStore.getState().setActiveTool('Angle'),
+    onClearMeasurements: () => {
+      const inst = useStudyStore.getState().currentInstance
+      if (inst) clearMeasurements(inst.sopInstanceUID)
+    }
   })
 
   if (error) {

@@ -27,6 +27,8 @@ interface UseViewportKeyboardOptions {
   onActivateLength?: () => void
   /** Activate the angle tool (Shift+A) */
   onActivateAngle?: () => void
+  /** Clear all drawn measurements/ROIs on the current image (Delete/Backspace) */
+  onClearMeasurements?: () => void
 }
 
 /**
@@ -69,7 +71,8 @@ export function useViewportKeyboard(options: UseViewportKeyboardOptions) {
     onCineFrameRateUp,
     onCineFrameRateDown,
     onActivateLength,
-    onActivateAngle
+    onActivateAngle,
+    onClearMeasurements
   } = options
 
   const [isModifierKeyPressed, setIsModifierKeyPressed] = useState(false)
@@ -149,6 +152,14 @@ export function useViewportKeyboard(options: UseViewportKeyboardOptions) {
         }
       }
 
+      // Clear drawn measurements/ROIs on the current image (Delete / Backspace).
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (onClearMeasurements) {
+          e.preventDefault()
+          onClearMeasurements()
+        }
+      }
+
       // AI detection keyboard shortcut (M)
       if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
         if (currentInstance && !isDetecting && !isAnalyzing) {
@@ -192,7 +203,8 @@ export function useViewportKeyboard(options: UseViewportKeyboardOptions) {
     onCineFrameRateUp,
     onCineFrameRateDown,
     onActivateLength,
-    onActivateAngle
+    onActivateAngle,
+    onClearMeasurements
   ])
 
   return { isModifierKeyPressed }

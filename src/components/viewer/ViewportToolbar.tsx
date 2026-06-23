@@ -11,8 +11,10 @@ import {
   Triangle,
   Circle,
   Square,
+  Eraser,
 } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import { clearMeasurements } from '@/lib/cornerstone/tools'
 import { useViewportStore } from '@/stores/viewportStore'
 import { useStudyStore } from '@/stores/studyStore'
 import { useFavoritesStore, FavoriteImage } from '@/stores/favoritesStore'
@@ -89,6 +91,16 @@ export function ViewportToolbar({
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite)
   const addAnnotations = useAnnotationStore((state) => state.addAnnotations)
   const deleteAnnotationsForInstance = useAnnotationStore((state) => state.deleteAnnotationsForInstance)
+  // Count drawn measurements/ROIs on the current image to gate the Clear button.
+  const measurementCount = useAnnotationStore((state) =>
+    currentInstance
+      ? state.annotations.filter(
+          (a) =>
+            a.sopInstanceUID === currentInstance.sopInstanceUID &&
+            (a.type === 'measurement' || a.type === 'region')
+        ).length
+      : 0
+  )
   const addAnalysis = useAiAnalysisStore((state) => state.addAnalysis)
   const isAnalyzing = useAiAnalysisStore((state) => state.isAnalyzing)
   const setAnalyzing = useAiAnalysisStore((state) => state.setAnalyzing)
@@ -472,38 +484,49 @@ export function ViewportToolbar({
 
       <ToolbarDivider />
 
-      {/* Measurement & ROI tools */}
+      {/* Measurement & ROI tools. Click an active tool again to deselect it. */}
       <ToolbarButton
         onClick={() => handleToggleTool('Length')}
         active={activeTool === 'Length'}
+        isToggle
         disabled={!currentInstance}
-        title="Distance measurement (L)"
+        title="Distance measurement (L) — click again to deselect"
         data-testid="length-tool-button"
         icon={<Ruler className="w-4 h-4" />}
       />
       <ToolbarButton
         onClick={() => handleToggleTool('Angle')}
         active={activeTool === 'Angle'}
+        isToggle
         disabled={!currentInstance}
-        title="Angle measurement (Shift+A)"
+        title="Angle measurement (Shift+A) — click again to deselect"
         data-testid="angle-tool-button"
         icon={<Triangle className="w-4 h-4" />}
       />
       <ToolbarButton
         onClick={() => handleToggleTool('EllipticalRoi')}
         active={activeTool === 'EllipticalRoi'}
+        isToggle
         disabled={!currentInstance}
-        title="Elliptical ROI"
+        title="Elliptical ROI — click again to deselect"
         data-testid="ellipse-roi-button"
         icon={<Circle className="w-4 h-4" />}
       />
       <ToolbarButton
         onClick={() => handleToggleTool('RectangleRoi')}
         active={activeTool === 'RectangleRoi'}
+        isToggle
         disabled={!currentInstance}
-        title="Rectangle ROI"
+        title="Rectangle ROI — click again to deselect"
         data-testid="rectangle-roi-button"
         icon={<Square className="w-4 h-4" />}
+      />
+      <ToolbarButton
+        onClick={() => currentInstance && clearMeasurements(currentInstance.sopInstanceUID)}
+        disabled={measurementCount === 0}
+        title={measurementCount > 0 ? `Clear ${measurementCount} measurement${measurementCount === 1 ? '' : 's'} (Delete)` : 'No measurements to clear'}
+        data-testid="clear-measurements-button"
+        icon={<Eraser className="w-4 h-4" />}
       />
 
       <ToolbarDivider />
@@ -747,7 +770,7 @@ function ToolbarButton({ onClick, title, icon, active = false, disabled = false,
           disabled
             ? `${themeClasses.textTertiary(theme)} cursor-not-allowed`
             : active
-            ? `${themeClasses.text(theme)} ${themeClasses.hoverBgSecondary(theme)}`
+            ? `${themeClasses.bgActive(theme)} ${themeClasses.text(theme)}`
             : `${themeClasses.textSecondary(theme)} ${themeClasses.hoverBgSecondary(theme)} ${themeClasses.hoverText(theme)}`
         }`}
       >

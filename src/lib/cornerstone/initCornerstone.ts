@@ -87,6 +87,35 @@ export function addMeasurementToolsForElement(element: HTMLElement): void {
 }
 
 /**
+ * Clear all drawn measurement / ROI tool state from every enabled element and
+ * repaint. Pairs with the annotation store's clearMeasurementsForInstance so
+ * "Clear measurements" removes both the persisted overlay and cornerstone-tools'
+ * own in-session copy. Safe to call when nothing is drawn.
+ */
+export function clearMeasurementToolState(): void {
+  if (!toolsInitialized) return
+  try {
+    const enabled = (cornerstone.getEnabledElements?.() || []) as Array<{ element: HTMLElement }>
+    for (const { element } of enabled) {
+      for (const name of ['Length', 'Angle', 'EllipticalRoi', 'RectangleRoi']) {
+        try {
+          cornerstoneTools.clearToolState(element, name)
+        } catch {
+          // No state for this tool on this element — ignore.
+        }
+      }
+      try {
+        cornerstone.updateImage(element)
+      } catch {
+        // Element not currently displaying an image — ignore.
+      }
+    }
+  } catch (err) {
+    console.warn('[CornerstoneTools] Failed to clear measurement tool state:', err)
+  }
+}
+
+/**
  * Initialize Cornerstone 2.x and related libraries
  * This must be called before using any Cornerstone functionality
  */

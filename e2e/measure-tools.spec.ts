@@ -13,7 +13,7 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const MULTI = path.join(__dirname, 'fixtures', 'multi-series')
 
-test('measurement tools activate without "Unable to find tool" warnings', async ({ page }) => {
+test('measure tools: activate cleanly, toggle off, and gate Clear', async ({ page }) => {
   const toolWarnings: string[] = []
   const colorLutWarnings: string[] = []
   page.on('console', (msg) => {
@@ -32,6 +32,17 @@ test('measurement tools activate without "Unable to find tool" warnings', async 
   await page.locator('[data-testid="file-input"]').setInputFiles(files)
   await expect(page.locator('[data-testid="viewport"]')).toBeVisible({ timeout: 30000 })
   await page.waitForTimeout(1200)
+
+  // Clear-measurements button is disabled until something is drawn.
+  await expect(page.locator('[data-testid="clear-measurements-button"]')).toBeDisabled()
+
+  // A tool can be selected AND unselected (toggle) — reflected in aria-pressed.
+  const length = page.locator('[data-testid="length-tool-button"]')
+  await expect(length).toBeEnabled()
+  await length.click()
+  await expect(length).toHaveAttribute('aria-pressed', 'true')
+  await length.click()
+  await expect(length).toHaveAttribute('aria-pressed', 'false')
 
   for (const id of ['length-tool-button', 'angle-tool-button', 'ellipse-roi-button', 'rectangle-roi-button']) {
     const btn = page.locator(`[data-testid="${id}"]`)
