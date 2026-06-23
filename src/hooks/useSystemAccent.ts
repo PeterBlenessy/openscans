@@ -13,9 +13,15 @@ export function useSystemAccent(): void {
   useEffect(() => {
     void applySystemAccent()
 
+    // focus + visibilitychange both fire when returning to the app; coalesce
+    // them into a single in-flight fetch so we don't double-invoke the command.
+    let inFlight = false
     const refresh = () => {
-      if (document.visibilityState === 'hidden') return
-      void applySystemAccent()
+      if (document.visibilityState === 'hidden' || inFlight) return
+      inFlight = true
+      void applySystemAccent().finally(() => {
+        inFlight = false
+      })
     }
     window.addEventListener('focus', refresh)
     document.addEventListener('visibilitychange', refresh)

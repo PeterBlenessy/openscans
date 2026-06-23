@@ -36,7 +36,7 @@ interface UseAiOperationsOptions {
   addAnnotations: (annotations: Annotation[]) => void
   deleteAnnotationsForInstance: (instanceUID: string, isAiGenerated: boolean) => void
   addAnalysis: (analysis: AiAnalysis) => void
-  handleError: (error: Error | string, context: string, severity?: 'error' | 'warning' | 'info') => void
+  handleError: (error: Error | string, context: string, severity?: 'error' | 'warning' | 'info' | 'success') => void
 }
 
 interface UseAiOperationsReturn {

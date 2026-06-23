@@ -32,10 +32,7 @@ export function ProgressBar({ value, theme, className = '', label }: ProgressBar
       className={`relative h-1.5 w-full overflow-hidden rounded-full ${themeClasses.bgSecondary(t)} ${className}`}
     >
       {indeterminate ? (
-        <div
-          className="absolute inset-y-0 left-0 w-2/5 rounded-full bg-accent"
-          style={{ animation: 'mr-indeterminate 1.2s ease-in-out infinite' }}
-        />
+        <div className="animate-mr-indeterminate absolute inset-y-0 left-0 w-2/5 rounded-full bg-accent" />
       ) : (
         <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} />
       )}

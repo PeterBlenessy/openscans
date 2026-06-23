@@ -253,6 +253,9 @@ function resolveTheme(preference: ThemePreference): Theme {
   return preference
 }
 
+/** Guards the one-time registration of the OS appearance listener. */
+let themeSyncRegistered = false
+
 /**
  * Zustand store for managing application settings.
  *
@@ -293,7 +296,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
   applyTheme(theme)
 
   // Keep the resolved theme in sync with the OS while the preference is 'system'.
-  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+  // Registered once per module (guarded) so repeated store creation under HMR or
+  // in tests doesn't stack duplicate listeners.
+  if (!themeSyncRegistered && typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    themeSyncRegistered = true
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
       if (get().themePreference !== 'system') return
       const resolved = resolveTheme('system')

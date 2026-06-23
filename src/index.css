@@ -52,6 +52,11 @@ body {
   100% { transform: translateX(260%); }
 }
 
+/* Utility for the shared <ProgressBar> indeterminate segment. */
+.animate-mr-indeterminate {
+  animation: mr-indeterminate 1.2s ease-in-out infinite;
+}
+
 /* Full-screen viewport: ensure the container truly fills the screen and the
    Cornerstone canvas expands with it. The native :fullscreen pseudo-class
    targets the element passed to requestFullscreen() (the viewport container). */
