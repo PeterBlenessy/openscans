@@ -41,10 +41,18 @@ export function AnnotationOverlay({ canvasElement }: AnnotationOverlayProps) {
     }
   }, [canvasElement])
 
-  // Get annotations for current instance (only if markers are visible)
+  // Get annotations for current instance (only if markers are visible).
+  // Dedupe by id so a duplicated annotation (e.g. from persisted state) can
+  // never produce duplicate React keys / duplicated-or-omitted SVG children.
   const annotations = useMemo(() => {
     if (!currentInstance || !showAnnotations || !areMarkersVisible) return []
-    return allAnnotations.filter((ann) => ann.sopInstanceUID === currentInstance.sopInstanceUID)
+    const seen = new Set<string>()
+    return allAnnotations.filter((ann) => {
+      if (ann.sopInstanceUID !== currentInstance.sopInstanceUID) return false
+      if (seen.has(ann.id)) return false
+      seen.add(ann.id)
+      return true
+    })
   }, [currentInstance, showAnnotations, areMarkersVisible, allAnnotations])
 
 
