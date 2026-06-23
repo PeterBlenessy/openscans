@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ScanLine, Minus, X, AlertTriangle, Lock, Package, Trash2, Clock } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
-import { Spinner, ProgressBar } from '@/components/ui'
+import { Spinner, ProgressBar, Tooltip } from '@/components/ui'
 import { useMrEngineStore } from '@/stores/mrEngineStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { themeClasses } from '@/lib/utils'
@@ -130,16 +130,18 @@ export function MrEngineSetup() {
             </div>
           ) : minimized ? (
             // Minimized chip — click to restore
+            <Tooltip label={job?.stage ?? ''}>
             <button
               onClick={restore}
+              aria-label="Restore MR engine progress"
               className={`flex items-center gap-2 px-3 py-2 rounded-full shadow-2xl border ${themeClasses.border(theme)} ${themeClasses.bg(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
-              title={job?.stage}
             >
               <Spinner size="sm" />
               <span className={`text-xs ${themeClasses.text(theme)}`}>
                 MR engine{pct !== null ? ` · ${pct}%` : '…'}
               </span>
             </button>
+            </Tooltip>
           ) : (
             // Expanded progress card
             <div
@@ -149,14 +151,15 @@ export function MrEngineSetup() {
                 <span className={`text-sm font-medium ${themeClasses.text(theme)}`}>
                   {job?.kind === 'install' ? 'Installing MR engine' : 'MR-precision segmentation'}
                 </span>
+                <Tooltip label="Minimize and keep working">
                 <button
                   onClick={minimize}
                   aria-label="Minimize"
-                  title="Minimize and keep working"
                   className={`p-1 rounded ${themeClasses.textSecondary(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
                 >
                   <Minus className="w-4 h-4" />
                 </button>
+                </Tooltip>
               </div>
               <p className={`text-xs ${themeClasses.textSecondary(theme)} mb-2 flex justify-between gap-2`}>
                 <span className="truncate">

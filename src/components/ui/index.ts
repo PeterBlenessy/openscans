@@ -18,6 +18,8 @@ export { Badge } from './Badge'
 export { EmptyState } from './EmptyState'
 export { useUiTheme } from './theme'
 
+export { Tooltip, TooltipProvider } from './Tooltip'
+
 // Existing shared components
 export { Modal } from './Modal'
 

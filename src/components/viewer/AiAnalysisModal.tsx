@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm'
 import { jsPDF } from 'jspdf'
 import { FileText } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
+import { Tooltip } from '@/components/ui'
 import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
 import { useStudyStore } from '@/stores/studyStore'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -278,9 +279,10 @@ export function AiAnalysisModal() {
       headerRightActions={
         <>
           {/* Print button */}
+          <Tooltip label="Print analysis">
           <button
             onClick={handlePrint}
-            title="Print analysis"
+            aria-label="Print analysis"
             className={`p-1.5 rounded transition-colors ${themeClasses.textSecondary(theme)} ${themeClasses.hoverText(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
           >
             <svg
@@ -296,10 +298,12 @@ export function AiAnalysisModal() {
               />
             </svg>
           </button>
+          </Tooltip>
           {/* Copy button */}
+          <Tooltip label={copied ? 'Copied!' : 'Copy to clipboard'}>
           <button
             onClick={handleCopy}
-            title={copied ? 'Copied!' : 'Copy to clipboard'}
+            aria-label={copied ? 'Copied!' : 'Copy to clipboard'}
             className={`p-1.5 rounded transition-colors ${themeClasses.hoverBgSecondary(theme)} ${
               copied ? themeClasses.text(theme) : `${themeClasses.textSecondary(theme)} ${themeClasses.hoverText(theme)}`
             }`}
@@ -329,10 +333,12 @@ export function AiAnalysisModal() {
               </svg>
             )}
           </button>
+          </Tooltip>
           {/* Delete button */}
+          <Tooltip label="Delete analysis">
           <button
             onClick={handleDelete}
-            title="Delete analysis"
+            aria-label="Delete analysis"
             className={`p-1.5 rounded transition-colors ${themeClasses.textSecondary(theme)} ${themeClasses.hoverText(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
           >
             <svg
@@ -348,6 +354,7 @@ export function AiAnalysisModal() {
               />
             </svg>
           </button>
+          </Tooltip>
         </>
       }
       footer={

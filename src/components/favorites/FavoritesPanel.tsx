@@ -8,7 +8,7 @@ import { Star } from 'lucide-react'
 import { cornerstone } from '@/lib/cornerstone/initCornerstone'
 import { BatchExportDialog } from './BatchExportDialog'
 import { formatSeriesDescription } from '@/lib/utils/formatSeriesDescription'
-import { EmptyState } from '@/components/ui'
+import { EmptyState, Tooltip } from '@/components/ui'
 
 type ViewMode = 'text' | 'thumbnails'
 
@@ -113,10 +113,10 @@ export function FavoritesPanel() {
           </div>
           <div className="flex items-center gap-3">
             {/* View mode toggle */}
+            <Tooltip label={viewMode === 'text' ? 'Show thumbnails' : 'Show text'}>
             <button
               onClick={() => setViewMode(viewMode === 'text' ? 'thumbnails' : 'text')}
               className={`transition-colors ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
-              title={viewMode === 'text' ? 'Show thumbnails' : 'Show text'}
               aria-label={viewMode === 'text' ? 'Show thumbnails' : 'Show text'}
             >
               {viewMode === 'text' ? (
@@ -129,10 +129,11 @@ export function FavoritesPanel() {
                 </svg>
               )}
             </button>
+            </Tooltip>
+            <Tooltip label="Export all to PDF">
             <button
               onClick={() => setShowBatchExport(true)}
               className={`transition-colors ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
-              title="Export all to PDF"
               aria-label="Export all to PDF"
             >
               <svg
@@ -146,6 +147,7 @@ export function FavoritesPanel() {
                 <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.25 2.25 0 004.25 17.5h11.5A2.25 2.25 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .414-.336.75-.75.75H4.25a.75.75 0 01-.75-.75v-2.5z" />
               </svg>
             </button>
+            </Tooltip>
           </div>
         </div>
 

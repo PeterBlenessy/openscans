@@ -6,7 +6,7 @@ import { useLoadStudy } from '@/hooks/useLoadStudy'
 import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { LeftDrawerIconBar } from './LeftDrawerIconBar'
 import { themeClasses } from '@/lib/utils'
-import { Badge, EmptyState } from '@/components/ui'
+import { Badge, EmptyState, Tooltip } from '@/components/ui'
 
 export type LeftDrawerState = 'expanded' | 'minimized' | 'hidden'
 
@@ -115,13 +115,15 @@ export function LeftDrawer({ state, onLoadNewFiles, onOpenSettings, onOpenKeyboa
                 Recent Studies
               </h3>
               {recentStudies.length > 0 && (
+                <Tooltip label="Clear all">
                 <button
                   onClick={clearRecentStudies}
+                  aria-label="Clear all recent studies"
                   className={`text-xs transition-colors ${themeClasses.textTertiary(theme)} ${theme === 'dark' ? 'hover:text-gray-300' : 'hover:text-gray-600'}`}
-                  title="Clear all"
                 >
                   Clear
                 </button>
+                </Tooltip>
               )}
             </div>
 

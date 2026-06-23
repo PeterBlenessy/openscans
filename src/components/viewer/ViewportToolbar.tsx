@@ -20,6 +20,7 @@ import { useAnnotationStore } from '@/stores/annotationStore'
 import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { themeClasses } from '@/lib/utils'
+import { Tooltip } from '@/components/ui'
 import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { mockDetector } from '@/lib/ai/mockVertebralDetector'
 import { initDetector, getApiKeyForProvider } from '@/lib/ai/aiDetectorManager'
@@ -732,23 +733,24 @@ interface ToolbarButtonProps {
 function ToolbarButton({ onClick, title, icon, active = false, disabled = false, isToggle = false, 'data-testid': testId }: ToolbarButtonProps) {
   const theme = useSettingsStore((s) => s.theme)
   return (
-    <button
-      onClick={onClick}
-      title={title}
-      aria-label={title}
-      aria-pressed={isToggle ? active : undefined}
-      disabled={disabled}
-      data-testid={testId}
-      className={`p-2 rounded transition-colors ${
-        disabled
-          ? `${themeClasses.textTertiary(theme)} cursor-not-allowed`
-          : active
-          ? `${themeClasses.text(theme)} ${themeClasses.hoverBgSecondary(theme)}`
-          : `${themeClasses.textSecondary(theme)} ${themeClasses.hoverBgSecondary(theme)} ${themeClasses.hoverText(theme)}`
-      }`}
-    >
-      <span aria-hidden="true">{icon}</span>
-    </button>
+    <Tooltip label={title}>
+      <button
+        onClick={onClick}
+        aria-label={title}
+        aria-pressed={isToggle ? active : undefined}
+        disabled={disabled}
+        data-testid={testId}
+        className={`p-2 rounded transition-colors ${
+          disabled
+            ? `${themeClasses.textTertiary(theme)} cursor-not-allowed`
+            : active
+            ? `${themeClasses.text(theme)} ${themeClasses.hoverBgSecondary(theme)}`
+            : `${themeClasses.textSecondary(theme)} ${themeClasses.hoverBgSecondary(theme)} ${themeClasses.hoverText(theme)}`
+        }`}
+      >
+        <span aria-hidden="true">{icon}</span>
+      </button>
+    </Tooltip>
   )
 }
 
