@@ -13,8 +13,8 @@ import {
   Toggle,
   ApiKeyField,
   TextField,
-} from './controls'
-import { Callout } from '@/components/ui'
+  Callout,
+} from '@/components/ui'
 
 interface SettingsPanelProps {
   show: boolean
