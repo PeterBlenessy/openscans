@@ -13,7 +13,7 @@ import { ResizeHandle } from './components/layout/ResizeHandle'
 import { SettingsPanel } from './components/settings/SettingsPanel'
 import { ErrorToast } from './components/ErrorToast'
 import { ConfirmDialog } from './components/ui/ConfirmDialog'
-import { Spinner, Tooltip, TooltipProvider } from './components/ui'
+import { Slider, Spinner, Tooltip, TooltipProvider } from './components/ui'
 import { useSystemAccent } from './hooks/useSystemAccent'
 import { UpdateNotification } from './components/UpdateNotification'
 import { useStudyStore } from './stores/studyStore'
@@ -391,24 +391,17 @@ function App() {
                     <span className={`text-sm min-w-fit ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                       {currentInstanceIndex + 1} / {currentSeries.instances.length}
                     </span>
-                    <input
-                      type="range"
-                      min="0"
-                      max={currentSeries.instances.length - 1}
+                    {/* Same shared Slider primitive as the settings sliders, full-width. */}
+                    <Slider
                       value={currentInstanceIndex}
-                      onChange={(e) => {
-                        const newIndex = parseInt(e.target.value)
-                        useStudyStore.getState().setCurrentInstance(newIndex)
-                      }}
-                      // Native range. A discrete grey thumb/track (overriding the
-                      // global OS-accent `accent-color`) to match the settings
-                      // sliders — selection chrome stays neutral; the accent is
-                      // reserved for primary actions. Kept native so the e2e can
-                      // read inputValue().
-                      className="flex-1 h-2 cursor-pointer"
-                      style={{ accentColor: theme === 'dark' ? '#9ca3af' : '#6b7280' }}
-                      data-testid="instance-slider"
-                      aria-label="Navigate images in series"
+                      onChange={(i) => useStudyStore.getState().setCurrentInstance(i)}
+                      min={0}
+                      max={currentSeries.instances.length - 1}
+                      step={1}
+                      ariaLabel="Navigate images in series"
+                      className="flex-1"
+                      testId="instance-slider"
+                      theme={theme}
                     />
                   </div>
                 </div>

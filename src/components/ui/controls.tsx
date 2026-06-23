@@ -129,15 +129,19 @@ interface SliderProps {
   max: number
   step: number
   ariaLabel: string
-  /** Formatted value shown in the pill (e.g. "1.5x", "8%"). */
-  display: string
+  /** Formatted value shown in the pill (e.g. "1.5x", "8%"). Omit for no pill. */
+  display?: string
   theme: Theme
+  /** Root width/sizing override (default `w-32`; pass `flex-1` for full width). */
+  className?: string
+  /** Forwarded as data-testid on the slider root (for e2e). */
+  testId?: string
 }
 
-/** Range slider with a value pill, built on Radix Slider. */
-export function Slider({ value, onChange, min, max, step, ariaLabel, display, theme }: SliderProps) {
+/** Range slider (optionally with a value pill), built on Radix Slider. */
+export function Slider({ value, onChange, min, max, step, ariaLabel, display, theme, className = 'w-32', testId }: SliderProps) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-1 items-center gap-3">
       <RSlider.Root
         value={[value]}
         min={min}
@@ -145,16 +149,19 @@ export function Slider({ value, onChange, min, max, step, ariaLabel, display, th
         step={step}
         onValueChange={([v]) => onChange(v)}
         aria-label={ariaLabel}
-        className="relative flex items-center w-32 h-5 cursor-pointer touch-none select-none"
+        data-testid={testId}
+        className={`relative flex h-5 cursor-pointer touch-none select-none items-center ${className}`}
       >
         <RSlider.Track className={`relative h-1.5 grow rounded-full ${themeClasses.bgActive(theme)}`}>
           <RSlider.Range className={`absolute h-full rounded-full ${isDark(theme) ? 'bg-gray-300' : 'bg-gray-600'}`} />
         </RSlider.Track>
         <RSlider.Thumb className="block h-4 w-4 rounded-full bg-white shadow border border-black/10 focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-gray-400" />
       </RSlider.Root>
-      <span className={`text-xs tabular-nums w-10 text-right ${themeClasses.textSecondary(theme)}`}>
-        {display}
-      </span>
+      {display != null && (
+        <span className={`text-xs tabular-nums w-10 text-right ${themeClasses.textSecondary(theme)}`}>
+          {display}
+        </span>
+      )}
     </div>
   )
 }

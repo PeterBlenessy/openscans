@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Modal } from '@/components/ui/Modal'
-import { Button, CardButton, Checkbox } from '@/components/ui'
+import { Button, CardButton, Checkbox, Slider } from '@/components/ui'
 import { useSettingsStore, Theme } from '@/stores/settingsStore'
 import { themeClasses } from '@/lib/utils'
 import { useStudyStore } from '@/stores/studyStore'
@@ -155,15 +155,15 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
           {format === 'jpeg' && (
             <ExportSection title="JPEG Quality" theme={theme}>
               <div className="flex items-center gap-4">
-                <input
-                  type="range"
-                  min="50"
-                  max="100"
-                  step="5"
+                <Slider
                   value={jpegQuality}
-                  onChange={(e) => setJpegQuality(parseInt(e.target.value))}
-                  aria-label="JPEG quality"
-                  className="flex-1 h-2 cursor-pointer"
+                  onChange={setJpegQuality}
+                  min={50}
+                  max={100}
+                  step={5}
+                  ariaLabel="JPEG quality"
+                  className="flex-1"
+                  theme={theme}
                 />
                 <span className={`text-sm font-mono w-12 text-right ${themeClasses.text(theme)}`}>
                   {jpegQuality}%
