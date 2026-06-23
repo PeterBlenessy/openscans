@@ -182,15 +182,15 @@ export function Toggle({ checked, onChange, theme, ariaLabel }: ToggleProps) {
       aria-checked={checked}
       aria-label={ariaLabel}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent ${fieldRing(theme)} ${
+      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent ${fieldRing(theme)} ${
         checked
           ? isDark(theme) ? 'bg-gray-300' : 'bg-gray-700'
           : isDark(theme) ? 'bg-[#2a2a2a]' : 'bg-gray-300'
       }`}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full transition-transform ${
-          checked ? 'translate-x-6 bg-[#1a1a1a]' : 'translate-x-1 bg-white'
+        className={`inline-block h-3.5 w-3.5 transform rounded-full transition-transform ${
+          checked ? 'translate-x-[18px] bg-[#1a1a1a]' : 'translate-x-0.5 bg-white'
         }`}
       />
     </button>

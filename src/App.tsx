@@ -287,7 +287,7 @@ function App() {
       <header className={`px-6 py-2.5 flex items-center justify-between border-b flex-shrink-0 ${theme === 'dark' ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
         <div>
           <h1 className="text-xl font-bold">OpenScans</h1>
-          <p className={`text-xs mt-0 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+          <p className={`text-xs mt-0 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
             Privacy-first DICOM viewer
           </p>
         </div>
@@ -301,7 +301,7 @@ function App() {
               // Cycle: expanded → minimized → expanded (skip hidden for header toggle)
               setLeftDrawerState((prev) => prev === 'expanded' ? 'minimized' : 'expanded')
             }}
-            className={`p-2 rounded transition-colors ${leftDrawerState === 'expanded' ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-500' : 'hover:bg-gray-200 text-gray-400')}`}
+            className={`p-2 rounded transition-colors ${leftDrawerState === 'expanded' ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-400' : 'hover:bg-gray-200 text-gray-600')}`}
             aria-label="Toggle Left Panel"
             aria-pressed={leftDrawerState === 'expanded'}
           >
@@ -313,7 +313,7 @@ function App() {
           <Tooltip label="Toggle Right Panel">
           <button
             onClick={() => setShowRightSidebar(!showRightSidebar)}
-            className={`p-2 rounded transition-colors ${showRightSidebar ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-500' : 'hover:bg-gray-200 text-gray-400')}`}
+            className={`p-2 rounded transition-colors ${showRightSidebar ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-400' : 'hover:bg-gray-200 text-gray-600')}`}
             aria-label="Toggle Right Panel"
             aria-pressed={showRightSidebar}
           >
@@ -325,7 +325,7 @@ function App() {
           <Tooltip label="Toggle Thumbnail Strip">
           <button
             onClick={() => setShowThumbnailStrip(!showThumbnailStrip)}
-            className={`p-2 rounded transition-colors ${showThumbnailStrip ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-500' : 'hover:bg-gray-200 text-gray-400')}`}
+            className={`p-2 rounded transition-colors ${showThumbnailStrip ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-400' : 'hover:bg-gray-200 text-gray-600')}`}
             aria-label="Toggle Thumbnail Strip"
             aria-pressed={showThumbnailStrip}
           >
@@ -340,7 +340,7 @@ function App() {
           <Tooltip label={hidePersonalInfo ? 'Show Personal Information' : 'Hide Personal Information'}>
           <button
             onClick={() => setHidePersonalInfo(!hidePersonalInfo)}
-            className={`p-2 rounded transition-colors ${hidePersonalInfo ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-500' : 'hover:bg-gray-200 text-gray-400')}`}
+            className={`p-2 rounded transition-colors ${hidePersonalInfo ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-400' : 'hover:bg-gray-200 text-gray-600')}`}
             aria-label={hidePersonalInfo ? 'Show Personal Information' : 'Hide Personal Information'}
             aria-pressed={hidePersonalInfo}
             data-testid="privacy-toggle"

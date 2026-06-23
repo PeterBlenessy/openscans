@@ -94,7 +94,7 @@ export function LeftDrawerIconBar({
               className={`w-full h-11 flex items-center justify-center rounded-lg transition-colors ${
                 theme === 'dark'
                   ? 'hover:bg-[#1a1a1a] text-gray-400 hover:text-gray-300'
-                  : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
+                  : 'hover:bg-gray-100 text-gray-600 hover:text-gray-800'
               }`}
               aria-label={button.label}
             >

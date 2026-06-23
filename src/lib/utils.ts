@@ -43,11 +43,13 @@ export const themeClasses = {
   bgTertiary: (theme: 'light' | 'dark') => theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-gray-50',
   bgActive: (theme: 'light' | 'dark') => theme === 'dark' ? 'bg-[#2a2a2a]' : 'bg-gray-300',
 
-  // Text colors
+  // Text colors. Tuned for WCAG AA contrast on the app's bg/bgSecondary
+  // surfaces in both themes (the previous light greys — gray-400/300 on white —
+  // were ~2.6:1 / ~1.4:1 and failed AA).
   text: (theme: 'light' | 'dark') => theme === 'dark' ? 'text-white' : 'text-gray-900',
-  textSecondary: (theme: 'light' | 'dark') => theme === 'dark' ? 'text-gray-400' : 'text-gray-500',
-  textTertiary: (theme: 'light' | 'dark') => theme === 'dark' ? 'text-gray-500' : 'text-gray-400',
-  textMuted: (theme: 'light' | 'dark') => theme === 'dark' ? 'text-gray-600' : 'text-gray-300',
+  textSecondary: (theme: 'light' | 'dark') => theme === 'dark' ? 'text-gray-300' : 'text-gray-600',
+  textTertiary: (theme: 'light' | 'dark') => theme === 'dark' ? 'text-gray-400' : 'text-gray-500',
+  textMuted: (theme: 'light' | 'dark') => theme === 'dark' ? 'text-gray-500' : 'text-gray-500',
 
   // Border colors
   border: (theme: 'light' | 'dark') => theme === 'dark' ? 'border-[#2a2a2a]' : 'border-gray-200',
