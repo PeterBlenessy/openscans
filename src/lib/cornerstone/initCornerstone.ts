@@ -57,6 +57,36 @@ export function areToolsInitialized(): boolean {
 }
 
 /**
+ * Register the measurement / ROI tools on a specific enabled element.
+ *
+ * Global `cornerstoneTools.addTool` only attaches tools to elements that
+ * cornerstone-tools is tracking, and it only starts tracking an element via the
+ * `ELEMENT_ENABLED` event that fires *after* `cornerstoneTools.init()`. Our
+ * viewport element is enabled before tools-init completes, so it never receives
+ * the global tools and `setToolActiveForElement` warns "Unable to find tool …"
+ * (the toolbar's measure buttons then do nothing). Adding per-element here is
+ * timing-independent. Idempotent — skips when the tools are already present.
+ */
+export function addMeasurementToolsForElement(element: HTMLElement): void {
+  if (!toolsInitialized) return
+  try {
+    // Already registered on this element? (avoids "tool already added" noise.)
+    if (cornerstoneTools.getToolForElement(element, 'Length')) return
+  } catch {
+    // getToolForElement throws if the element isn't tracked yet — fall through
+    // and add the tools below.
+  }
+  try {
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.LengthTool)
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.AngleTool)
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.EllipticalRoiTool)
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.RectangleRoiTool)
+  } catch (err) {
+    console.warn('[CornerstoneTools] Failed to add measurement tools for element:', err)
+  }
+}
+
+/**
  * Initialize Cornerstone 2.x and related libraries
  * This must be called before using any Cornerstone functionality
  */

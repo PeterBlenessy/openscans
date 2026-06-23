@@ -1,5 +1,9 @@
 import { RefObject, useEffect } from 'react'
-import { cornerstoneTools, areToolsInitialized } from '@/lib/cornerstone/initCornerstone'
+import {
+  cornerstoneTools,
+  areToolsInitialized,
+  addMeasurementToolsForElement,
+} from '@/lib/cornerstone/initCornerstone'
 import { useViewportStore } from '@/stores/viewportStore'
 import { useStudyStore } from '@/stores/studyStore'
 import { useAnnotationStore } from '@/stores/annotationStore'
@@ -47,6 +51,10 @@ export function useViewportTools(
     if (!element || !isInitialized || !areToolsInitialized()) return
 
     try {
+      // Ensure the measurement tools are registered on THIS element — global
+      // addTool doesn't reach an element enabled before tools-init. Idempotent.
+      addMeasurementToolsForElement(element)
+
       // Deactivate every measurement tool first, then activate the selected one.
       for (const name of Object.values(MEASUREMENT_TOOL_NAMES)) {
         cornerstoneTools.setToolPassiveForElement(element, name)
