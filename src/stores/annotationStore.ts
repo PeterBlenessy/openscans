@@ -174,8 +174,16 @@ export const useAnnotationStore = create<AnnotationState>()(
           return ann
         })
 
+        // Upsert by id: drop any existing annotations whose ids are being
+        // re-added, so re-running detection/segmentation replaces its markers
+        // instead of appending duplicates (which also produced duplicate React
+        // keys). Within a batch ids are already unique (label + index).
+        const incomingIds = new Set(annotationsWithOriginal.map((a) => a.id))
         set((state) => ({
-          annotations: [...state.annotations, ...annotationsWithOriginal],
+          annotations: [
+            ...state.annotations.filter((a) => !incomingIds.has(a.id)),
+            ...annotationsWithOriginal,
+          ],
         }))
       },
 
