@@ -297,11 +297,7 @@ function FavoriteThumbnail({ favorite, isActive, onClick, theme }: FavoriteThumb
   return (
     <button
       onClick={onClick}
-      className={`flex-shrink-0 relative group rounded overflow-hidden ring-1 ring-inset ${
-        isActive
-          ? (theme === 'dark' ? 'ring-[#5a5a5a]' : 'ring-gray-400')
-          : (theme === 'dark' ? 'ring-[#2a2a2a] hover:ring-[#3a3a3a]' : 'ring-gray-200 hover:ring-gray-300')
-      }`}
+      className="flex-shrink-0 relative group rounded overflow-hidden"
     >
       <div
         ref={canvasRef}
@@ -315,6 +311,16 @@ function FavoriteThumbnail({ favorite, isActive, onClick, theme }: FavoriteThumb
       <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs py-0.5 text-center">
         {favorite.instanceNumber}
       </div>
+      {/* Selection/edge border overlay (visible over the image; not clipped by
+          the panel's overflow like an outset ring would be). */}
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-0 rounded ${
+          isActive
+            ? (theme === 'dark' ? 'border-2 border-[#9a9a9a]' : 'border-2 border-[#737373]')
+            : (theme === 'dark' ? 'border border-[#3a3a3a]' : 'border border-[#d4d4d4]')
+        }`}
+      />
       {/* Star icon for favorites */}
       {isFavorite && (
         <div aria-hidden="true" className="absolute top-1 right-1 p-0.5 rounded bg-black/40" title="Favorited">

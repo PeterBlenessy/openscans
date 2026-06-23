@@ -207,11 +207,7 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
         }}
         aria-current={isSelected ? 'true' : undefined}
         aria-selected={isSelected}
-        className={`flex-shrink-0 relative group cursor-pointer rounded overflow-hidden transition-all ring-1 ring-inset ${
-          isSelected
-            ? (theme === 'dark' ? 'ring-[#5a5a5a]' : 'ring-gray-400')
-            : (theme === 'dark' ? 'ring-[#2a2a2a] hover:ring-[#3a3a3a]' : 'ring-gray-200 hover:ring-gray-300')
-        }`}
+        className="flex-shrink-0 relative group cursor-pointer rounded overflow-hidden transition-all"
       >
         <div
           ref={canvasRef}
@@ -231,6 +227,17 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
         <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs py-0.5 text-center">
           {index + 1}
         </div>
+        {/* Selection/edge — an absolute border overlay (sits over the image, so
+            it's visible; an inset ring is hidden by the canvas and an outset
+            ring is clipped by the strip's overflow). */}
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-0 rounded ${
+            isSelected
+              ? (theme === 'dark' ? 'border-2 border-[#9a9a9a]' : 'border-2 border-[#737373]')
+              : (theme === 'dark' ? 'border border-[#3a3a3a]' : 'border border-[#d4d4d4]')
+          }`}
+        />
         {/* Star icon for favorites - clickable to toggle */}
         <Tooltip label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}>
         <button
