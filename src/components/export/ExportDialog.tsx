@@ -105,6 +105,7 @@ export function ExportDialog({ show, onClose, viewportElement }: ExportDialogPro
       onClose={onClose}
       title="Export Image"
       maxWidth="max-w-lg"
+      dismissible={!isExporting}
       footer={
         <div className="flex items-center justify-between">
           <Button variant="ghost" onClick={onClose} disabled={isExporting}>
