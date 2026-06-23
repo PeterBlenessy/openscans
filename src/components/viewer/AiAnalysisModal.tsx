@@ -3,9 +3,9 @@ import { useState, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { jsPDF } from 'jspdf'
-import { FileText } from 'lucide-react'
+import { FileText, Printer, Copy, Check, Trash2 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
-import { Tooltip } from '@/components/ui'
+import { Tooltip, Button, SegmentedControl } from '@/components/ui'
 import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
 import { useStudyStore } from '@/stores/studyStore'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -250,110 +250,44 @@ export function AiAnalysisModal() {
       title="AI Radiology Analysis"
       icon={<FileText />}
       headerLeftActions={
-        /* View mode toggle */
-        /* Button styling pattern: Active state uses gray background (bg-[#2a2a2a]) with white text, NOT blue.
-           This matches the app toolbar styling in App.tsx header. Hover uses blue accent color for icons. */
-        <div className={`flex ml-3 rounded overflow-hidden border ${themeClasses.bgTertiary(theme)} ${themeClasses.border(theme)}`}>
-          <button
-            onClick={() => setViewMode('rendered')}
-            className={`px-2.5 py-1 text-xs font-medium transition-colors ${
-              viewMode === 'rendered'
-                ? `${themeClasses.bgActive(theme)} ${themeClasses.text(theme)}`
-                : `${themeClasses.textSecondary(theme)} ${themeClasses.hoverText(theme)} ${themeClasses.hoverBg(theme)}`
-            }`}
-          >
-            Rendered
-          </button>
-          <button
-            onClick={() => setViewMode('raw')}
-            className={`px-2.5 py-1 text-xs font-medium transition-colors ${
-              viewMode === 'raw'
-                ? `${themeClasses.bgActive(theme)} ${themeClasses.text(theme)}`
-                : `${themeClasses.textSecondary(theme)} ${themeClasses.hoverText(theme)} ${themeClasses.hoverBg(theme)}`
-            }`}
-          >
-            Raw
-          </button>
+        <div className="ml-3">
+          <SegmentedControl
+            value={viewMode}
+            onChange={setViewMode}
+            ariaLabel="Analysis view mode"
+            theme={theme}
+            options={[
+              { value: 'rendered', label: 'Rendered' },
+              { value: 'raw', label: 'Raw' },
+            ]}
+          />
         </div>
       }
       headerRightActions={
         <>
           {/* Print button */}
           <Tooltip label="Print analysis">
-          <button
-            onClick={handlePrint}
-            aria-label="Print analysis"
-            className={`p-1.5 rounded transition-colors ${themeClasses.textSecondary(theme)} ${themeClasses.hoverText(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="w-4 h-4"
-            >
-              <path
-                fillRule="evenodd"
-                d="M5 2.75C5 1.784 5.784 1 6.75 1h6.5c.966 0 1.75.784 1.75 1.75v3.552c.377.046.752.097 1.126.153A2.212 2.212 0 0118 8.653v4.097A2.25 2.25 0 0115.75 15h-.55a.75.75 0 000-1.5h.55a.75.75 0 00.75-.75V8.653a.712.712 0 00-.615-.711 47.965 47.965 0 00-11.77 0 .712.712 0 00-.615.711v4.097c0 .414.336.75.75.75h.55a.75.75 0 000 1.5h-.55A2.25 2.25 0 012 12.75V8.653c0-1.082.775-2.034 1.874-2.198.374-.056.749-.107 1.126-.153V2.75zm1.5 0v3.36a49.323 49.323 0 017 0V2.75a.25.25 0 00-.25-.25h-6.5a.25.25 0 00-.25.25zM14 13a.75.75 0 00-.75-.75h-6.5a.75.75 0 00-.75.75v4.25c0 .414.336.75.75.75h6.5a.75.75 0 00.75-.75V13zm-1.5.75v2.75h-5v-2.75h5z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </button>
+          <Button variant="icon" theme={theme} onClick={handlePrint} aria-label="Print analysis">
+            <Printer className="w-4 h-4" />
+          </Button>
           </Tooltip>
           {/* Copy button */}
           <Tooltip label={copied ? 'Copied!' : 'Copy to clipboard'}>
-          <button
+          <Button
+            variant="icon"
+            theme={theme}
             onClick={handleCopy}
             aria-label={copied ? 'Copied!' : 'Copy to clipboard'}
-            className={`p-1.5 rounded transition-colors ${themeClasses.hoverBgSecondary(theme)} ${
-              copied ? themeClasses.text(theme) : `${themeClasses.textSecondary(theme)} ${themeClasses.hoverText(theme)}`
-            }`}
+            className={copied ? themeClasses.text(theme) : undefined}
           >
-            {copied ? (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="w-4 h-4"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="w-4 h-4"
-              >
-                <path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12A1.5 1.5 0 0117 6.622V12.5a1.5 1.5 0 01-1.5 1.5h-1v-3.379a3 3 0 00-.879-2.121L10.5 5.379A3 3 0 008.379 4.5H7v-1z" />
-                <path d="M4.5 6A1.5 1.5 0 003 7.5v9A1.5 1.5 0 004.5 18h7a1.5 1.5 0 001.5-1.5v-5.879a1.5 1.5 0 00-.44-1.06L9.44 6.439A1.5 1.5 0 008.378 6H4.5z" />
-              </svg>
-            )}
-          </button>
+            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+          </Button>
           </Tooltip>
           {/* Delete button */}
           <Tooltip label="Delete analysis">
-          <button
-            onClick={handleDelete}
-            aria-label="Delete analysis"
-            className={`p-1.5 rounded transition-colors ${themeClasses.textSecondary(theme)} ${themeClasses.hoverText(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="w-4 h-4"
-            >
-              <path
-                fillRule="evenodd"
-                d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </button>
+          <Button variant="icon" theme={theme} onClick={handleDelete} aria-label="Delete analysis">
+            <Trash2 className="w-4 h-4" />
+          </Button>
           </Tooltip>
         </>
       }

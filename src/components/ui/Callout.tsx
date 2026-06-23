@@ -10,6 +10,8 @@ interface CalloutProps {
   tone?: Tone
   title: ReactNode
   children?: ReactNode
+  /** Convenience: render these as a bulleted list body (when `children` is omitted). */
+  points?: string[]
   /** Collapse the body behind the title (default expanded/static). */
   collapsible?: boolean
   defaultOpen?: boolean
@@ -35,6 +37,7 @@ export function Callout({
   tone = 'info',
   title,
   children,
+  points,
   collapsible = false,
   defaultOpen = false,
   theme,
@@ -43,7 +46,10 @@ export function Callout({
   const t = useUiTheme(theme)
   const [open, setOpen] = useState(defaultOpen)
   const Icon = TONE_ICON[tone]
-  const showBody = children && (!collapsible || open)
+  const body = children ?? (points
+    ? <ul className="list-disc list-outside ml-4 space-y-1">{points.map((p, i) => <li key={i}>{p}</li>)}</ul>
+    : null)
+  const showBody = body && (!collapsible || open)
 
   const header = (
     <>
@@ -68,7 +74,7 @@ export function Callout({
         <div className="flex items-center gap-2 px-3 pt-3 pb-1">{header}</div>
       )}
       {showBody && (
-        <div className={`px-3 pb-3 pl-9 text-xs ${themeClasses.textSecondary(t)}`}>{children}</div>
+        <div className={`px-3 pb-3 pl-9 text-xs ${themeClasses.textSecondary(t)}`}>{body}</div>
       )}
     </div>
   )

@@ -14,6 +14,7 @@ import {
   ApiKeyField,
   TextField,
   Callout,
+  Button,
 } from '@/components/ui'
 
 interface SettingsPanelProps {
@@ -230,14 +231,12 @@ function PrivacySection({ settings }: { settings: SettingsState }) {
         />
       </Field>
 
-      <Callout theme={theme} title="HIPAA-compliant by design" collapsible>
-        <NoteList points={[
-          'All processing happens locally in your browser',
-          'No patient data is sent to external servers',
-          'Console logs contain zero patient information',
-          'Exported files exclude patient data by default',
-        ]} />
-      </Callout>
+      <Callout theme={theme} title="HIPAA-compliant by design" collapsible points={[
+        'All processing happens locally in your browser',
+        'No patient data is sent to external servers',
+        'Console logs contain zero patient information',
+        'Exported files exclude patient data by default',
+      ]} />
     </div>
   )
 }
@@ -338,24 +337,20 @@ function AiSection({ settings }: { settings: SettingsState }) {
           )}
 
           {settings.aiProvider === 'local' ? (
-            <Callout theme={theme} title="Fully on-device — nothing leaves your device" collapsible>
-              <NoteList points={[
-                'Runs on the bundled local AI server — no image or data leaves your device',
-                'The model is downloaded once, on first use',
-                'No API key, no cost, and no send-confirmation needed',
-                'Requires the OpenScans desktop app',
-              ]} />
-            </Callout>
+            <Callout theme={theme} title="Fully on-device — nothing leaves your device" collapsible points={[
+              'Runs on the bundled local AI server — no image or data leaves your device',
+              'The model is downloaded once, on first use',
+              'No API key, no cost, and no send-confirmation needed',
+              'Requires the OpenScans desktop app',
+            ]} />
           ) : (
-            <Callout theme={theme} tone="warn" title="Privacy & security notice" collapsible>
-              <NoteList points={[
-                'Image data is sent only when you click AI analysis buttons',
-                'Patient metadata (names, IDs) is stripped before sending',
-                'Cost: ~$0.004–0.01 per image analyzed',
-                'API keys are stored locally (not encrypted)',
-                'For production use, implement a secure backend proxy',
-              ]} />
-            </Callout>
+            <Callout theme={theme} tone="warn" title="Privacy & security notice" collapsible points={[
+              'Image data is sent only when you click AI analysis buttons',
+              'Patient metadata (names, IDs) is stripped before sending',
+              'Cost: ~$0.004–0.01 per image analyzed',
+              'API keys are stored locally (not encrypted)',
+              'For production use, implement a secure backend proxy',
+            ]} />
           )}
 
           {/* MR-precision segmentation engine (on-device, opt-in install) */}
@@ -384,7 +379,9 @@ function DataSection({ settings }: { settings: SettingsState }) {
         <p className={`text-xs mt-0.5 mb-3 ${themeClasses.textSecondary(theme)}`}>
           Remove all stored AI analyses and annotations from localStorage
         </p>
-        <button
+        <Button
+          variant="danger"
+          theme={theme}
           onClick={async () => {
             if (
               await confirmDialog({
@@ -399,23 +396,11 @@ function DataSection({ settings }: { settings: SettingsState }) {
               window.location.reload()
             }
           }}
-          className={`px-3 py-2 text-sm rounded-lg transition-colors text-white ${theme === 'dark' ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'}`}
         >
           Clear All AI Data
-        </button>
+        </Button>
       </div>
     </div>
-  )
-}
-
-/** Bulleted list rendered inside a Callout (replaces InlineNote's points prop). */
-function NoteList({ points }: { points: string[] }) {
-  return (
-    <ul className="list-disc list-outside ml-4 space-y-1">
-      {points.map((p, i) => (
-        <li key={i}>{p}</li>
-      ))}
-    </ul>
   )
 }
 

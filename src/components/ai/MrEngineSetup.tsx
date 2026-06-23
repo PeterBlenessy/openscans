@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ScanLine, Minus, X, AlertTriangle, Lock, Package, Trash2, Clock } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
-import { Spinner, ProgressBar, Tooltip } from '@/components/ui'
+import { Spinner, ProgressBar, Tooltip, Button } from '@/components/ui'
 import { useMrEngineStore } from '@/stores/mrEngineStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { themeClasses } from '@/lib/utils'
@@ -58,18 +58,12 @@ export function MrEngineSetup() {
         maxWidth="max-w-md"
         footer={
           <div className="flex justify-end gap-2">
-            <button
-              onClick={cancelConsent}
-              className={`px-3 py-1.5 rounded ${themeClasses.textSecondary(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
-            >
+            <Button variant="ghost" size="sm" theme={theme} onClick={cancelConsent}>
               Cancel
-            </button>
-            <button
-              onClick={confirmConsent}
-              className="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-500"
-            >
+            </Button>
+            <Button variant="primary" size="sm" theme={theme} onClick={confirmConsent}>
               Set up &amp; run
-            </button>
+            </Button>
           </div>
         }
       >
@@ -120,13 +114,9 @@ export function MrEngineSetup() {
                 </p>
                 <p className={`text-xs ${themeClasses.textSecondary(theme)} break-words`}>{error}</p>
               </div>
-              <button
-                onClick={dismissError}
-                aria-label="Dismiss"
-                className={`p-1 rounded ${themeClasses.textSecondary(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
-              >
+              <Button variant="icon" theme={theme} onClick={dismissError} aria-label="Dismiss">
                 <X className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
           ) : minimized ? (
             // Minimized chip — click to restore
@@ -152,13 +142,9 @@ export function MrEngineSetup() {
                   {job?.kind === 'install' ? 'Installing MR engine' : 'MR-precision segmentation'}
                 </span>
                 <Tooltip label="Minimize and keep working">
-                <button
-                  onClick={minimize}
-                  aria-label="Minimize"
-                  className={`p-1 rounded ${themeClasses.textSecondary(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
-                >
+                <Button variant="icon" theme={theme} onClick={minimize} aria-label="Minimize">
                   <Minus className="w-4 h-4" />
-                </button>
+                </Button>
                 </Tooltip>
               </div>
               <p className={`text-xs ${themeClasses.textSecondary(theme)} mb-2 flex justify-between gap-2`}>
