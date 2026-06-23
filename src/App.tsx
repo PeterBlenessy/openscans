@@ -13,6 +13,8 @@ import { ResizeHandle } from './components/layout/ResizeHandle'
 import { SettingsPanel } from './components/settings/SettingsPanel'
 import { ErrorToast } from './components/ErrorToast'
 import { ConfirmDialog } from './components/ui/ConfirmDialog'
+import { Slider, Spinner, Tooltip, TooltipProvider } from './components/ui'
+import { useSystemAccent } from './hooks/useSystemAccent'
 import { UpdateNotification } from './components/UpdateNotification'
 import { useStudyStore } from './stores/studyStore'
 import { useRecentStudiesStore } from './stores/recentStudiesStore'
@@ -46,6 +48,8 @@ function App() {
   })
 
   const theme = useSettingsStore((state) => state.theme)
+  // Follow the OS accent color (desktop) for the --accent token.
+  useSystemAccent()
   const hidePersonalInfo = useSettingsStore((state) => state.hidePersonalInfo)
   const setHidePersonalInfo = useSettingsStore((state) => state.setHidePersonalInfo)
   const currentSeries = useStudyStore((state) => state.currentSeries)
@@ -265,6 +269,7 @@ function App() {
   }, [])
 
   return (
+    <TooltipProvider delayDuration={300}>
     <div className={`h-screen flex flex-col ${theme === 'dark' ? 'bg-black text-white' : 'bg-gray-100 text-gray-900'}`}>
       {/* Settings Panel */}
       <SettingsPanel show={showSettings} onClose={() => setShowSettings(false)} />
@@ -282,7 +287,7 @@ function App() {
       <header className={`px-6 py-2.5 flex items-center justify-between border-b flex-shrink-0 ${theme === 'dark' ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
         <div>
           <h1 className="text-xl font-bold">OpenScans</h1>
-          <p className={`text-xs mt-0 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+          <p className={`text-xs mt-0 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
             Privacy-first DICOM viewer
           </p>
         </div>
@@ -290,55 +295,59 @@ function App() {
         {/* Toolbar */}
         <div className={`flex items-center gap-2 px-3 py-2 rounded ${theme === 'dark' ? 'bg-[#0f0f0f]' : 'bg-gray-100'}`}>
           {/* Left Panel Toggle */}
+          <Tooltip label="Toggle Left Panel">
           <button
             onClick={() => {
               // Cycle: expanded → minimized → expanded (skip hidden for header toggle)
               setLeftDrawerState((prev) => prev === 'expanded' ? 'minimized' : 'expanded')
             }}
-            className={`p-2 rounded transition-colors ${leftDrawerState === 'expanded' ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-500' : 'hover:bg-gray-200 text-gray-400')}`}
-            title="Toggle Left Panel"
+            className={`p-2 rounded transition-colors ${leftDrawerState === 'expanded' ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-400' : 'hover:bg-gray-200 text-gray-600')}`}
             aria-label="Toggle Left Panel"
             aria-pressed={leftDrawerState === 'expanded'}
           >
             <PanelLeft size={18} aria-hidden="true" />
           </button>
+          </Tooltip>
 
           {/* Right Panel Toggle */}
+          <Tooltip label="Toggle Right Panel">
           <button
             onClick={() => setShowRightSidebar(!showRightSidebar)}
-            className={`p-2 rounded transition-colors ${showRightSidebar ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-500' : 'hover:bg-gray-200 text-gray-400')}`}
-            title="Toggle Right Panel"
+            className={`p-2 rounded transition-colors ${showRightSidebar ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-400' : 'hover:bg-gray-200 text-gray-600')}`}
             aria-label="Toggle Right Panel"
             aria-pressed={showRightSidebar}
           >
             <PanelRight size={18} aria-hidden="true" />
           </button>
+          </Tooltip>
 
           {/* Bottom Panel Toggle */}
+          <Tooltip label="Toggle Thumbnail Strip">
           <button
             onClick={() => setShowThumbnailStrip(!showThumbnailStrip)}
-            className={`p-2 rounded transition-colors ${showThumbnailStrip ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-500' : 'hover:bg-gray-200 text-gray-400')}`}
-            title="Toggle Thumbnail Strip"
+            className={`p-2 rounded transition-colors ${showThumbnailStrip ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-400' : 'hover:bg-gray-200 text-gray-600')}`}
             aria-label="Toggle Thumbnail Strip"
             aria-pressed={showThumbnailStrip}
           >
             <PanelBottom size={18} aria-hidden="true" />
           </button>
+          </Tooltip>
 
           {/* Divider */}
           <div className={`w-px h-6 ${theme === 'dark' ? 'bg-[#2a2a2a]' : 'bg-gray-300'}`}></div>
 
           {/* Privacy Toggle */}
+          <Tooltip label={hidePersonalInfo ? 'Show Personal Information' : 'Hide Personal Information'}>
           <button
             onClick={() => setHidePersonalInfo(!hidePersonalInfo)}
-            className={`p-2 rounded transition-colors ${hidePersonalInfo ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-500' : 'hover:bg-gray-200 text-gray-400')}`}
-            title={hidePersonalInfo ? 'Show Personal Information' : 'Hide Personal Information'}
+            className={`p-2 rounded transition-colors ${hidePersonalInfo ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-400' : 'hover:bg-gray-200 text-gray-600')}`}
             aria-label={hidePersonalInfo ? 'Show Personal Information' : 'Hide Personal Information'}
             aria-pressed={hidePersonalInfo}
             data-testid="privacy-toggle"
           >
             {hidePersonalInfo ? <ShieldCheck size={18} aria-hidden="true" /> : <ShieldOff size={18} aria-hidden="true" />}
           </button>
+          </Tooltip>
         </div>
       </header>
 
@@ -358,7 +367,7 @@ function App() {
           {isAutoLoading ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-white mb-4"></div>
+                <div className="mb-4 flex justify-center"><Spinner size="lg" /></div>
                 <p className="text-gray-400">Loading most recent study...</p>
               </div>
             </div>
@@ -382,23 +391,17 @@ function App() {
                     <span className={`text-sm min-w-fit ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
                       {currentInstanceIndex + 1} / {currentSeries.instances.length}
                     </span>
-                    <input
-                      type="range"
-                      min="0"
-                      max={currentSeries.instances.length - 1}
+                    {/* Same shared Slider primitive as the settings sliders, full-width. */}
+                    <Slider
                       value={currentInstanceIndex}
-                      onChange={(e) => {
-                        const newIndex = parseInt(e.target.value)
-                        useStudyStore.getState().setCurrentInstance(newIndex)
-                      }}
-                      className={`flex-1 h-2 rounded-lg appearance-none cursor-pointer slider ${theme === 'dark' ? 'bg-[#0f0f0f]' : 'bg-gray-200'}`}
-                      data-testid="instance-slider"
-                      aria-label="Navigate images in series"
-                      style={{
-                        background: theme === 'dark'
-                          ? `linear-gradient(to right, #4a4a4a 0%, #4a4a4a ${(currentInstanceIndex / (currentSeries.instances.length - 1)) * 100}%, #0f0f0f ${(currentInstanceIndex / (currentSeries.instances.length - 1)) * 100}%, #0f0f0f 100%)`
-                          : `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(currentInstanceIndex / (currentSeries.instances.length - 1)) * 100}%, #e5e7eb ${(currentInstanceIndex / (currentSeries.instances.length - 1)) * 100}%, #e5e7eb 100%)`
-                      }}
+                      onChange={(i) => useStudyStore.getState().setCurrentInstance(i)}
+                      min={0}
+                      max={currentSeries.instances.length - 1}
+                      step={1}
+                      ariaLabel="Navigate images in series"
+                      className="flex-1"
+                      testId="instance-slider"
+                      theme={theme}
                     />
                   </div>
                 </div>
@@ -483,6 +486,7 @@ function App() {
       {/* Desktop auto-update notification (no-op in the browser) */}
       <UpdateNotification />
     </div>
+    </TooltipProvider>
   )
 }
 

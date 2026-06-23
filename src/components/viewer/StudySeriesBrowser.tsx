@@ -3,6 +3,8 @@ import { useStudyStore } from '@/stores/studyStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { DicomStudy, DicomSeries } from '@/types'
 import { formatSeriesDescription } from '@/lib/utils/formatSeriesDescription'
+import { themeClasses } from '@/lib/utils'
+import { EmptyState } from '@/components/ui'
 
 export function StudySeriesBrowser() {
   const studies = useStudyStore((state) => state.studies)
@@ -37,11 +39,7 @@ export function StudySeriesBrowser() {
   }
 
   if (studies.length === 0) {
-    return (
-      <div className="text-gray-400 text-sm text-center py-8">
-        No DICOM files loaded
-      </div>
-    )
+    return <EmptyState title="No DICOM files loaded" className="py-8" />
   }
 
   return (
@@ -70,29 +68,30 @@ interface StudyItemProps {
 
 function StudyItem({ study, isExpanded, onToggle, currentSeriesUID, onSeriesClick }: StudyItemProps) {
   const hidePersonalInfo = useSettingsStore((state) => state.hidePersonalInfo)
+  const theme = useSettingsStore((state) => state.theme)
 
   return (
-    <div className="border border-[#2a2a2a] rounded bg-[#0f0f0f]/50">
+    <div className={`border rounded ${themeClasses.border(theme)} ${themeClasses.bgSecondary(theme)}`}>
       {/* Study Header */}
       <button
         onClick={onToggle}
         aria-expanded={isExpanded}
-        className="w-full px-3 py-2 flex items-start gap-2 hover:bg-[#1a1a1a]/50 transition-colors text-left"
+        className={`w-full px-3 py-2 flex items-start gap-2 ${themeClasses.hoverBg(theme)} transition-colors text-left`}
       >
-        <span aria-hidden="true" className="text-gray-400 mt-0.5 flex-shrink-0">
+        <span aria-hidden="true" className={`mt-0.5 flex-shrink-0 ${themeClasses.textSecondary(theme)}`}>
           {isExpanded ? '▼' : '▶'}
         </span>
         <div className="flex-1 min-w-0">
           {!hidePersonalInfo && (
-            <div className="font-medium text-sm truncate">
+            <div className={`font-medium text-sm truncate ${themeClasses.text(theme)}`}>
               {study.patientName || 'Unknown Patient'}
             </div>
           )}
-          <div className="text-xs text-gray-400 truncate">
+          <div className={`text-xs truncate ${themeClasses.textSecondary(theme)}`}>
             {hidePersonalInfo ? study.studyDate : `${study.patientID} • ${study.studyDate}`}
           </div>
           {study.studyDescription && (
-            <div className="text-xs text-gray-500 truncate">
+            <div className={`text-xs truncate ${themeClasses.textTertiary(theme)}`}>
               {study.studyDescription}
             </div>
           )}
@@ -101,7 +100,7 @@ function StudyItem({ study, isExpanded, onToggle, currentSeriesUID, onSeriesClic
 
       {/* Series List */}
       {isExpanded && (
-        <div className="border-t border-[#2a2a2a]">
+        <div className={`border-t ${themeClasses.border(theme)}`}>
           {study.series.map((series) => (
             <SeriesItem
               key={series.seriesInstanceUID}
@@ -123,20 +122,23 @@ interface SeriesItemProps {
 }
 
 function SeriesItem({ series, isSelected, onClick }: SeriesItemProps) {
+  const theme = useSettingsStore((state) => state.theme)
   return (
     <button
       onClick={onClick}
       aria-current={isSelected ? 'true' : undefined}
       className={`w-full px-3 py-2 pl-8 text-left transition-colors ${
-        isSelected ? 'bg-[#2a2a2a] border border-[#3a3a3a] hover:bg-[#3a3a3a]' : 'border border-transparent hover:bg-[#1a1a1a]/50'
+        isSelected
+          ? `${themeClasses.bgActive(theme)} border ${themeClasses.border(theme)}`
+          : `border border-transparent ${themeClasses.hoverBg(theme)}`
       }`}
     >
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
-          <div className="text-sm truncate">
+          <div className={`text-sm truncate ${themeClasses.text(theme)}`}>
             {formatSeriesDescription(series.seriesDescription) || `Series ${series.seriesNumber}`}
           </div>
-          <div className="text-xs text-gray-400">
+          <div className={`text-xs ${themeClasses.textSecondary(theme)}`}>
             {series.modality} • {series.instances.length} {series.instances.length === 1 ? 'image' : 'images'}
           </div>
         </div>

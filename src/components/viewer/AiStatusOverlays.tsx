@@ -1,3 +1,5 @@
+import { ViewportStatusOverlay } from '@/components/ui'
+
 interface AiStatusOverlaysProps {
   isDetecting: boolean
   detectionError: string | null
@@ -22,18 +24,7 @@ export function AiStatusOverlays({
   return (
     <>
       {/* AI Detection Status */}
-      {isDetecting && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div role="status" className="bg-black/70 text-white px-6 py-3 rounded-lg shadow-xl">
-            <div className="flex items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 animate-spin">
-                <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39z" clipRule="evenodd" />
-              </svg>
-              <span className="text-base">Detecting vertebrae...</span>
-            </div>
-          </div>
-        </div>
-      )}
+      {isDetecting && <ViewportStatusOverlay title="Detecting vertebrae…" />}
 
       {detectionError && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -61,18 +52,7 @@ export function AiStatusOverlays({
       )}
 
       {/* AI Analysis Status */}
-      {isAnalyzing && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div role="status" className="bg-black/70 text-white px-6 py-3 rounded-lg shadow-xl">
-            <div className="flex items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 animate-spin">
-                <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39z" clipRule="evenodd" />
-              </svg>
-              <span className="text-base">Analyzing image...</span>
-            </div>
-          </div>
-        </div>
-      )}
+      {isAnalyzing && <ViewportStatusOverlay title="Analyzing image…" />}
 
       {analysisError && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

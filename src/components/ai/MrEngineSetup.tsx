@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Loader2, ScanLine, Minus, X, AlertTriangle } from 'lucide-react'
+import { ScanLine, Minus, X, AlertTriangle, Lock, Package, Trash2, Clock } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
+import { Spinner, ProgressBar, Tooltip, Button } from '@/components/ui'
 import { useMrEngineStore } from '@/stores/mrEngineStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { themeClasses } from '@/lib/utils'
@@ -57,18 +58,12 @@ export function MrEngineSetup() {
         maxWidth="max-w-md"
         footer={
           <div className="flex justify-end gap-2">
-            <button
-              onClick={cancelConsent}
-              className={`px-3 py-1.5 rounded ${themeClasses.textSecondary(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
-            >
+            <Button variant="ghost" size="sm" theme={theme} onClick={cancelConsent}>
               Cancel
-            </button>
-            <button
-              onClick={confirmConsent}
-              className="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-500"
-            >
+            </Button>
+            <Button variant="primary" size="sm" theme={theme} onClick={confirmConsent}>
               Set up &amp; run
-            </button>
+            </Button>
           </div>
         }
       >
@@ -81,14 +76,26 @@ export function MrEngineSetup() {
             First use needs a <strong>one-time setup</strong> — it downloads
             about 2&nbsp;GB (a few GB on disk) and takes a few minutes.
           </p>
-          <ul className="space-y-1.5">
-            <li>🔒 Runs fully on-device — no images or data ever leave your computer.</li>
-            <li>
-              📦 Everything installs inside OpenScans’ own folder. It won’t touch
-              your system Python or any other app, and isn’t shared with them.
+          <ul className="space-y-2">
+            <li className="flex items-start gap-2">
+              <Lock className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+              <span>Runs fully on-device — no images or data ever leave your computer.</span>
             </li>
-            <li>🗑️ You can remove it anytime in Settings to free up the space.</li>
-            <li>⏳ You can minimize the progress and keep working while it installs.</li>
+            <li className="flex items-start gap-2">
+              <Package className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+              <span>
+                Everything installs inside OpenScans’ own folder. It won’t touch
+                your system Python or any other app, and isn’t shared with them.
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <Trash2 className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+              <span>You can remove it anytime in Settings to free up the space.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <Clock className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+              <span>You can minimize the progress and keep working while it installs.</span>
+            </li>
           </ul>
         </div>
       </Modal>
@@ -107,26 +114,24 @@ export function MrEngineSetup() {
                 </p>
                 <p className={`text-xs ${themeClasses.textSecondary(theme)} break-words`}>{error}</p>
               </div>
-              <button
-                onClick={dismissError}
-                aria-label="Dismiss"
-                className={`p-1 rounded ${themeClasses.textSecondary(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
-              >
+              <Button variant="icon" theme={theme} onClick={dismissError} aria-label="Dismiss">
                 <X className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
           ) : minimized ? (
             // Minimized chip — click to restore
+            <Tooltip label={job?.stage ?? ''}>
             <button
               onClick={restore}
+              aria-label="Restore MR engine progress"
               className={`flex items-center gap-2 px-3 py-2 rounded-full shadow-2xl border ${themeClasses.border(theme)} ${themeClasses.bg(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
-              title={job?.stage}
             >
-              <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+              <Spinner size="sm" />
               <span className={`text-xs ${themeClasses.text(theme)}`}>
                 MR engine{pct !== null ? ` · ${pct}%` : '…'}
               </span>
             </button>
+            </Tooltip>
           ) : (
             // Expanded progress card
             <div
@@ -136,14 +141,11 @@ export function MrEngineSetup() {
                 <span className={`text-sm font-medium ${themeClasses.text(theme)}`}>
                   {job?.kind === 'install' ? 'Installing MR engine' : 'MR-precision segmentation'}
                 </span>
-                <button
-                  onClick={minimize}
-                  aria-label="Minimize"
-                  title="Minimize and keep working"
-                  className={`p-1 rounded ${themeClasses.textSecondary(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
-                >
+                <Tooltip label="Minimize and keep working">
+                <Button variant="icon" theme={theme} onClick={minimize} aria-label="Minimize">
                   <Minus className="w-4 h-4" />
-                </button>
+                </Button>
+                </Tooltip>
               </div>
               <p className={`text-xs ${themeClasses.textSecondary(theme)} mb-2 flex justify-between gap-2`}>
                 <span className="truncate">
@@ -152,18 +154,7 @@ export function MrEngineSetup() {
                 </span>
                 <span className="tabular-nums shrink-0">{mmss}</span>
               </p>
-              <div className={`h-1.5 rounded-full overflow-hidden ${themeClasses.bgSecondary(theme)}`}>
-                {pct !== null ? (
-                  <div className="h-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
-                ) : (
-                  // Indeterminate: animated sliding segment (no fine-grained % for
-                  // the install / segmentation compute phases).
-                  <div
-                    className="h-full w-2/5 bg-blue-500 rounded-full"
-                    style={{ animation: 'mr-indeterminate 1.2s ease-in-out infinite' }}
-                  />
-                )}
-              </div>
+              <ProgressBar value={pct} theme={theme} label={job?.stage} />
               <p className={`text-[11px] ${themeClasses.textSecondary(theme)} mt-2`}>
                 Runs on-device · you can minimize and keep working.
               </p>

@@ -1,5 +1,5 @@
 import { useSettingsStore } from '@/stores/settingsStore'
-import * as Tooltip from '@radix-ui/react-tooltip'
+import { Tooltip } from '@/components/ui'
 
 interface LeftDrawerIconBarProps {
   onLoadNewFiles: () => void
@@ -80,49 +80,29 @@ export function LeftDrawerIconBar({
   ]
 
   return (
-    <Tooltip.Provider delayDuration={300}>
-      <aside
-        className={`w-12 border-r flex flex-col flex-shrink-0 ${
-          theme === 'dark' ? 'bg-[#121212] border-[#2a2a2a]' : 'bg-white border-gray-200'
-        }`}
-      >
-        {/* Icon Buttons */}
-        <div className="flex flex-col gap-2 p-2">
-          {iconButtons.map((button) => (
-            <Tooltip.Root key={button.id}>
-              <Tooltip.Trigger asChild>
-                <button
-                  onClick={button.onClick}
-                  className={`w-full h-11 flex items-center justify-center rounded-lg transition-colors ${
-                    theme === 'dark'
-                      ? 'hover:bg-[#1a1a1a] text-gray-400 hover:text-gray-300'
-                      : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
-                  }`}
-                  aria-label={button.label}
-                >
-                  {button.icon}
-                </button>
-              </Tooltip.Trigger>
-              <Tooltip.Portal>
-                <Tooltip.Content
-                  side="right"
-                  sideOffset={8}
-                  className={`px-3 py-2 rounded-md text-sm shadow-lg z-50 ${
-                    theme === 'dark'
-                      ? 'bg-[#2a2a2a] text-gray-200 border border-[#3a3a3a]'
-                      : 'bg-gray-900 text-white'
-                  }`}
-                >
-                  {button.label}
-                  <Tooltip.Arrow
-                    className={theme === 'dark' ? 'fill-[#2a2a2a]' : 'fill-gray-900'}
-                  />
-                </Tooltip.Content>
-              </Tooltip.Portal>
-            </Tooltip.Root>
-          ))}
-        </div>
-      </aside>
-    </Tooltip.Provider>
+    <aside
+      className={`w-12 border-r flex flex-col flex-shrink-0 ${
+        theme === 'dark' ? 'bg-[#121212] border-[#2a2a2a]' : 'bg-white border-gray-200'
+      }`}
+    >
+      {/* Icon Buttons */}
+      <div className="flex flex-col gap-2 p-2">
+        {iconButtons.map((button) => (
+          <Tooltip key={button.id} label={button.label} side="right">
+            <button
+              onClick={button.onClick}
+              className={`w-full h-11 flex items-center justify-center rounded-lg transition-colors ${
+                theme === 'dark'
+                  ? 'hover:bg-[#1a1a1a] text-gray-400 hover:text-gray-300'
+                  : 'hover:bg-gray-100 text-gray-600 hover:text-gray-800'
+              }`}
+              aria-label={button.label}
+            >
+              {button.icon}
+            </button>
+          </Tooltip>
+        ))}
+      </div>
+    </aside>
   )
 }

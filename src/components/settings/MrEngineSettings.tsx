@@ -4,6 +4,7 @@ import { MR_SEGMENTATION_AVAILABLE } from '@/lib/ai/segmentationServer'
 import { isTauri } from '@/lib/utils/platform'
 import type { Theme } from '@/stores/settingsStore'
 import { themeClasses } from '@/lib/utils'
+import { Badge } from '@/components/ui'
 
 /**
  * Settings card for the MR-precision engine: shows install status and lets the
@@ -34,8 +35,10 @@ export function MrEngineSettings({ theme }: { theme: Theme }) {
       <p className={`text-xs mt-0.5 mb-3 ${themeClasses.textSecondary(theme)}`}>
         On-device vertebra segmentation for MR (TotalSegmentator-MRI). One-time
         setup (~2&nbsp;GB) installs the engine locally — nothing leaves your device.
-        Status: <span className={themeClasses.text(theme)}>{status}</span>
       </p>
+      <div className="mb-3">
+        <Badge tone={engineReady ? 'success' : 'neutral'} theme={theme}>{status}</Badge>
+      </div>
       <div className="flex justify-end gap-2">
         {engineReady && !installing && (
           <button

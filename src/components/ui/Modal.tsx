@@ -14,6 +14,9 @@ interface ModalProps {
   headerRightActions?: ReactNode
   maxWidth?: string
   maxHeight?: string
+  /** When false, suppress Escape / outside-click close and hide the close
+   *  button (e.g. while a dialog is mid-operation). Defaults to true. */
+  dismissible?: boolean
 }
 
 /**
@@ -46,9 +49,14 @@ export function Modal({
   headerLeftActions,
   headerRightActions,
   maxWidth = 'max-w-3xl',
-  maxHeight = 'max-h-[80vh]'
+  maxHeight = 'max-h-[80vh]',
+  dismissible = true
 }: ModalProps) {
   const theme = useSettingsStore((s) => s.theme)
+
+  // While non-dismissible, block Escape and outside pointer/interaction so the
+  // dialog can't be closed mid-operation.
+  const blockClose = dismissible ? undefined : (e: Event) => e.preventDefault()
 
   return (
     <Dialog.Root open={show} onOpenChange={(open) => { if (!open) onClose() }}>
@@ -65,6 +73,9 @@ export function Modal({
             // The app supplies its own description text; suppress Radix's
             // missing-Description console warning.
             aria-describedby={undefined}
+            onEscapeKeyDown={blockClose}
+            onPointerDownOutside={blockClose}
+            onInteractOutside={blockClose}
             className={`pointer-events-auto ${themeClasses.bg(theme)} border ${themeClasses.border(theme)} rounded-lg shadow-2xl ${maxWidth} w-full ${maxHeight} flex flex-col focus:outline-none`}
           >
             {/* Header */}
@@ -76,6 +87,7 @@ export function Modal({
               </div>
               <div className="flex items-center gap-2">
                 {headerRightActions}
+                {dismissible && (
                 <Dialog.Close
                   title="Close"
                   aria-label="Close dialog"
@@ -91,6 +103,7 @@ export function Modal({
                     <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
                   </svg>
                 </Dialog.Close>
+                )}
               </div>
             </div>
 

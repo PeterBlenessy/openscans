@@ -14,7 +14,7 @@ interface UseViewportKeyboardOptions {
   addAnnotations: (annotations: Annotation[]) => void
   deleteAnnotationsForInstance: (instanceUID: string, isAiGenerated: boolean) => void
   addAnalysis: (analysis: AiAnalysis) => void
-  handleError: (error: Error | string, context: string, severity?: 'error' | 'warning' | 'info') => void
+  handleError: (error: Error | string, context: string, severity?: 'error' | 'warning' | 'info' | 'success') => void
   /** Toggle full-screen mode (Shift+F) */
   onToggleFullscreen?: () => void
   /** Toggle cine play/pause (Space) */

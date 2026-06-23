@@ -43,11 +43,13 @@ export const themeClasses = {
   bgTertiary: (theme: 'light' | 'dark') => theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-gray-50',
   bgActive: (theme: 'light' | 'dark') => theme === 'dark' ? 'bg-[#2a2a2a]' : 'bg-gray-300',
 
-  // Text colors
+  // Text colors. Tuned for WCAG AA contrast on the app's bg/bgSecondary
+  // surfaces in both themes (the previous light greys — gray-400/300 on white —
+  // were ~2.6:1 / ~1.4:1 and failed AA).
   text: (theme: 'light' | 'dark') => theme === 'dark' ? 'text-white' : 'text-gray-900',
-  textSecondary: (theme: 'light' | 'dark') => theme === 'dark' ? 'text-gray-400' : 'text-gray-500',
-  textTertiary: (theme: 'light' | 'dark') => theme === 'dark' ? 'text-gray-500' : 'text-gray-400',
-  textMuted: (theme: 'light' | 'dark') => theme === 'dark' ? 'text-gray-600' : 'text-gray-300',
+  textSecondary: (theme: 'light' | 'dark') => theme === 'dark' ? 'text-gray-300' : 'text-gray-600',
+  textTertiary: (theme: 'light' | 'dark') => theme === 'dark' ? 'text-gray-400' : 'text-gray-500',
+  textMuted: (theme: 'light' | 'dark') => theme === 'dark' ? 'text-gray-500' : 'text-gray-500',
 
   // Border colors
   border: (theme: 'light' | 'dark') => theme === 'dark' ? 'border-[#2a2a2a]' : 'border-gray-200',
@@ -62,6 +64,12 @@ export const themeClasses = {
 
   // Separator/divider
   divider: (theme: 'light' | 'dark') => theme === 'dark' ? 'bg-[#2a2a2a]' : 'bg-gray-300',
+
+  // Radix menu/select item highlight (data-[highlighted] state). Single source
+  // of truth for the "active surface" used by Select + the toolbar dropdowns.
+  menuHighlight: (theme: 'light' | 'dark') => theme === 'dark'
+    ? 'data-[highlighted]:bg-[#2a2a2a] data-[highlighted]:text-white'
+    : 'data-[highlighted]:bg-gray-100 data-[highlighted]:text-gray-900',
 }
 
 /**

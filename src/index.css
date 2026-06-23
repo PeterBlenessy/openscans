@@ -15,6 +15,21 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Design tokens (consumed via Tailwind `accent`/`warning`/`error`/`success`).
+     --accent is the brand-blue fallback; on the desktop app it's overridden at
+     runtime with the real OS accent color (an oklch value injected by
+     useSystemAccent / the get_system_accent_color Tauri command). Semantic
+     colors have no OS equivalent, so they are fixed hex. */
+  --accent: #2563eb;           /* blue-600 — brand fallback */
+  --accent-foreground: #ffffff;
+  --warning: #f59e0b;          /* amber-500 */
+  --error: #dc2626;            /* red-600 */
+  --success: #16a34a;          /* green-600 */
+
+  /* Native form controls (checkbox/radio/range) use the same --accent value,
+     so they match the styled surfaces instead of the browser's own accent. */
+  accent-color: var(--accent);
 }
 
 body {
@@ -30,43 +45,16 @@ body {
   min-height: 100vh;
 }
 
-/* Custom slider styles */
-.slider::-webkit-slider-thumb {
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #4a4a4a;
-  cursor: pointer;
-  border: 2px solid #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.slider::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #4a4a4a;
-  cursor: pointer;
-  border: 2px solid #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.slider::-webkit-slider-thumb:hover {
-  background: #5a5a5a;
-  transform: scale(1.1);
-}
-
-.slider::-moz-range-thumb:hover {
-  background: #5a5a5a;
-  transform: scale(1.1);
-}
-
 /* Indeterminate progress bar (MR engine install/segmentation phases that report
    no fine-grained percentage) — a segment sliding across the track. */
 @keyframes mr-indeterminate {
   0% { transform: translateX(-110%); }
   100% { transform: translateX(260%); }
+}
+
+/* Utility for the shared <ProgressBar> indeterminate segment. */
+.animate-mr-indeterminate {
+  animation: mr-indeterminate 1.2s ease-in-out infinite;
 }
 
 /* Full-screen viewport: ensure the container truly fills the screen and the

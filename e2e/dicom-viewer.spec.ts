@@ -57,9 +57,9 @@ test.describe('File Loading and Display', () => {
     // Wait for image to load and display
     await expect(page.locator('[data-testid="viewport"]')).toBeVisible({ timeout: 30000 })
 
-    // Verify metadata is displayed (check for "Current Image" section)
-    await expect(page.locator('text=/Study Date:/i')).toBeVisible()
-    await expect(page.locator('text=/Series:/i')).toBeVisible()
+    // Verify metadata loaded: the Studies & Series panel shows the series'
+    // modality + image count (e.g. "CT • 1 image").
+    await expect(page.getByText(/\d+ image/i).first()).toBeVisible()
 
     // Verify image is rendered (check for canvas element)
     const canvas = page.locator('canvas').first()
@@ -94,8 +94,9 @@ test.describe('File Loading and Display', () => {
     // Wait for series to load
     await expect(page.locator('[data-testid="viewport"]')).toBeVisible({ timeout: 30000 })
 
-    // Verify series information is displayed
-    await expect(page.locator('text=/Instance:/i')).toBeVisible()
+    // Verify series information is displayed: the Studies & Series panel shows
+    // the loaded series' image count.
+    await expect(page.getByText(/\d+ images/i).first()).toBeVisible()
   })
 })
 
@@ -122,21 +123,21 @@ test.describe('Instance Navigation', () => {
     await expect(page.locator('[data-testid="viewport"]')).toBeVisible({ timeout: 30000 })
 
     // Get initial slider value
-    const slider = page.locator('[data-testid="instance-slider"]')
-    const initialValue = await slider.inputValue()
+    const slider = page.locator('[data-testid="instance-slider"] [role="slider"]')
+    const initialValue = await slider.getAttribute('aria-valuenow')
 
     // Use keyboard navigation (ArrowDown = next)
     await page.keyboard.press('ArrowDown')
     await page.waitForTimeout(500)
 
-    const nextValue = await slider.inputValue()
+    const nextValue = await slider.getAttribute('aria-valuenow')
     expect(nextValue).not.toBe(initialValue)
 
     // Use keyboard navigation (ArrowUp = previous)
     await page.keyboard.press('ArrowUp')
     await page.waitForTimeout(500)
 
-    const backValue = await slider.inputValue()
+    const backValue = await slider.getAttribute('aria-valuenow')
     expect(backValue).toBe(initialValue)
   })
 
@@ -166,21 +167,21 @@ test.describe('Instance Navigation', () => {
     // Focus viewport
     await viewport.click()
 
-    const slider = page.locator('[data-testid="instance-slider"]')
-    const initialValue = await slider.inputValue()
+    const slider = page.locator('[data-testid="instance-slider"] [role="slider"]')
+    const initialValue = await slider.getAttribute('aria-valuenow')
 
     // Press ArrowDown to go to next instance
     await page.keyboard.press('ArrowDown')
     await page.waitForTimeout(500)
 
-    const nextValue = await slider.inputValue()
+    const nextValue = await slider.getAttribute('aria-valuenow')
     expect(nextValue).not.toBe(initialValue)
 
     // Press ArrowUp to go back
     await page.keyboard.press('ArrowUp')
     await page.waitForTimeout(500)
 
-    const backValue = await slider.inputValue()
+    const backValue = await slider.getAttribute('aria-valuenow')
     expect(backValue).toBe(initialValue)
   })
 })

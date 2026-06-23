@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react'
 import { Download, X } from 'lucide-react'
+import { Spinner } from './ui'
 import { checkForUpdate, installUpdate, type UpdateInfo } from '../lib/utils/updater'
 
 export function UpdateNotification() {
@@ -81,8 +82,9 @@ export function UpdateNotification() {
         <button
           onClick={handleInstall}
           disabled={installing}
-          className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-50"
         >
+          {installing && <Spinner size="sm" className="text-current" />}
           {installing ? 'Installing…' : 'Install & Restart'}
         </button>
       </div>

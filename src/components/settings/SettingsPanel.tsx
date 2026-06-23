@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { Theme, ScrollDirection, AIProvider } from '@/stores/settingsStore'
+import { ThemePreference, ScrollDirection, AIProvider } from '@/stores/settingsStore'
 import { themeClasses } from '@/lib/utils'
 import { useSettingsState } from '@/hooks/useSettingsState'
 import { isTauri } from '@/lib/utils/platform'
@@ -13,8 +13,9 @@ import {
   Toggle,
   ApiKeyField,
   TextField,
-  InlineNote,
-} from './controls'
+  Callout,
+  Button,
+} from '@/components/ui'
 
 interface SettingsPanelProps {
   show: boolean
@@ -51,12 +52,12 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
   return (
     <Dialog.Root open={show} onOpenChange={(open) => { if (!open) onClose() }}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50" />
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" />
 
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
           <Dialog.Content
             aria-describedby={undefined}
-            className={`pointer-events-auto relative flex flex-col rounded-xl shadow-2xl w-full max-w-3xl h-[34rem] max-h-[85vh] overflow-hidden border focus:outline-none ${themeClasses.bg(theme)} ${themeClasses.border(theme)}`}
+            className={`pointer-events-auto relative flex flex-col rounded-lg shadow-2xl w-full max-w-3xl h-[34rem] max-h-[85vh] overflow-hidden border focus:outline-none ${themeClasses.bg(theme)} ${themeClasses.border(theme)}`}
           >
             {/* Header */}
             <div className={`flex items-center justify-between px-5 py-4 border-b ${themeClasses.border(theme)}`}>
@@ -65,9 +66,9 @@ export function SettingsPanel({ show, onClose }: SettingsPanelProps) {
               </Dialog.Title>
               <Dialog.Close
                 aria-label="Close dialog"
-                className={`p-2 rounded-lg transition-colors ${themeClasses.hoverBgSecondary(theme)}`}
+                className={`p-1.5 rounded transition-colors ${themeClasses.textSecondary(theme)} ${themeClasses.hoverText(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={`w-5 h-5 ${themeClasses.textSecondary(theme)}`} aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden="true">
                   <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
                 </svg>
               </Dialog.Close>
@@ -154,15 +155,16 @@ function AppearanceSection({ settings }: { settings: SettingsState }) {
   const theme = settings.theme
   return (
     <div className="space-y-5">
-      <Field label="Theme" description="Choose between dark and light mode" theme={theme}>
+      <Field label="Theme" description="Follow the system appearance, or pick Light/Dark" theme={theme}>
         <Select
-          value={settings.theme}
-          onChange={(v) => settings.setTheme(v as Theme)}
+          value={settings.themePreference}
+          onChange={(v) => settings.setThemePreference(v as ThemePreference)}
           ariaLabel="Theme"
           theme={theme}
           options={[
-            { value: 'dark', label: 'Dark' },
+            { value: 'system', label: 'System' },
             { value: 'light', label: 'Light' },
+            { value: 'dark', label: 'Dark' },
           ]}
         />
       </Field>
@@ -229,16 +231,12 @@ function PrivacySection({ settings }: { settings: SettingsState }) {
         />
       </Field>
 
-      <InlineNote
-        theme={theme}
-        title="HIPAA-compliant by design"
-        points={[
-          'All processing happens locally in your browser',
-          'No patient data is sent to external servers',
-          'Console logs contain zero patient information',
-          'Exported files exclude patient data by default',
-        ]}
-      />
+      <Callout theme={theme} title="HIPAA-compliant by design" collapsible points={[
+        'All processing happens locally in your browser',
+        'No patient data is sent to external servers',
+        'Console logs contain zero patient information',
+        'Exported files exclude patient data by default',
+      ]} />
     </div>
   )
 }
@@ -339,29 +337,20 @@ function AiSection({ settings }: { settings: SettingsState }) {
           )}
 
           {settings.aiProvider === 'local' ? (
-            <InlineNote
-              theme={theme}
-              title="Fully on-device — nothing leaves your device"
-              points={[
-                'Runs on the bundled local AI server — no image or data leaves your device',
-                'The model is downloaded once, on first use',
-                'No API key, no cost, and no send-confirmation needed',
-                'Requires the OpenScans desktop app',
-              ]}
-            />
+            <Callout theme={theme} title="Fully on-device — nothing leaves your device" collapsible points={[
+              'Runs on the bundled local AI server — no image or data leaves your device',
+              'The model is downloaded once, on first use',
+              'No API key, no cost, and no send-confirmation needed',
+              'Requires the OpenScans desktop app',
+            ]} />
           ) : (
-            <InlineNote
-              theme={theme}
-              tone="warn"
-              title="Privacy & security notice"
-              points={[
-                'Image data is sent only when you click AI analysis buttons',
-                'Patient metadata (names, IDs) is stripped before sending',
-                'Cost: ~$0.004–0.01 per image analyzed',
-                'API keys are stored locally (not encrypted)',
-                'For production use, implement a secure backend proxy',
-              ]}
-            />
+            <Callout theme={theme} tone="warn" title="Privacy & security notice" collapsible points={[
+              'Image data is sent only when you click AI analysis buttons',
+              'Patient metadata (names, IDs) is stripped before sending',
+              'Cost: ~$0.004–0.01 per image analyzed',
+              'API keys are stored locally (not encrypted)',
+              'For production use, implement a secure backend proxy',
+            ]} />
           )}
 
           {/* MR-precision segmentation engine (on-device, opt-in install) */}
@@ -390,7 +379,9 @@ function DataSection({ settings }: { settings: SettingsState }) {
         <p className={`text-xs mt-0.5 mb-3 ${themeClasses.textSecondary(theme)}`}>
           Remove all stored AI analyses and annotations from localStorage
         </p>
-        <button
+        <Button
+          variant="danger"
+          theme={theme}
           onClick={async () => {
             if (
               await confirmDialog({
@@ -405,10 +396,9 @@ function DataSection({ settings }: { settings: SettingsState }) {
               window.location.reload()
             }
           }}
-          className={`px-3 py-2 text-sm rounded-lg transition-colors text-white ${theme === 'dark' ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'}`}
         >
           Clear All AI Data
-        </button>
+        </Button>
       </div>
     </div>
   )

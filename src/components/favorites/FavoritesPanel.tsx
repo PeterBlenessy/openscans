@@ -4,9 +4,11 @@ import { useStudyStore } from '@/stores/studyStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
 import { useAnnotationStore } from '@/stores/annotationStore'
+import { Star } from 'lucide-react'
 import { cornerstone } from '@/lib/cornerstone/initCornerstone'
 import { BatchExportDialog } from './BatchExportDialog'
 import { formatSeriesDescription } from '@/lib/utils/formatSeriesDescription'
+import { EmptyState, Tooltip } from '@/components/ui'
 
 type ViewMode = 'text' | 'thumbnails'
 
@@ -91,22 +93,13 @@ export function FavoritesPanel() {
 
   if (allMarkedImages.length === 0) {
     return (
-      <div className="text-center py-6">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          className={`w-10 h-10 mx-auto mb-2 opacity-20 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}
-        >
-          <path fillRule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z" clipRule="evenodd" />
-        </svg>
-        <p className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
-          No marked images yet
-        </p>
-        <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-          Star or analyze images to see them here
-        </p>
-      </div>
+      <EmptyState
+        theme={theme}
+        icon={<Star className="w-10 h-10 opacity-40" aria-hidden="true" />}
+        title="No marked images yet"
+        description="Star or analyze images to see them here"
+        className="py-6"
+      />
     )
   }
 
@@ -115,15 +108,15 @@ export function FavoritesPanel() {
       <div className="space-y-2">
         {/* Header with count and actions */}
         <div className="flex items-center justify-between mb-3">
-          <div className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+          <div className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
             {allMarkedImages.length} {allMarkedImages.length === 1 ? 'image' : 'images'}
           </div>
           <div className="flex items-center gap-3">
             {/* View mode toggle */}
+            <Tooltip label={viewMode === 'text' ? 'Show thumbnails' : 'Show text'}>
             <button
               onClick={() => setViewMode(viewMode === 'text' ? 'thumbnails' : 'text')}
-              className={`transition-colors ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
-              title={viewMode === 'text' ? 'Show thumbnails' : 'Show text'}
+              className={`transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-600 hover:text-gray-800'}`}
               aria-label={viewMode === 'text' ? 'Show thumbnails' : 'Show text'}
             >
               {viewMode === 'text' ? (
@@ -136,10 +129,11 @@ export function FavoritesPanel() {
                 </svg>
               )}
             </button>
+            </Tooltip>
+            <Tooltip label="Export all to PDF">
             <button
               onClick={() => setShowBatchExport(true)}
-              className={`transition-colors ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
-              title="Export all to PDF"
+              className={`transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-600 hover:text-gray-800'}`}
               aria-label="Export all to PDF"
             >
               <svg
@@ -153,6 +147,7 @@ export function FavoritesPanel() {
                 <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.25 2.25 0 004.25 17.5h11.5A2.25 2.25 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .414-.336.75-.75.75H4.25a.75.75 0 01-.75-.75v-2.5z" />
               </svg>
             </button>
+            </Tooltip>
           </div>
         </div>
 
@@ -251,7 +246,7 @@ interface FavoriteThumbnailProps {
   theme: 'dark' | 'light'
 }
 
-function FavoriteThumbnail({ favorite, isActive, onClick, theme: _theme }: FavoriteThumbnailProps) {
+function FavoriteThumbnail({ favorite, isActive, onClick, theme }: FavoriteThumbnailProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const loadedRef = useRef(false)
   const favorites = useFavoritesStore((state) => state.favorites)
@@ -302,11 +297,7 @@ function FavoriteThumbnail({ favorite, isActive, onClick, theme: _theme }: Favor
   return (
     <button
       onClick={onClick}
-      className={`flex-shrink-0 relative group rounded overflow-hidden ${
-        isActive
-          ? 'ring-2 ring-[#4a4a4a]'
-          : 'ring-1 ring-[#2a2a2a] hover:ring-[#3a3a3a]'
-      }`}
+      className="flex-shrink-0 relative group overflow-hidden"
     >
       <div
         ref={canvasRef}
@@ -320,6 +311,16 @@ function FavoriteThumbnail({ favorite, isActive, onClick, theme: _theme }: Favor
       <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs py-0.5 text-center">
         {favorite.instanceNumber}
       </div>
+      {/* Selection/edge border overlay (visible over the image; not clipped by
+          the panel's overflow like an outset ring would be). */}
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-0 ${
+          isActive
+            ? (theme === 'dark' ? 'border-2 border-[#9a9a9a]' : 'border-2 border-[#6b6b6b]')
+            : (theme === 'dark' ? 'border border-[#2a2a2a]' : 'border border-[#dcdcdc]')
+        }`}
+      />
       {/* Star icon for favorites */}
       {isFavorite && (
         <div aria-hidden="true" className="absolute top-1 right-1 p-0.5 rounded bg-black/40" title="Favorited">

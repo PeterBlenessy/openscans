@@ -105,7 +105,7 @@ export function Select<T extends string>({
               <RSelect.Item
                 key={opt.value}
                 value={opt.value}
-                className={`relative flex items-center pl-8 pr-3 py-2 text-sm rounded-md cursor-pointer select-none outline-none ${themeClasses.text(theme)} ${isDark(theme) ? 'data-[highlighted]:bg-[#2a2a2a]' : 'data-[highlighted]:bg-gray-100'}`}
+                className={`relative flex items-center pl-8 pr-3 py-2 text-sm rounded-md cursor-pointer select-none outline-none ${themeClasses.text(theme)} ${themeClasses.menuHighlight(theme)}`}
               >
                 <RSelect.ItemIndicator className="absolute left-2 inline-flex">
                   <Check className={themeClasses.text(theme)} />
@@ -129,15 +129,19 @@ interface SliderProps {
   max: number
   step: number
   ariaLabel: string
-  /** Formatted value shown in the pill (e.g. "1.5x", "8%"). */
-  display: string
+  /** Formatted value shown in the pill (e.g. "1.5x", "8%"). Omit for no pill. */
+  display?: string
   theme: Theme
+  /** Root width/sizing override (default `w-32`; pass `flex-1` for full width). */
+  className?: string
+  /** Forwarded as data-testid on the slider root (for e2e). */
+  testId?: string
 }
 
-/** Range slider with a value pill, built on Radix Slider. */
-export function Slider({ value, onChange, min, max, step, ariaLabel, display, theme }: SliderProps) {
+/** Range slider (optionally with a value pill), built on Radix Slider. */
+export function Slider({ value, onChange, min, max, step, ariaLabel, display, theme, className = 'w-32', testId }: SliderProps) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-1 items-center gap-3">
       <RSlider.Root
         value={[value]}
         min={min}
@@ -145,16 +149,19 @@ export function Slider({ value, onChange, min, max, step, ariaLabel, display, th
         step={step}
         onValueChange={([v]) => onChange(v)}
         aria-label={ariaLabel}
-        className="relative flex items-center w-32 h-5 cursor-pointer touch-none select-none"
+        data-testid={testId}
+        className={`relative flex h-5 cursor-pointer touch-none select-none items-center ${className}`}
       >
         <RSlider.Track className={`relative h-1.5 grow rounded-full ${themeClasses.bgActive(theme)}`}>
           <RSlider.Range className={`absolute h-full rounded-full ${isDark(theme) ? 'bg-gray-300' : 'bg-gray-600'}`} />
         </RSlider.Track>
         <RSlider.Thumb className="block h-4 w-4 rounded-full bg-white shadow border border-black/10 focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-gray-400" />
       </RSlider.Root>
-      <span className={`text-xs tabular-nums w-10 text-right ${themeClasses.textSecondary(theme)}`}>
-        {display}
-      </span>
+      {display != null && (
+        <span className={`text-xs tabular-nums w-10 text-right ${themeClasses.textSecondary(theme)}`}>
+          {display}
+        </span>
+      )}
     </div>
   )
 }
@@ -175,15 +182,15 @@ export function Toggle({ checked, onChange, theme, ariaLabel }: ToggleProps) {
       aria-checked={checked}
       aria-label={ariaLabel}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent ${fieldRing(theme)} ${
+      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent ${fieldRing(theme)} ${
         checked
           ? isDark(theme) ? 'bg-gray-300' : 'bg-gray-700'
           : isDark(theme) ? 'bg-[#2a2a2a]' : 'bg-gray-300'
       }`}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full transition-transform ${
-          checked ? 'translate-x-6 bg-[#1a1a1a]' : 'translate-x-1 bg-white'
+        className={`inline-block h-3.5 w-3.5 transform rounded-full transition-transform ${
+          checked ? 'translate-x-[18px] bg-[#1a1a1a]' : 'translate-x-0.5 bg-white'
         }`}
       />
     </button>
@@ -246,52 +253,6 @@ export function TextField({ value, onChange, placeholder, theme }: TextFieldProp
   )
 }
 
-// ── Inline note ──────────────────────────────────────────────────────────────
-
-interface InlineNoteProps {
-  title: string
-  /** Bullet points, shown when expanded. */
-  points: string[]
-  theme: Theme
-  /** 'info' (quiet) or 'warn' (amber accent). */
-  tone?: 'info' | 'warn'
-  /** Start expanded (default collapsed). */
-  defaultOpen?: boolean
-}
-
-/**
- * Quiet, collapsible note. Replaces the heavy emoji + bullet boxes — the title
- * line is always visible, details expand on demand.
- */
-export function InlineNote({ title, points, theme, tone = 'info', defaultOpen = false }: InlineNoteProps) {
-  const [open, setOpen] = useState(defaultOpen)
-  const accent = tone === 'warn'
-    ? 'text-amber-500'
-    : themeClasses.textSecondary(theme)
-  return (
-    <div className={`rounded-lg border ${themeClasses.bgSecondary(theme)} ${themeClasses.border(theme)}`}>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left"
-      >
-        <span className={accent}>{tone === 'warn' ? <Warn /> : <Info />}</span>
-        <span className={`flex-1 text-xs font-medium ${themeClasses.text(theme)}`}>{title}</span>
-        <ChevronDown
-          className={`${themeClasses.textSecondary(theme)} transition-transform ${open ? 'rotate-180' : ''}`}
-        />
-      </button>
-      {open && (
-        <ul className={`px-3 pb-3 pl-9 space-y-1 text-xs ${themeClasses.textSecondary(theme)}`}>
-          {points.map((p, i) => (
-            <li key={i} className="list-disc list-outside ml-1">{p}</li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
-
 // ── Icons ────────────────────────────────────────────────────────────────────
 
 function ChevronDown({ className = '' }: { className?: string }) {
@@ -327,18 +288,3 @@ function EyeOff({ className = '' }: { className?: string }) {
   )
 }
 
-function Info({ className = '' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 20 20" fill="currentColor" className={`w-4 h-4 ${className}`} aria-hidden="true">
-      <path fillRule="evenodd" d="M18 10A8 8 0 11 2 10a8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
-    </svg>
-  )
-}
-
-function Warn({ className = '' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 20 20" fill="currentColor" className={`w-4 h-4 ${className}`} aria-hidden="true">
-      <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.515 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-    </svg>
-  )
-}

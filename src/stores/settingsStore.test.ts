@@ -89,11 +89,20 @@ describe('settingsStore', () => {
       expect(classListRemoveSpy).toHaveBeenCalledWith('light')
     })
 
-    it('should persist theme to localStorage', () => {
+    it('should persist theme preference to localStorage (not the derived theme)', () => {
       useSettingsStore.getState().setTheme('light')
 
       const saved = JSON.parse(localStorage.getItem('openscans-settings') || '{}')
-      expect(saved.theme).toBe('light')
+      expect(saved.themePreference).toBe('light')
+      expect(saved.theme).toBeUndefined() // derived, never persisted
+    })
+
+    it("should follow the OS appearance when preference is 'system'", () => {
+      // matchMedia is mocked to report dark in the test setup.
+      useSettingsStore.getState().setThemePreference('system')
+
+      expect(useSettingsStore.getState().themePreference).toBe('system')
+      expect(useSettingsStore.getState().theme).toBe('dark')
     })
   })
 
@@ -237,7 +246,7 @@ describe('settingsStore', () => {
       useSettingsStore.getState().resetToDefaults()
 
       const saved = JSON.parse(localStorage.getItem('openscans-settings') || '{}')
-      expect(saved.theme).toBe('dark')
+      expect(saved.themePreference).toBe('system')
       expect(saved.hidePersonalInfo).toBe(true)
     })
   })
@@ -265,7 +274,7 @@ describe('settingsStore', () => {
       useSettingsStore.getState().setWindowLevelSensitivity(2.0)
 
       const saved = JSON.parse(localStorage.getItem('openscans-settings') || '{}')
-      expect(saved.theme).toBe('light')
+      expect(saved.themePreference).toBe('light')
       expect(saved.scrollDirection).toBe('inverted')
       expect(saved.windowLevelSensitivity).toBe(2.0)
     })

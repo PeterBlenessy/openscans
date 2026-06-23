@@ -10,6 +10,11 @@ mod local_ai;
 #[cfg(desktop)]
 mod mr_seg;
 
+/// OS accent color bridge — exposes the host accent (macOS NSColor.controlAccentColor)
+/// to the frontend so `--accent` follows the system. Desktop-only.
+#[cfg(desktop)]
+mod theme;
+
 // `AppHandle::state()` in the run-loop comes from the Manager trait.
 #[cfg(desktop)]
 use tauri::Manager;
@@ -140,7 +145,8 @@ pub fn run() {
       mr_seg::mr_seg_status,
       mr_seg::mr_seg_download,
       mr_seg::mr_seg_remove,
-      mr_seg::mr_seg_run
+      mr_seg::mr_seg_run,
+      theme::get_system_accent_color
     ]);
 
   #[cfg(not(desktop))]

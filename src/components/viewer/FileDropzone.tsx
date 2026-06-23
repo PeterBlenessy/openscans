@@ -2,7 +2,8 @@
 import { useCallback, useState } from 'react'
 import { useDicomLoader } from '@/hooks/useDicomLoader'
 import { useErrorHandler } from '@/hooks/useErrorHandler'
-import { cn } from '@/lib/utils'
+import { useSettingsStore } from '@/stores/settingsStore'
+import { cn, themeClasses } from '@/lib/utils'
 import { pickDirectory, readFilesFromDirectory, isDirectoryPickerSupported } from '@/lib/utils/filePicker'
 
 interface FileDropzoneProps {
@@ -16,6 +17,7 @@ export function FileDropzone({ className, onFilesLoaded }: FileDropzoneProps) {
   const [localLoading, setLocalLoading] = useState(false)
   const { loadFiles, isLoading, error } = useDicomLoader()
   const { handleError } = useErrorHandler()
+  const theme = useSettingsStore((s) => s.theme)
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -215,15 +217,15 @@ export function FileDropzone({ className, onFilesLoaded }: FileDropzoneProps) {
       className={cn(
         'relative border-2 border-dashed rounded-lg transition-colors',
         isDragging
-          ? 'border-[#3a3a3a] bg-[#2a2a2a]/10'
-          : 'border-[#2a2a2a] hover:border-[#3a3a3a]',
+          ? `border-accent ${themeClasses.bgActive(theme)}`
+          : `${themeClasses.border(theme)} ${themeClasses.hoverBorder(theme)}`,
         combinedLoading && 'opacity-50 pointer-events-none',
         className
       )}
     >
       <div className="flex flex-col items-center justify-center p-12 text-center">
         <svg
-          className="w-16 h-16 mb-4 text-gray-500"
+          className={`w-16 h-16 mb-4 ${themeClasses.textSecondary(theme)}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -236,22 +238,22 @@ export function FileDropzone({ className, onFilesLoaded }: FileDropzoneProps) {
           />
         </svg>
 
-        <h3 className="text-xl font-semibold text-white mb-2">
+        <h3 className={`text-xl font-semibold mb-2 ${themeClasses.text(theme)}`}>
           {combinedLoading ? 'Loading and parsing DICOM files...' : 'Drop DICOM files here'}
         </h3>
 
         {combinedLoading ? (
-          <p className="text-gray-300 mb-4 animate-pulse">
+          <p className={`mb-4 animate-pulse ${themeClasses.textSecondary(theme)}`}>
             Please wait, this may take a moment...
           </p>
         ) : (
-          <p className="text-gray-400 mb-4">
+          <p className={`mb-4 ${themeClasses.textSecondary(theme)}`}>
             or click below to select files or folder
           </p>
         )}
 
         <div className="flex gap-3">
-          <label className="px-6 py-3 bg-[#2a2a2a] hover:bg-[#3a3a3a] text-white rounded-lg cursor-pointer transition-colors">
+          <label className={`px-6 py-3 rounded-lg cursor-pointer transition-colors ${themeClasses.bgActive(theme)} ${themeClasses.text(theme)} ${themeClasses.hoverBgSecondary(theme)}`}>
             Select Files
             <input
               type="file"
@@ -265,21 +267,21 @@ export function FileDropzone({ className, onFilesLoaded }: FileDropzoneProps) {
 
           <button
             onClick={handleDirectoryPicker}
-            className="px-6 py-3 bg-[#2a2a2a] hover:bg-[#3a3a3a] text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`px-6 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${themeClasses.bgActive(theme)} ${themeClasses.text(theme)} ${themeClasses.hoverBgSecondary(theme)}`}
             disabled={combinedLoading}
           >
             Select Folder
           </button>
         </div>
 
-        <p className="text-sm text-gray-500 mt-4">
+        <p className={`text-sm mt-4 ${themeClasses.textTertiary(theme)}`}>
           Supports DICOM files (with or without .dcm extension)
         </p>
 
         {combinedError && (
-          <div className="mt-4 p-3 bg-red-900/50 border border-red-500 rounded text-red-200 text-sm">
-            <p className="font-semibold">Error</p>
-            <p>{combinedError}</p>
+          <div className={`mt-4 p-3 rounded text-sm border ${themeClasses.bgSecondary(theme)} ${themeClasses.border(theme)}`}>
+            <p className="font-semibold text-error">Error</p>
+            <p className={themeClasses.textSecondary(theme)}>{combinedError}</p>
           </div>
         )}
       </div>

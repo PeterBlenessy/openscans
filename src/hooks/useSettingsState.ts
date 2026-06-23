@@ -23,6 +23,7 @@ import { useSettingsStore } from '../stores/settingsStore'
 export function useSettingsState() {
   // Extract all state values
   const theme = useSettingsStore((state) => state.theme)
+  const themePreference = useSettingsStore((state) => state.themePreference)
   const scrollDirection = useSettingsStore((state) => state.scrollDirection)
   const windowLevelSensitivity = useSettingsStore((state) => state.windowLevelSensitivity)
   const zoomSensitivity = useSettingsStore((state) => state.zoomSensitivity)
@@ -40,6 +41,7 @@ export function useSettingsState() {
 
   // Extract all setter functions
   const setTheme = useSettingsStore((state) => state.setTheme)
+  const setThemePreference = useSettingsStore((state) => state.setThemePreference)
   const setScrollDirection = useSettingsStore((state) => state.setScrollDirection)
   const setWindowLevelSensitivity = useSettingsStore((state) => state.setWindowLevelSensitivity)
   const setZoomSensitivity = useSettingsStore((state) => state.setZoomSensitivity)
@@ -60,6 +62,7 @@ export function useSettingsState() {
   return {
     // State values
     theme,
+    themePreference,
     scrollDirection,
     windowLevelSensitivity,
     zoomSensitivity,
@@ -77,6 +80,7 @@ export function useSettingsState() {
 
     // Setter functions
     setTheme,
+    setThemePreference,
     setScrollDirection,
     setWindowLevelSensitivity,
     setZoomSensitivity,

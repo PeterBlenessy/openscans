@@ -42,6 +42,23 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 })
 
+// Mock matchMedia (not implemented in jsdom). Default to dark so the 'system'
+// theme preference resolves to 'dark' — matching the app's historical default.
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  configurable: true,
+  value: (query: string) => ({
+    matches: query.includes('dark'),
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  }),
+})
+
 // Mock FileReader for DICOM file loading
 class FileReaderMock {
   result: ArrayBuffer | string | null = null

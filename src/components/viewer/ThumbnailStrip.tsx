@@ -4,12 +4,16 @@ import { useFavoritesStore } from '@/stores/favoritesStore'
 import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
 import { useAnnotationStore } from '@/stores/annotationStore'
 import { cornerstone } from '@/lib/cornerstone/initCornerstone'
+import { useSettingsStore } from '@/stores/settingsStore'
+import { themeClasses } from '@/lib/utils'
+import { Spinner, Tooltip } from '@/components/ui'
 import { DicomInstance } from '@/types'
 
 export function ThumbnailStrip() {
   const currentSeries = useStudyStore((state) => state.currentSeries)
   const currentInstanceIndex = useStudyStore((state) => state.currentInstanceIndex)
   const setCurrentInstance = useStudyStore((state) => state.setCurrentInstance)
+  const theme = useSettingsStore((state) => state.theme)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const thumbnailRefs = useRef<(HTMLDivElement | null)[]>([])
 
@@ -30,7 +34,7 @@ export function ThumbnailStrip() {
   }
 
   return (
-    <div className="bg-[#0f0f0f] border-t border-[#2a2a2a] p-3 w-full">
+    <div className={`border-t p-3 w-full ${themeClasses.bgSecondary(theme)} ${themeClasses.border(theme)}`}>
       <div
         ref={scrollContainerRef}
         role="list"
@@ -68,6 +72,7 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
     const [isVisible, setIsVisible] = useState(false)
     const [isLoaded, setIsLoaded] = useState(false)
 
+    const theme = useSettingsStore((state) => state.theme)
     const currentStudy = useStudyStore((state) => state.currentStudy)
     const currentSeries = useStudyStore((state) => state.currentSeries)
     const currentInstanceIndex = useStudyStore((state) => state.currentInstanceIndex)
@@ -202,9 +207,7 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
         }}
         aria-current={isSelected ? 'true' : undefined}
         aria-selected={isSelected}
-        className={`flex-shrink-0 relative group cursor-pointer ${
-          isSelected ? 'ring-2 ring-[#4a4a4a]' : 'ring-1 ring-[#2a2a2a]'
-        } rounded overflow-hidden transition-all hover:ring-[#3a3a3a]`}
+        className="flex-shrink-0 relative group cursor-pointer overflow-hidden transition-all"
       >
         <div
           ref={canvasRef}
@@ -217,17 +220,26 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
         >
           {!isLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-[#0f0f0f]">
-              <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
+              <Spinner size="sm" />
             </div>
           )}
         </div>
         <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs py-0.5 text-center">
           {index + 1}
         </div>
-        {isSelected && (
-          <div className="absolute inset-0 border-2 border-[#4a4a4a] pointer-events-none" />
-        )}
+        {/* Selection/edge — an absolute border overlay (sits over the image, so
+            it's visible; an inset ring is hidden by the canvas and an outset
+            ring is clipped by the strip's overflow). */}
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-0 ${
+            isSelected
+              ? (theme === 'dark' ? 'border-2 border-[#9a9a9a]' : 'border-2 border-[#6b6b6b]')
+              : (theme === 'dark' ? 'border border-[#2a2a2a]' : 'border border-[#dcdcdc]')
+          }`}
+        />
         {/* Star icon for favorites - clickable to toggle */}
+        <Tooltip label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}>
         <button
           onClick={(e) => {
             e.stopPropagation()
@@ -248,7 +260,7 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
             }
           }}
           className="absolute top-1 right-1 p-0.5 rounded bg-black/40 hover:bg-black/70 transition-colors group"
-          title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+          aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -263,8 +275,10 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
             <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401z" clipRule="evenodd" />
           </svg>
         </button>
+        </Tooltip>
         {/* AI Analysis indicator - clickable */}
         {hasAnalysis && (
+          <Tooltip label="View AI analysis">
           <button
             onClick={(e) => {
               e.stopPropagation()
@@ -274,7 +288,7 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
               }
             }}
             className="absolute top-1 left-1 p-0.5 rounded bg-black/40 hover:bg-black/70 transition-colors group"
-            title="View AI analysis"
+            aria-label="View AI analysis"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -285,16 +299,18 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
               <path fillRule="evenodd" d="M4.5 2A1.5 1.5 0 003 3.5v13A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5V7.621a1.5 1.5 0 00-.44-1.06l-4.12-4.122A1.5 1.5 0 0011.378 2H4.5zm2.25 8.5a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5zm0 3a.75.75 0 000 1.5h6.5a.75.75 0 000-1.5h-6.5z" clipRule="evenodd" />
             </svg>
           </button>
+          </Tooltip>
         )}
         {/* Detector markers toggle indicator - clickable */}
         {hasAnnotations && (
+          <Tooltip label={areMarkersVisible ? 'Hide markers' : 'Show markers'}>
           <button
             onClick={(e) => {
               e.stopPropagation()
               toggleMarkerVisibility(instance.sopInstanceUID)
             }}
             className="absolute bottom-1 left-1 p-0.5 rounded bg-black/60 hover:bg-black/80 transition-colors group"
-            title={areMarkersVisible ? "Hide markers" : "Show markers"}
+            aria-label={areMarkersVisible ? 'Hide markers' : 'Show markers'}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -308,6 +324,7 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
               <path fillRule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
             </svg>
           </button>
+          </Tooltip>
         )}
       </div>
     )
