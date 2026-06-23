@@ -57,9 +57,9 @@ test.describe('File Loading and Display', () => {
     // Wait for image to load and display
     await expect(page.locator('[data-testid="viewport"]')).toBeVisible({ timeout: 30000 })
 
-    // Verify metadata is displayed (check for "Current Image" section)
-    await expect(page.locator('text=/Study Date:/i')).toBeVisible()
-    await expect(page.locator('text=/Series:/i')).toBeVisible()
+    // Verify metadata loaded: the Studies & Series panel shows the series'
+    // modality + image count (e.g. "CT • 1 image").
+    await expect(page.getByText(/\d+ image/i).first()).toBeVisible()
 
     // Verify image is rendered (check for canvas element)
     const canvas = page.locator('canvas').first()
@@ -94,8 +94,9 @@ test.describe('File Loading and Display', () => {
     // Wait for series to load
     await expect(page.locator('[data-testid="viewport"]')).toBeVisible({ timeout: 30000 })
 
-    // Verify series information is displayed
-    await expect(page.locator('text=/Instance:/i')).toBeVisible()
+    // Verify series information is displayed: the Studies & Series panel shows
+    // the loaded series' image count.
+    await expect(page.getByText(/\d+ images/i).first()).toBeVisible()
   })
 })
 
