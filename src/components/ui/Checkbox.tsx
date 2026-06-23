@@ -15,9 +15,9 @@ interface CheckboxProps
 
 /**
  * Themed checkbox. A styled native `<input type="checkbox">` so it picks up the
- * OS accent for free via the global `accent-color: auto` (set in index.css) —
- * no new dependency, no hand-drawn indicator. Replaces the two ad-hoc native
- * checkboxes that weren't theme-aware.
+ * accent for free via the global `accent-color: var(--accent)` (set in
+ * index.css) — no new dependency, no hand-drawn indicator. Replaces the two
+ * ad-hoc native checkboxes that weren't theme-aware.
  */
 export function Checkbox({ checked, onChange, label, theme, ariaLabel, className = '', ...rest }: CheckboxProps) {
   const t = useUiTheme(theme)

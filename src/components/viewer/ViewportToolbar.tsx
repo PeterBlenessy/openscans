@@ -102,12 +102,9 @@ export function ViewportToolbar({
 
   // AI settings
   const theme = useSettingsStore((state) => state.theme)
-  // Shared dropdown-menu styling (themed). The data-[highlighted] variant must
-  // be a complete literal class per theme so Tailwind generates it.
+  // Shared dropdown-menu styling (themed).
   const menuContentClass = `${themeClasses.bg(theme)} ${themeClasses.border(theme)} border rounded-lg shadow-xl py-1 z-50`
-  const menuItemHl = theme === 'dark'
-    ? 'data-[highlighted]:bg-[#2a2a2a] data-[highlighted]:text-white'
-    : 'data-[highlighted]:bg-gray-100 data-[highlighted]:text-gray-900'
+  const menuItemHl = themeClasses.menuHighlight(theme)
   const aiEnabled = useSettingsStore((state) => state.aiEnabled)
   const aiProvider = useSettingsStore((state) => state.aiProvider)
   const localModel = useSettingsStore((state) => state.localModel)
@@ -612,10 +609,12 @@ export function ViewportToolbar({
       <ToolbarDivider />
 
       {/* Favorite */}
+      <Tooltip label={isCurrentFavorite ? 'Remove from favorites' : 'Add to favorites'}>
       <button
         onClick={handleToggleFavorite}
-        title={isCurrentFavorite ? "Remove from favorites" : "Add to favorites"}
-        aria-label={isCurrentFavorite ? "Remove from favorites" : "Add to favorites"}
+        aria-label={isCurrentFavorite ? 'Remove from favorites' : 'Add to favorites'}
+        // Native title fallback while disabled (Radix tooltip won't fire).
+        title={!currentInstance ? (isCurrentFavorite ? 'Remove from favorites' : 'Add to favorites') : undefined}
         aria-pressed={isCurrentFavorite}
         disabled={!currentInstance}
         data-testid="favorite-button"
@@ -637,6 +636,7 @@ export function ViewportToolbar({
           </svg>
         )}
       </button>
+      </Tooltip>
 
       {/* Export */}
       <ToolbarButton
@@ -737,6 +737,9 @@ function ToolbarButton({ onClick, title, icon, active = false, disabled = false,
       <button
         onClick={onClick}
         aria-label={title}
+        // Radix tooltips don't fire on a disabled button (no pointer events),
+        // so fall back to a native title tooltip while disabled.
+        title={disabled ? title : undefined}
         aria-pressed={isToggle ? active : undefined}
         disabled={disabled}
         data-testid={testId}

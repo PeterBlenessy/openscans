@@ -62,6 +62,12 @@ export const themeClasses = {
 
   // Separator/divider
   divider: (theme: 'light' | 'dark') => theme === 'dark' ? 'bg-[#2a2a2a]' : 'bg-gray-300',
+
+  // Radix menu/select item highlight (data-[highlighted] state). Single source
+  // of truth for the "active surface" used by Select + the toolbar dropdowns.
+  menuHighlight: (theme: 'light' | 'dark') => theme === 'dark'
+    ? 'data-[highlighted]:bg-[#2a2a2a] data-[highlighted]:text-white'
+    : 'data-[highlighted]:bg-gray-100 data-[highlighted]:text-gray-900',
 }
 
 /**

@@ -2,7 +2,7 @@
 //!
 //! The frontend's accent picker has a "System" option that follows the OS-level
 //! accent setting. On macOS this maps to `NSColor.controlAccentColor`. We convert
-//! the sRGB color into oklch (the format the rest of `globals.css` uses) so the
+//! the sRGB color into oklch (the format the rest of `index.css` uses) so the
 //! frontend can plug it into a CSS variable without further math.
 //!
 //! On Windows / Linux we currently return `Ok(None)` and the frontend falls back
@@ -109,8 +109,7 @@ fn srgb_to_linear(c: f32) -> f32 {
 /// Format an `(L, C, H)` triple as an `oklch()` CSS string.
 ///
 /// L is rendered as a percentage with 1 decimal, C with 3 decimals, H as an
-/// integer (degrees). Matches the precision of the curated tokens in
-/// `src/styles/globals.css`.
+/// integer (degrees).
 fn format_oklch((l, c, h): (f32, f32, f32)) -> String {
     let l_pct = (l * 100.0 * 10.0).round() / 10.0;
     let c_round = (c * 1000.0).round() / 1000.0;

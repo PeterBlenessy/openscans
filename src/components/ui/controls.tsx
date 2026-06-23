@@ -105,7 +105,7 @@ export function Select<T extends string>({
               <RSelect.Item
                 key={opt.value}
                 value={opt.value}
-                className={`relative flex items-center pl-8 pr-3 py-2 text-sm rounded-md cursor-pointer select-none outline-none ${themeClasses.text(theme)} ${isDark(theme) ? 'data-[highlighted]:bg-[#2a2a2a]' : 'data-[highlighted]:bg-gray-100'}`}
+                className={`relative flex items-center pl-8 pr-3 py-2 text-sm rounded-md cursor-pointer select-none outline-none ${themeClasses.text(theme)} ${themeClasses.menuHighlight(theme)}`}
               >
                 <RSelect.ItemIndicator className="absolute left-2 inline-flex">
                   <Check className={themeClasses.text(theme)} />
