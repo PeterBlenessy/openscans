@@ -207,7 +207,7 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
         }}
         aria-current={isSelected ? 'true' : undefined}
         aria-selected={isSelected}
-        className="flex-shrink-0 relative group cursor-pointer rounded overflow-hidden transition-all"
+        className="flex-shrink-0 relative group cursor-pointer overflow-hidden transition-all"
       >
         <div
           ref={canvasRef}
@@ -232,10 +232,10 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
             ring is clipped by the strip's overflow). */}
         <div
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-0 rounded ${
+          className={`pointer-events-none absolute inset-0 ${
             isSelected
-              ? (theme === 'dark' ? 'border-2 border-[#9a9a9a]' : 'border-2 border-[#737373]')
-              : (theme === 'dark' ? 'border border-[#3a3a3a]' : 'border border-[#d4d4d4]')
+              ? (theme === 'dark' ? 'border-2 border-[#9a9a9a]' : 'border-2 border-[#6b6b6b]')
+              : (theme === 'dark' ? 'border border-[#2a2a2a]' : 'border border-[#dcdcdc]')
           }`}
         />
         {/* Star icon for favorites - clickable to toggle */}

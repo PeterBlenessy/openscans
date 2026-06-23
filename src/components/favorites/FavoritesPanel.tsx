@@ -108,7 +108,7 @@ export function FavoritesPanel() {
       <div className="space-y-2">
         {/* Header with count and actions */}
         <div className="flex items-center justify-between mb-3">
-          <div className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+          <div className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
             {allMarkedImages.length} {allMarkedImages.length === 1 ? 'image' : 'images'}
           </div>
           <div className="flex items-center gap-3">
@@ -116,7 +116,7 @@ export function FavoritesPanel() {
             <Tooltip label={viewMode === 'text' ? 'Show thumbnails' : 'Show text'}>
             <button
               onClick={() => setViewMode(viewMode === 'text' ? 'thumbnails' : 'text')}
-              className={`transition-colors ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+              className={`transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-600 hover:text-gray-800'}`}
               aria-label={viewMode === 'text' ? 'Show thumbnails' : 'Show text'}
             >
               {viewMode === 'text' ? (
@@ -133,7 +133,7 @@ export function FavoritesPanel() {
             <Tooltip label="Export all to PDF">
             <button
               onClick={() => setShowBatchExport(true)}
-              className={`transition-colors ${theme === 'dark' ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'}`}
+              className={`transition-colors ${theme === 'dark' ? 'text-gray-400 hover:text-gray-200' : 'text-gray-600 hover:text-gray-800'}`}
               aria-label="Export all to PDF"
             >
               <svg
@@ -297,7 +297,7 @@ function FavoriteThumbnail({ favorite, isActive, onClick, theme }: FavoriteThumb
   return (
     <button
       onClick={onClick}
-      className="flex-shrink-0 relative group rounded overflow-hidden"
+      className="flex-shrink-0 relative group overflow-hidden"
     >
       <div
         ref={canvasRef}
@@ -315,10 +315,10 @@ function FavoriteThumbnail({ favorite, isActive, onClick, theme }: FavoriteThumb
           the panel's overflow like an outset ring would be). */}
       <div
         aria-hidden="true"
-        className={`pointer-events-none absolute inset-0 rounded ${
+        className={`pointer-events-none absolute inset-0 ${
           isActive
-            ? (theme === 'dark' ? 'border-2 border-[#9a9a9a]' : 'border-2 border-[#737373]')
-            : (theme === 'dark' ? 'border border-[#3a3a3a]' : 'border border-[#d4d4d4]')
+            ? (theme === 'dark' ? 'border-2 border-[#9a9a9a]' : 'border-2 border-[#6b6b6b]')
+            : (theme === 'dark' ? 'border border-[#2a2a2a]' : 'border border-[#dcdcdc]')
         }`}
       />
       {/* Star icon for favorites */}
