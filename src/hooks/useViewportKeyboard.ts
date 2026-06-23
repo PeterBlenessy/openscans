@@ -27,8 +27,8 @@ interface UseViewportKeyboardOptions {
   onActivateLength?: () => void
   /** Activate the angle tool (Shift+A) */
   onActivateAngle?: () => void
-  /** Clear all drawn measurements/ROIs on the current image (Delete/Backspace) */
-  onClearMeasurements?: () => void
+  /** Delete the most-recent measurement/ROI on the current image (Delete/Backspace) */
+  onDeleteLastMeasurement?: () => void
 }
 
 /**
@@ -72,7 +72,7 @@ export function useViewportKeyboard(options: UseViewportKeyboardOptions) {
     onCineFrameRateDown,
     onActivateLength,
     onActivateAngle,
-    onClearMeasurements
+    onDeleteLastMeasurement
   } = options
 
   const [isModifierKeyPressed, setIsModifierKeyPressed] = useState(false)
@@ -152,11 +152,12 @@ export function useViewportKeyboard(options: UseViewportKeyboardOptions) {
         }
       }
 
-      // Clear drawn measurements/ROIs on the current image (Delete / Backspace).
+      // Delete the most-recent measurement/ROI on the current image (Delete /
+      // Backspace). Per-item delete of any measurement is via its × badge.
       if ((e.key === 'Delete' || e.key === 'Backspace') && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (onClearMeasurements) {
+        if (onDeleteLastMeasurement) {
           e.preventDefault()
-          onClearMeasurements()
+          onDeleteLastMeasurement()
         }
       }
 
@@ -204,7 +205,7 @@ export function useViewportKeyboard(options: UseViewportKeyboardOptions) {
     onCineFrameRateDown,
     onActivateLength,
     onActivateAngle,
-    onClearMeasurements
+    onDeleteLastMeasurement
   ])
 
   return { isModifierKeyPressed }

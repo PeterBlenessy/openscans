@@ -22,10 +22,20 @@ const MEASUREMENT_TOOL_SET = new Set<string>(Object.values(MEASUREMENT_TOOL_NAME
 /**
  * Remove all measurement / ROI annotations for an instance — both the persisted
  * store overlay and cornerstone-tools' in-session copy. Backs the toolbar
- * "Clear measurements" button and the Delete/Backspace shortcut.
+ * "Clear measurements" button.
  */
 export function clearMeasurements(sopInstanceUID: string): void {
   useAnnotationStore.getState().clearMeasurementsForInstance(sopInstanceUID)
+  clearMeasurementToolState()
+}
+
+/**
+ * Delete a single measurement / ROI annotation. We also drop cornerstone-tools'
+ * own copies (we can't map one store annotation to one cornerstone measurement);
+ * the remaining annotations stay rendered via the SVG overlay from the store.
+ */
+export function deleteMeasurement(annotationId: string): void {
+  useAnnotationStore.getState().deleteAnnotation(annotationId)
   clearMeasurementToolState()
 }
 

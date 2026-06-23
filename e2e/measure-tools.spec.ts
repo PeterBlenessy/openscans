@@ -60,3 +60,39 @@ test('measure tools: activate cleanly, toggle off, and gate Clear', async ({ pag
     `cornerstone colorLUT/segmentsPerLabelmap warnings: ${colorLutWarnings.join(' | ')}`
   ).toHaveLength(0)
 })
+
+test('draw a length measurement, then delete it per-item via its × badge', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.locator('text=OpenScans').first()).toBeVisible({ timeout: 10000 })
+  const files = fs.readdirSync(MULTI).filter((f) => f.endsWith('.dcm')).map((f) => path.join(MULTI, f))
+  if (files.length === 0) {
+    test.skip()
+    return
+  }
+  await page.locator('[data-testid="file-input"]').setInputFiles(files)
+  const viewport = page.locator('[data-testid="viewport"]')
+  await expect(viewport).toBeVisible({ timeout: 30000 })
+  await page.waitForTimeout(1200)
+
+  // Activate the Length tool and draw a horizontal segment across the viewport.
+  await page.locator('[data-testid="length-tool-button"]').click()
+  const box = await viewport.boundingBox()
+  if (!box) throw new Error('no viewport box')
+  const cy = box.y + box.height / 2
+  await page.mouse.move(box.x + box.width * 0.35, cy)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width * 0.65, cy, { steps: 8 })
+  await page.mouse.up()
+  await page.waitForTimeout(400)
+
+  // Measurement registered → Clear button enabled + a delete badge is present.
+  await expect(page.locator('[data-testid="clear-measurements-button"]')).toBeEnabled()
+  const badge = page.locator('[aria-label="Delete measurement"]')
+  await expect(badge).toHaveCount(1)
+
+  // Per-item delete via the × badge.
+  await badge.click()
+  await page.waitForTimeout(300)
+  await expect(page.locator('[aria-label="Delete measurement"]')).toHaveCount(0)
+  await expect(page.locator('[data-testid="clear-measurements-button"]')).toBeDisabled()
+})
