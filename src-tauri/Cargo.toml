@@ -47,3 +47,10 @@ e2e-testing = ["dep:tauri-plugin-webdriver"]
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-updater = "2"
+
+# Read the macOS system accent color (NSColor.controlAccentColor) for the
+# `--accent` token. macOS-only; other platforms return None and use the CSS
+# fallback, so these crates aren't pulled into Linux/Windows builds.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", features = ["NSColor", "NSColorSpace"] }

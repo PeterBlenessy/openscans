@@ -17,29 +17,19 @@
   -moz-osx-font-smoothing: grayscale;
 
   /* Design tokens (consumed via Tailwind `accent`/`warning`/`error`/`success`).
-     --accent follows the OS accent color where supported (see @supports
-     below); elsewhere it falls back to brand blue. Semantic colors have no OS
-     equivalent, so they are fixed hex. NOTE: never use `--accent` with a
-     Tailwind /opacity modifier — when it resolves to the `AccentColor` keyword
-     it cannot take an alpha. Use the hex semantic vars or themeClasses for
-     translucent surfaces. */
-  --accent: #2563eb;           /* blue-600 — matches the previous primary buttons */
+     --accent is the brand-blue fallback; on the desktop app it's overridden at
+     runtime with the real OS accent color (an oklch value injected by
+     useSystemAccent / the get_system_accent_color Tauri command). Semantic
+     colors have no OS equivalent, so they are fixed hex. */
+  --accent: #2563eb;           /* blue-600 — brand fallback */
   --accent-foreground: #ffffff;
   --warning: #f59e0b;          /* amber-500 */
   --error: #dc2626;            /* red-600 */
   --success: #16a34a;          /* green-600 */
 
-  /* Native form controls (checkbox/radio/range) adopt the OS accent. */
-  accent-color: auto;
-}
-
-/* macOS WKWebView (and any engine that parses the keyword) adopts the real
-   system accent color. WebView2/Windows and plain web keep the blue fallback. */
-@supports (color: AccentColor) {
-  :root {
-    --accent: AccentColor;
-    --accent-foreground: AccentColorText;
-  }
+  /* Native form controls (checkbox/radio/range) use the same --accent value,
+     so they match the styled surfaces instead of the browser's own accent. */
+  accent-color: var(--accent);
 }
 
 body {

@@ -14,6 +14,7 @@ import { SettingsPanel } from './components/settings/SettingsPanel'
 import { ErrorToast } from './components/ErrorToast'
 import { ConfirmDialog } from './components/ui/ConfirmDialog'
 import { Spinner, Tooltip, TooltipProvider } from './components/ui'
+import { useSystemAccent } from './hooks/useSystemAccent'
 import { UpdateNotification } from './components/UpdateNotification'
 import { useStudyStore } from './stores/studyStore'
 import { useRecentStudiesStore } from './stores/recentStudiesStore'
@@ -47,6 +48,8 @@ function App() {
   })
 
   const theme = useSettingsStore((state) => state.theme)
+  // Follow the OS accent color (desktop) for the --accent token.
+  useSystemAccent()
   const hidePersonalInfo = useSettingsStore((state) => state.hidePersonalInfo)
   const setHidePersonalInfo = useSettingsStore((state) => state.setHidePersonalInfo)
   const currentSeries = useStudyStore((state) => state.currentSeries)
