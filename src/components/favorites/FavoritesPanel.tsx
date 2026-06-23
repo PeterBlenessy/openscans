@@ -246,7 +246,7 @@ interface FavoriteThumbnailProps {
   theme: 'dark' | 'light'
 }
 
-function FavoriteThumbnail({ favorite, isActive, onClick, theme: _theme }: FavoriteThumbnailProps) {
+function FavoriteThumbnail({ favorite, isActive, onClick, theme }: FavoriteThumbnailProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const loadedRef = useRef(false)
   const favorites = useFavoritesStore((state) => state.favorites)
@@ -297,10 +297,10 @@ function FavoriteThumbnail({ favorite, isActive, onClick, theme: _theme }: Favor
   return (
     <button
       onClick={onClick}
-      className={`flex-shrink-0 relative group rounded overflow-hidden ${
+      className={`flex-shrink-0 relative group rounded overflow-hidden ring-1 ring-inset ${
         isActive
-          ? 'ring-2 ring-[#4a4a4a]'
-          : 'ring-1 ring-[#2a2a2a] hover:ring-[#3a3a3a]'
+          ? (theme === 'dark' ? 'ring-[#5a5a5a]' : 'ring-gray-400')
+          : (theme === 'dark' ? 'ring-[#2a2a2a] hover:ring-[#3a3a3a]' : 'ring-gray-200 hover:ring-gray-300')
       }`}
     >
       <div

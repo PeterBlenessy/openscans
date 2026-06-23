@@ -72,6 +72,7 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
     const [isVisible, setIsVisible] = useState(false)
     const [isLoaded, setIsLoaded] = useState(false)
 
+    const theme = useSettingsStore((state) => state.theme)
     const currentStudy = useStudyStore((state) => state.currentStudy)
     const currentSeries = useStudyStore((state) => state.currentSeries)
     const currentInstanceIndex = useStudyStore((state) => state.currentInstanceIndex)
@@ -206,9 +207,11 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
         }}
         aria-current={isSelected ? 'true' : undefined}
         aria-selected={isSelected}
-        className={`flex-shrink-0 relative group cursor-pointer ${
-          isSelected ? 'ring-2 ring-accent' : 'ring-1 ring-[#2a2a2a]'
-        } rounded overflow-hidden transition-all hover:ring-[#3a3a3a]`}
+        className={`flex-shrink-0 relative group cursor-pointer rounded overflow-hidden transition-all ring-1 ring-inset ${
+          isSelected
+            ? (theme === 'dark' ? 'ring-[#5a5a5a]' : 'ring-gray-400')
+            : (theme === 'dark' ? 'ring-[#2a2a2a] hover:ring-[#3a3a3a]' : 'ring-gray-200 hover:ring-gray-300')
+        }`}
       >
         <div
           ref={canvasRef}
@@ -228,9 +231,6 @@ const Thumbnail = forwardRef<HTMLDivElement, ThumbnailProps>(
         <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs py-0.5 text-center">
           {index + 1}
         </div>
-        {isSelected && (
-          <div className="absolute inset-0 border-2 border-accent pointer-events-none" />
-        )}
         {/* Star icon for favorites - clickable to toggle */}
         <Tooltip label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}>
         <button

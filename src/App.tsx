@@ -400,10 +400,13 @@ function App() {
                         const newIndex = parseInt(e.target.value)
                         useStudyStore.getState().setCurrentInstance(newIndex)
                       }}
-                      // Native range, accent-colored by the global `accent-color`
-                      // (follows the OS accent). Kept native so the e2e can read
-                      // inputValue() and so it themes for free.
+                      // Native range. A discrete grey thumb/track (overriding the
+                      // global OS-accent `accent-color`) to match the settings
+                      // sliders — selection chrome stays neutral; the accent is
+                      // reserved for primary actions. Kept native so the e2e can
+                      // read inputValue().
                       className="flex-1 h-2 cursor-pointer"
+                      style={{ accentColor: theme === 'dark' ? '#9ca3af' : '#6b7280' }}
                       data-testid="instance-slider"
                       aria-label="Navigate images in series"
                     />
