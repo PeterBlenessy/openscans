@@ -41,14 +41,23 @@ export function AnnotationOverlay({ canvasElement }: AnnotationOverlayProps) {
     }
   }, [canvasElement])
 
-  // Get annotations for current instance (only if markers are visible)
+  // Get annotations for current instance (only if markers are visible).
+  // Dedupe by id so a duplicated annotation (e.g. from persisted state) can
+  // never produce duplicate React keys / duplicated-or-omitted SVG children.
   const annotations = useMemo(() => {
     if (!currentInstance || !showAnnotations || !areMarkersVisible) return []
     // Only AI markers render in this SVG overlay; measurements/ROIs are drawn
-    // by cornerstone-tools directly on the canvas (single source).
-    return allAnnotations.filter(
-      (ann) => ann.type === 'marker' && ann.sopInstanceUID === currentInstance.sopInstanceUID
-    )
+    // by cornerstone-tools directly on the canvas (single source). Dedupe by id
+    // so a duplicated annotation (e.g. from persisted state) can't produce
+    // duplicate React keys / duplicated-or-omitted SVG children.
+    const seen = new Set<string>()
+    return allAnnotations.filter((ann) => {
+      if (ann.type !== 'marker') return false
+      if (ann.sopInstanceUID !== currentInstance.sopInstanceUID) return false
+      if (seen.has(ann.id)) return false
+      seen.add(ann.id)
+      return true
+    })
   }, [currentInstance, showAnnotations, areMarkersVisible, allAnnotations])
 
 
