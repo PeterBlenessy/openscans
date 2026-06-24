@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   MonitorCog,
   Target,
@@ -79,6 +80,11 @@ export function ViewportToolbar({
   // Cine + measurement tool state
   const activeTool = useViewportStore((state) => state.activeTool)
   const setActiveTool = useViewportStore((state) => state.setActiveTool)
+  // The measurement/ROI tools live in a reveal-able sub-toolbar (they're many
+  // and crowd the main bar). Toggled by the Measure button; stays open until
+  // toggled off.
+  const [showMeasureTools, setShowMeasureTools] = useState(false)
+  const measurementToolActive = ['Length', 'Angle', 'EllipticalRoi', 'RectangleRoi'].includes(activeTool)
   const cineEnabled = useViewportStore((state) => state.cineEnabled)
   const cineFrameRate = useViewportStore((state) => state.cineFrameRate)
   const toggleCine = useViewportStore((state) => state.toggleCine)
@@ -364,8 +370,10 @@ export function ViewportToolbar({
   }
 
 
+  const rowClass = `flex items-center gap-1 backdrop-blur-sm rounded-lg p-1.5 shadow-lg border ${themeClasses.bg(theme)} ${themeClasses.border(theme)}`
   return (
-    <div className={`flex items-center gap-1 backdrop-blur-sm rounded-lg p-1.5 shadow-lg border ${themeClasses.bg(theme)} ${themeClasses.border(theme)} ${className}`}>
+    <div className={`flex flex-col items-center gap-1 ${className}`}>
+      <div className={rowClass}>
       {/* Reset */}
       <ToolbarButton
         onClick={resetSettings}
@@ -484,49 +492,15 @@ export function ViewportToolbar({
 
       <ToolbarDivider />
 
-      {/* Measurement & ROI tools. Click an active tool again to deselect it. */}
+      {/* Measure & annotate — opens the tool sub-toolbar (see below). */}
       <ToolbarButton
-        onClick={() => handleToggleTool('Length')}
-        active={activeTool === 'Length'}
+        onClick={() => setShowMeasureTools((v) => !v)}
+        active={showMeasureTools || measurementToolActive}
         isToggle
         disabled={!currentInstance}
-        title="Distance measurement (L) — click again to deselect"
-        data-testid="length-tool-button"
+        title="Measure & annotate (ruler, angle, ROI)"
+        data-testid="measure-tools-toggle"
         icon={<Ruler className="w-4 h-4" />}
-      />
-      <ToolbarButton
-        onClick={() => handleToggleTool('Angle')}
-        active={activeTool === 'Angle'}
-        isToggle
-        disabled={!currentInstance}
-        title="Angle measurement (Shift+A) — click again to deselect"
-        data-testid="angle-tool-button"
-        icon={<Triangle className="w-4 h-4" />}
-      />
-      <ToolbarButton
-        onClick={() => handleToggleTool('EllipticalRoi')}
-        active={activeTool === 'EllipticalRoi'}
-        isToggle
-        disabled={!currentInstance}
-        title="Elliptical ROI — click again to deselect"
-        data-testid="ellipse-roi-button"
-        icon={<Circle className="w-4 h-4" />}
-      />
-      <ToolbarButton
-        onClick={() => handleToggleTool('RectangleRoi')}
-        active={activeTool === 'RectangleRoi'}
-        isToggle
-        disabled={!currentInstance}
-        title="Rectangle ROI — click again to deselect"
-        data-testid="rectangle-roi-button"
-        icon={<Square className="w-4 h-4" />}
-      />
-      <ToolbarButton
-        onClick={() => currentInstance && clearMeasurements(currentInstance.sopInstanceUID)}
-        disabled={measurementCount === 0}
-        title={measurementCount > 0 ? `Clear ${measurementCount} measurement${measurementCount === 1 ? '' : 's'} (Delete)` : 'No measurements to clear'}
-        data-testid="clear-measurements-button"
-        icon={<Eraser className="w-4 h-4" />}
       />
 
       <ToolbarDivider />
@@ -737,6 +711,57 @@ export function ViewportToolbar({
             icon={isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           />
         </>
+      )}
+      </div>
+
+      {/* Reveal-able measurement / annotation sub-toolbar. */}
+      {showMeasureTools && (
+        <div className={rowClass} data-testid="measure-sub-toolbar">
+          <ToolbarButton
+            onClick={() => handleToggleTool('Length')}
+            active={activeTool === 'Length'}
+            isToggle
+            disabled={!currentInstance}
+            title="Distance measurement (L) — click again to deselect"
+            data-testid="length-tool-button"
+            icon={<Ruler className="w-4 h-4" />}
+          />
+          <ToolbarButton
+            onClick={() => handleToggleTool('Angle')}
+            active={activeTool === 'Angle'}
+            isToggle
+            disabled={!currentInstance}
+            title="Angle measurement (Shift+A) — click again to deselect"
+            data-testid="angle-tool-button"
+            icon={<Triangle className="w-4 h-4" />}
+          />
+          <ToolbarButton
+            onClick={() => handleToggleTool('EllipticalRoi')}
+            active={activeTool === 'EllipticalRoi'}
+            isToggle
+            disabled={!currentInstance}
+            title="Elliptical ROI — click again to deselect"
+            data-testid="ellipse-roi-button"
+            icon={<Circle className="w-4 h-4" />}
+          />
+          <ToolbarButton
+            onClick={() => handleToggleTool('RectangleRoi')}
+            active={activeTool === 'RectangleRoi'}
+            isToggle
+            disabled={!currentInstance}
+            title="Rectangle ROI — click again to deselect"
+            data-testid="rectangle-roi-button"
+            icon={<Square className="w-4 h-4" />}
+          />
+          <ToolbarDivider />
+          <ToolbarButton
+            onClick={() => currentInstance && clearMeasurements(currentInstance.sopInstanceUID)}
+            disabled={measurementCount === 0}
+            title={measurementCount > 0 ? `Clear ${measurementCount} measurement${measurementCount === 1 ? '' : 's'} (Delete)` : 'No measurements to clear'}
+            data-testid="clear-measurements-button"
+            icon={<Eraser className="w-4 h-4" />}
+          />
+        </div>
       )}
     </div>
   )

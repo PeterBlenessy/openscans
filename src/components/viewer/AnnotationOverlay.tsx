@@ -4,7 +4,6 @@ import { useViewportStore } from '@/stores/viewportStore'
 import { useStudyStore } from '@/stores/studyStore'
 import { MarkerAnnotation, MeasurementAnnotation, RegionAnnotation, Point2D } from '@/types/annotation'
 import { annotationColors } from '@/lib/colors'
-import { deleteMeasurement } from '@/lib/cornerstone/tools'
 // @ts-expect-error - cornerstone-core doesn't have TypeScript definitions
 import cornerstone from 'cornerstone-core'
 
@@ -310,34 +309,6 @@ function pixelToCanvasSafe(canvasElement: HTMLDivElement, point: Point2D): Point
 
 const MEASUREMENT_COLOR = annotationColors.cyan
 
-/**
- * Small clickable "×" badge for deleting a single measurement / ROI. It opts
- * back into pointer events (the overlay svg is pointerEvents:none) and stops the
- * event from reaching the cornerstone canvas underneath.
- */
-function DeleteBadge({ cx, cy, onDelete }: { cx: number; cy: number; onDelete: () => void }) {
-  return (
-    <g
-      style={{ pointerEvents: 'auto', cursor: 'pointer' }}
-      onMouseDown={(e) => { e.stopPropagation(); e.preventDefault() }}
-      onClick={(e) => { e.stopPropagation(); e.preventDefault(); onDelete() }}
-      role="button"
-      aria-label="Delete measurement"
-    >
-      <title>Delete</title>
-      {/* Invisible larger hit target for easier clicking. */}
-      <circle cx={cx} cy={cy} r={10} fill="transparent" />
-      <circle cx={cx} cy={cy} r={7} fill="#1a1a1a" stroke={MEASUREMENT_COLOR} strokeWidth={1} />
-      <path
-        d={`M ${cx - 3} ${cy - 3} L ${cx + 3} ${cy + 3} M ${cx + 3} ${cy - 3} L ${cx - 3} ${cy + 3}`}
-        stroke="#ffffff"
-        strokeWidth={1.5}
-        strokeLinecap="round"
-      />
-    </g>
-  )
-}
-
 interface MeasurementRendererProps {
   annotation: MeasurementAnnotation
   canvasElement: HTMLDivElement
@@ -384,11 +355,6 @@ function MeasurementRenderer({ annotation, canvasElement }: MeasurementRendererP
       >
         {annotation.value.toFixed(1)} {annotation.unit}
       </text>
-      <DeleteBadge
-        cx={labelPoint.x + 8}
-        cy={labelPoint.y - 24}
-        onDelete={() => deleteMeasurement(annotation.id)}
-      />
     </g>
   )
 }
@@ -437,11 +403,6 @@ function RegionRenderer({ annotation, canvasElement }: RegionRendererProps) {
       >
         {annotation.description}
       </text>
-      <DeleteBadge
-        cx={x + width - 8}
-        cy={y + 8}
-        onDelete={() => deleteMeasurement(annotation.id)}
-      />
     </g>
   )
 }
