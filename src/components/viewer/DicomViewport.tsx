@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react'
 import { useStudyStore } from '@/stores/studyStore'
-import { deleteMeasurement } from '@/lib/cornerstone/tools'
 import { useViewportStore } from '@/stores/viewportStore'
 import { ViewportToolbar } from './ViewportToolbar'
 import { ExportDialog } from '@/components/export/ExportDialog'
@@ -95,20 +94,7 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
     onCineFrameRateDown: () =>
       useViewportStore.getState().setCineFrameRate(useViewportStore.getState().cineFrameRate - 1),
     onActivateLength: () => useViewportStore.getState().setActiveTool('Length'),
-    onActivateAngle: () => useViewportStore.getState().setActiveTool('Angle'),
-    onDeleteLastMeasurement: () => {
-      const inst = useStudyStore.getState().currentInstance
-      if (!inst) return
-      const measurements = useAnnotationStore
-        .getState()
-        .annotations.filter(
-          (a) =>
-            a.sopInstanceUID === inst.sopInstanceUID &&
-            (a.type === 'measurement' || a.type === 'region')
-        )
-      const last = measurements[measurements.length - 1]
-      if (last) deleteMeasurement(last.id)
-    }
+    onActivateAngle: () => useViewportStore.getState().setActiveTool('Angle')
   })
 
   if (error) {

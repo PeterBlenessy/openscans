@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useAnnotationStore } from '@/stores/annotationStore'
 import { useViewportStore } from '@/stores/viewportStore'
 import { useStudyStore } from '@/stores/studyStore'
-import { MarkerAnnotation, MeasurementAnnotation, RegionAnnotation, Point2D } from '@/types/annotation'
+import { MarkerAnnotation } from '@/types/annotation'
 import { annotationColors } from '@/lib/colors'
 // @ts-expect-error - cornerstone-core doesn't have TypeScript definitions
 import cornerstone from 'cornerstone-core'
@@ -44,7 +44,11 @@ export function AnnotationOverlay({ canvasElement }: AnnotationOverlayProps) {
   // Get annotations for current instance (only if markers are visible)
   const annotations = useMemo(() => {
     if (!currentInstance || !showAnnotations || !areMarkersVisible) return []
-    return allAnnotations.filter((ann) => ann.sopInstanceUID === currentInstance.sopInstanceUID)
+    // Only AI markers render in this SVG overlay; measurements/ROIs are drawn
+    // by cornerstone-tools directly on the canvas (single source).
+    return allAnnotations.filter(
+      (ann) => ann.type === 'marker' && ann.sopInstanceUID === currentInstance.sopInstanceUID
+    )
   }, [currentInstance, showAnnotations, areMarkersVisible, allAnnotations])
 
 
@@ -64,36 +68,13 @@ export function AnnotationOverlay({ canvasElement }: AnnotationOverlayProps) {
       height={dimensions.height}
       style={{ zIndex: 10, pointerEvents: 'none' }}
     >
-      {annotations.map((annotation) => {
-        if (annotation.type === 'marker') {
-          return (
-            <MarkerRenderer
-              key={annotation.id}
-              annotation={annotation}
-              canvasElement={canvasElement}
-            />
-          )
-        }
-        if (annotation.type === 'measurement') {
-          return (
-            <MeasurementRenderer
-              key={annotation.id}
-              annotation={annotation}
-              canvasElement={canvasElement}
-            />
-          )
-        }
-        if (annotation.type === 'region') {
-          return (
-            <RegionRenderer
-              key={annotation.id}
-              annotation={annotation}
-              canvasElement={canvasElement}
-            />
-          )
-        }
-        return null
-      })}
+      {/* Only AI markers render here. Measurements / ROIs are drawn by
+          cornerstone-tools directly on the canvas (single source). */}
+      {annotations.map((annotation) =>
+        annotation.type === 'marker' ? (
+          <MarkerRenderer key={annotation.id} annotation={annotation} canvasElement={canvasElement} />
+        ) : null
+      )}
     </svg>
   )
 }
@@ -293,116 +274,5 @@ function MarkerRenderer({ annotation, canvasElement }: MarkerRendererProps) {
       </foreignObject>
     )}
     </>
-  )
-}
-
-/** Convert an image-pixel point to canvas coordinates, or null if no image. */
-function pixelToCanvasSafe(canvasElement: HTMLDivElement, point: Point2D): Point2D | null {
-  try {
-    const image = cornerstone.getImage(canvasElement)
-    if (!image) return null
-    return cornerstone.pixelToCanvas(canvasElement, { x: point.x, y: point.y })
-  } catch {
-    return null
-  }
-}
-
-const MEASUREMENT_COLOR = annotationColors.cyan
-
-interface MeasurementRendererProps {
-  annotation: MeasurementAnnotation
-  canvasElement: HTMLDivElement
-}
-
-/**
- * Renders a persisted length / angle measurement as a static SVG overlay so it
- * remains visible after a reload (cornerstone-tools owns the interactive copy
- * within a session). Read-only — purely a visual record of the stored value.
- */
-function MeasurementRenderer({ annotation, canvasElement }: MeasurementRendererProps) {
-  const canvasPoints = annotation.points
-    .map((p) => pixelToCanvasSafe(canvasElement, p))
-    .filter((p): p is Point2D => p !== null)
-
-  if (canvasPoints.length !== annotation.points.length || canvasPoints.length < 2) {
-    return null
-  }
-
-  // Polyline through all points (2 for length, 3 for angle).
-  const pointsAttr = canvasPoints.map((p) => `${p.x},${p.y}`).join(' ')
-  // Label near the last point (vertex for angle, endpoint for length).
-  const labelPoint = canvasPoints[canvasPoints.length - 1]
-
-  return (
-    <g style={{ pointerEvents: 'none' }}>
-      <polyline
-        points={pointsAttr}
-        fill="none"
-        stroke={MEASUREMENT_COLOR}
-        strokeWidth={1.5}
-      />
-      {canvasPoints.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r={3} fill={MEASUREMENT_COLOR} />
-      ))}
-      <text
-        x={labelPoint.x + 8}
-        y={labelPoint.y - 8}
-        fill={MEASUREMENT_COLOR}
-        fontSize="12px"
-        fontWeight="bold"
-        fontFamily="sans-serif"
-        style={{ userSelect: 'none' }}
-      >
-        {annotation.value.toFixed(1)} {annotation.unit}
-      </text>
-    </g>
-  )
-}
-
-interface RegionRendererProps {
-  annotation: RegionAnnotation
-  canvasElement: HTMLDivElement
-}
-
-/**
- * Renders a persisted rectangular/elliptical ROI bounding box as a static SVG
- * overlay (stored as top-left / bottom-right corner points). Read-only record.
- */
-function RegionRenderer({ annotation, canvasElement }: RegionRendererProps) {
-  if (annotation.points.length < 2) return null
-
-  const start = pixelToCanvasSafe(canvasElement, annotation.points[0])
-  const end = pixelToCanvasSafe(canvasElement, annotation.points[1])
-  if (!start || !end) return null
-
-  const x = Math.min(start.x, end.x)
-  const y = Math.min(start.y, end.y)
-  const width = Math.abs(end.x - start.x)
-  const height = Math.abs(end.y - start.y)
-
-  return (
-    <g style={{ pointerEvents: 'none' }}>
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        fill={MEASUREMENT_COLOR}
-        fillOpacity={0.08}
-        stroke={MEASUREMENT_COLOR}
-        strokeWidth={1.5}
-      />
-      <text
-        x={x + 4}
-        y={y - 6}
-        fill={MEASUREMENT_COLOR}
-        fontSize="11px"
-        fontWeight="bold"
-        fontFamily="sans-serif"
-        style={{ userSelect: 'none' }}
-      >
-        {annotation.description}
-      </text>
-    </g>
   )
 }

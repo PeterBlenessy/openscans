@@ -13,9 +13,9 @@ import {
   Circle,
   Square,
   Eraser,
+  MousePointer2,
 } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { clearMeasurements } from '@/lib/cornerstone/tools'
 import { useViewportStore } from '@/stores/viewportStore'
 import { useStudyStore } from '@/stores/studyStore'
 import { useFavoritesStore, FavoriteImage } from '@/stores/favoritesStore'
@@ -84,7 +84,7 @@ export function ViewportToolbar({
   // and crowd the main bar). Toggled by the Measure button; stays open until
   // toggled off.
   const [showMeasureTools, setShowMeasureTools] = useState(false)
-  const measurementToolActive = ['Length', 'Angle', 'EllipticalRoi', 'RectangleRoi'].includes(activeTool)
+  const measurementToolActive = ['Pointer', 'Eraser', 'Length', 'Angle', 'EllipticalRoi', 'RectangleRoi'].includes(activeTool)
   const cineEnabled = useViewportStore((state) => state.cineEnabled)
   const cineFrameRate = useViewportStore((state) => state.cineFrameRate)
   const toggleCine = useViewportStore((state) => state.toggleCine)
@@ -97,16 +97,6 @@ export function ViewportToolbar({
   const toggleFavorite = useFavoritesStore((state) => state.toggleFavorite)
   const addAnnotations = useAnnotationStore((state) => state.addAnnotations)
   const deleteAnnotationsForInstance = useAnnotationStore((state) => state.deleteAnnotationsForInstance)
-  // Count drawn measurements/ROIs on the current image to gate the Clear button.
-  const measurementCount = useAnnotationStore((state) =>
-    currentInstance
-      ? state.annotations.filter(
-          (a) =>
-            a.sopInstanceUID === currentInstance.sopInstanceUID &&
-            (a.type === 'measurement' || a.type === 'region')
-        ).length
-      : 0
-  )
   const addAnalysis = useAiAnalysisStore((state) => state.addAnalysis)
   const isAnalyzing = useAiAnalysisStore((state) => state.isAnalyzing)
   const setAnalyzing = useAiAnalysisStore((state) => state.setAnalyzing)
@@ -718,6 +708,16 @@ export function ViewportToolbar({
       {showMeasureTools && (
         <div className={rowClass} data-testid="measure-sub-toolbar">
           <ToolbarButton
+            onClick={() => setActiveTool('Pointer')}
+            active={activeTool === 'Pointer'}
+            isToggle
+            disabled={!currentInstance}
+            title="Pointer — select, move and resize measurements"
+            data-testid="pointer-tool-button"
+            icon={<MousePointer2 className="w-4 h-4" />}
+          />
+          <ToolbarDivider />
+          <ToolbarButton
             onClick={() => handleToggleTool('Length')}
             active={activeTool === 'Length'}
             isToggle
@@ -755,10 +755,12 @@ export function ViewportToolbar({
           />
           <ToolbarDivider />
           <ToolbarButton
-            onClick={() => currentInstance && clearMeasurements(currentInstance.sopInstanceUID)}
-            disabled={measurementCount === 0}
-            title={measurementCount > 0 ? `Clear ${measurementCount} measurement${measurementCount === 1 ? '' : 's'} (Delete)` : 'No measurements to clear'}
-            data-testid="clear-measurements-button"
+            onClick={() => setActiveTool('Eraser')}
+            active={activeTool === 'Eraser'}
+            isToggle
+            disabled={!currentInstance}
+            title="Eraser — click a measurement to delete it"
+            data-testid="eraser-tool-button"
             icon={<Eraser className="w-4 h-4" />}
           />
         </div>

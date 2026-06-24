@@ -40,11 +40,22 @@ function initCornerstoneTools(): void {
       showSVGCursors: true,
     })
 
-    // Built-in measurement + ROI tools (cornerstone-tools v6).
+    // Built-in measurement + ROI tools (cornerstone-tools v6), plus the eraser
+    // (click an annotation to delete it).
     cornerstoneTools.addTool(cornerstoneTools.LengthTool)
     cornerstoneTools.addTool(cornerstoneTools.AngleTool)
     cornerstoneTools.addTool(cornerstoneTools.EllipticalRoiTool)
     cornerstoneTools.addTool(cornerstoneTools.RectangleRoiTool)
+    cornerstoneTools.addTool(cornerstoneTools.EraserTool)
+
+    // Draw measurements in the app's cyan (annotationColors.cyan) for contrast
+    // on the black image, matching the rest of the UI.
+    try {
+      cornerstoneTools.toolColors.setToolColor('#00D9FF')
+      cornerstoneTools.toolColors.setActiveColor('#22e3ff')
+    } catch {
+      // toolColors API missing — non-fatal.
+    }
 
     toolsInitialized = true
   } catch (err) {
@@ -81,37 +92,9 @@ export function addMeasurementToolsForElement(element: HTMLElement): void {
     cornerstoneTools.addToolForElement(element, cornerstoneTools.AngleTool)
     cornerstoneTools.addToolForElement(element, cornerstoneTools.EllipticalRoiTool)
     cornerstoneTools.addToolForElement(element, cornerstoneTools.RectangleRoiTool)
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.EraserTool)
   } catch (err) {
     console.warn('[CornerstoneTools] Failed to add measurement tools for element:', err)
-  }
-}
-
-/**
- * Clear all drawn measurement / ROI tool state from every enabled element and
- * repaint. Pairs with the annotation store's clearMeasurementsForInstance so
- * "Clear measurements" removes both the persisted overlay and cornerstone-tools'
- * own in-session copy. Safe to call when nothing is drawn.
- */
-export function clearMeasurementToolState(): void {
-  if (!toolsInitialized) return
-  try {
-    const enabled = (cornerstone.getEnabledElements?.() || []) as Array<{ element: HTMLElement }>
-    for (const { element } of enabled) {
-      for (const name of ['Length', 'Angle', 'EllipticalRoi', 'RectangleRoi']) {
-        try {
-          cornerstoneTools.clearToolState(element, name)
-        } catch {
-          // No state for this tool on this element — ignore.
-        }
-      }
-      try {
-        cornerstone.updateImage(element)
-      } catch {
-        // Element not currently displaying an image — ignore.
-      }
-    }
-  } catch (err) {
-    console.warn('[CornerstoneTools] Failed to clear measurement tool state:', err)
   }
 }
 

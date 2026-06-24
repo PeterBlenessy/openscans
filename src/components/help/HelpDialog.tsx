@@ -82,6 +82,30 @@ export function HelpDialog({ show, onClose }: HelpDialogProps) {
             </div>
           </section>
 
+          {/* Measurements & Annotations */}
+          <section>
+            <h3 className={`text-base font-semibold ${themeClasses.text(theme)} mb-1.5 mt-3`}>Measurements &amp; Annotations</h3>
+            <div className="space-y-2 text-sm">
+              <p className="leading-5">
+                Click the <strong className="text-gray-200">ruler</strong> button in the toolbar to open the
+                measurement sub-toolbar. It stays open until you click the ruler again.
+              </p>
+              <div>
+                <strong className="text-gray-200 block mb-1">Drawing:</strong>
+                <p>Pick a tool — Length (distance), Angle, Elliptical ROI, or Rectangle ROI — then press and drag on the image from the start point to the end point. Length shows millimetres when the image has pixel spacing (pixels otherwise); ROIs show area and mean value. Click an active tool again to deselect it.</p>
+              </div>
+              <div>
+                <strong className="text-gray-200 block mb-1">Editing (Pointer):</strong>
+                <p>Switch to the <strong className="text-gray-200">Pointer</strong> tool, then drag a measurement to move it, or drag its end-points / corner handles to resize it.</p>
+              </div>
+              <div>
+                <strong className="text-gray-200 block mb-1">Deleting (Eraser):</strong>
+                <p>Switch to the <strong className="text-gray-200">Eraser</strong> tool and click a measurement to remove it.</p>
+              </div>
+              <p className="leading-5 text-gray-400">Measurements are saved per image and persist across reloads. Shortcuts: <strong className="text-gray-200">L</strong> = Length, <strong className="text-gray-200">Shift+A</strong> = Angle.</p>
+            </div>
+          </section>
+
           {/* Export */}
           <section>
             <h3 className={`text-base font-semibold ${themeClasses.text(theme)} mb-1.5 mt-3`}>Export</h3>

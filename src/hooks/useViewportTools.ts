@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { RefObject, useEffect } from 'react'
 import {
   cornerstoneTools,
@@ -6,35 +7,32 @@ import {
 } from '@/lib/cornerstone/initCornerstone'
 import { useViewportStore } from '@/stores/viewportStore'
 import { useStudyStore } from '@/stores/studyStore'
-import { useAnnotationStore } from '@/stores/annotationStore'
+import { MEASUREMENT_TOOL_NAMES, isMeasurementTool } from '@/lib/cornerstone/tools'
 import {
-  MEASUREMENT_TOOL_NAMES,
-  isMeasurementTool,
-  buildAnnotationFromMeasurement,
-  ToolMeasurementData,
-} from '@/lib/cornerstone/tools'
-import { getPixelSpacing } from '@/lib/dicom/pixelSpacing'
+  persistMeasurements,
+  restoreMeasurements,
+  hasStoredMeasurements,
+} from '@/lib/cornerstone/measurementPersistence'
 
-const MEASUREMENT_COMPLETED_EVENT = 'cornerstonetoolsmeasurementcompleted'
+const DRAW_TOOLS = Object.values(MEASUREMENT_TOOL_NAMES)
+const ERASER = 'Eraser'
 
-/** Generate a reasonably-unique annotation id without adding a dependency. */
-function generateId(): string {
-  return `measurement-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+/** Resolve a cornerstone imageId to its DICOM sopInstanceUID via the series. */
+function sopForImageId(imageId: string | undefined): string | undefined {
+  const { currentSeries, currentInstance } = useStudyStore.getState()
+  if (imageId && currentSeries) {
+    const inst = currentSeries.instances.find((i) => i.imageId === imageId)
+    if (inst) return inst.sopInstanceUID
+  }
+  return currentInstance?.sopInstanceUID
 }
 
 /**
- * Wires the cornerstone-tools measurement / ROI tools to the viewport element.
- *
- * Responsibilities:
- * - Registers the element with cornerstone-tools' input manager (`addToolForElement`
- *   is implicit; activation is per-element via `setToolActiveForElement`).
- * - Activates the measurement tool that matches `viewportStore.activeTool`
- *   (left mouse button) and deactivates it when a non-measurement tool is chosen.
- * - On `measurementCompleted`, persists the result into the annotation store as a
- *   `MeasurementAnnotation` (length/angle) or `RegionAnnotation` (ROI), calibrated
- *   with the current instance's pixel spacing where available.
- *
- * Cleans up its event listener on unmount / element change.
+ * Wires the cornerstone-tools measurement / ROI / eraser tools to the viewport
+ * element. cornerstone-tools is the single source: it draws, moves, resizes and
+ * deletes measurements natively. We add a `Pointer` mode (select/move/resize)
+ * and an `Eraser` mode (click to delete), drive the cursor per mode, and persist
+ * tool state per `sopInstanceUID` so measurements survive reloads / slice changes.
  *
  * @param canvasRef - Ref to the enabled Cornerstone viewport element
  * @param isInitialized - Whether the viewport element is enabled
@@ -45,68 +43,74 @@ export function useViewportTools(
 ): void {
   const activeTool = useViewportStore((s) => s.activeTool)
 
-  // Activate / deactivate the matching cornerstone tool when activeTool changes.
+  // Map activeTool → cornerstone tool modes + cursor.
   useEffect(() => {
     const element = canvasRef.current
     if (!element || !isInitialized || !areToolsInitialized()) return
 
     try {
-      // Ensure the measurement tools are registered on THIS element — global
-      // addTool doesn't reach an element enabled before tools-init. Idempotent.
       addMeasurementToolsForElement(element)
-
-      // Deactivate every measurement tool first, then activate the selected one.
-      for (const name of Object.values(MEASUREMENT_TOOL_NAMES)) {
-        cornerstoneTools.setToolPassiveForElement(element, name)
-      }
+      cornerstoneTools.setToolPassiveForElement(element, ERASER)
 
       if (isMeasurementTool(activeTool)) {
-        // Bind to the left mouse button (mask 1).
+        // Drawing: the chosen tool owns the left button; others stay movable.
+        for (const name of DRAW_TOOLS) cornerstoneTools.setToolPassiveForElement(element, name)
         cornerstoneTools.setToolActiveForElement(element, activeTool, { mouseButtonMask: 1 })
+        // cornerstone (showSVGCursors) sets a crosshair cursor.
+      } else if (activeTool === ERASER) {
+        for (const name of DRAW_TOOLS) cornerstoneTools.setToolPassiveForElement(element, name)
+        cornerstoneTools.setToolActiveForElement(element, ERASER, { mouseButtonMask: 1 })
+      } else if (activeTool === 'Pointer') {
+        // Select / move / resize existing measurements (handles grabbable).
+        for (const name of DRAW_TOOLS) cornerstoneTools.setToolPassiveForElement(element, name)
+        element.style.cursor = 'default'
+      } else {
+        // Navigation (WindowLevel / Pan / Zoom / StackScroll): measurements are
+        // visible but not grabbable, so a drag never accidentally moves a handle.
+        for (const name of DRAW_TOOLS) cornerstoneTools.setToolEnabledForElement(element, name)
+        element.style.cursor = 'default'
       }
     } catch (err) {
       console.warn('[ViewportTools] Failed to switch tool:', err)
     }
   }, [activeTool, isInitialized, canvasRef])
 
-  // Persist completed measurements into the annotation store.
+  // Persist tool state on change; restore it the first time a slice is shown.
   useEffect(() => {
     const element = canvasRef.current
     if (!element || !isInitialized || !areToolsInitialized()) return
 
-    const handleMeasurementCompleted = (evt: Event) => {
-      const detail = (evt as CustomEvent).detail as
-        | { toolName?: string; measurementData?: ToolMeasurementData }
-        | undefined
-      if (!detail?.toolName || !isMeasurementTool(detail.toolName) || !detail.measurementData) {
-        return
-      }
-
-      const { currentInstance, currentSeries } = useStudyStore.getState()
-      if (!currentInstance || !currentSeries) return
-
-      const annotation = buildAnnotationFromMeasurement({
-        id: generateId(),
-        toolName: detail.toolName,
-        data: detail.measurementData,
-        seriesInstanceUID: currentSeries.seriesInstanceUID,
-        sopInstanceUID: currentInstance.sopInstanceUID,
-        instanceNumber: currentInstance.instanceNumber,
-        pixelSpacing: getPixelSpacing(currentInstance.metadata),
-        // measurementType / shape stays uncalibrated when spacing is missing.
-      })
-
-      if (annotation) {
-        useAnnotationStore.getState().addAnnotation(annotation)
-      }
+    let persistTimer: number | undefined
+    const schedulePersist = () => {
+      const sop = useStudyStore.getState().currentInstance?.sopInstanceUID
+      if (!sop) return
+      if (persistTimer) window.clearTimeout(persistTimer)
+      persistTimer = window.setTimeout(() => persistMeasurements(element, sop), 250)
     }
 
-    element.addEventListener(MEASUREMENT_COMPLETED_EVENT, handleMeasurementCompleted as EventListener)
+    // Restore from localStorage once per imageId per session (cornerstone keeps
+    // measurements in memory for the rest of the session). Guarded by
+    // hasStoredMeasurements so we never clear unsaved in-memory state.
+    const restored = new Set<string>()
+    const handleNewImage = (evt: Event) => {
+      const imageId = (evt as any).detail?.image?.imageId as string | undefined
+      if (!imageId || restored.has(imageId)) return
+      restored.add(imageId)
+      const sop = sopForImageId(imageId)
+      if (sop && hasStoredMeasurements(sop)) restoreMeasurements(element, sop)
+    }
+
+    element.addEventListener('cornerstonetoolsmeasurementadded', schedulePersist)
+    element.addEventListener('cornerstonetoolsmeasurementmodified', schedulePersist)
+    element.addEventListener('cornerstonetoolsmeasurementremoved', schedulePersist)
+    element.addEventListener('cornerstonenewimage', handleNewImage as EventListener)
+
     return () => {
-      element.removeEventListener(
-        MEASUREMENT_COMPLETED_EVENT,
-        handleMeasurementCompleted as EventListener
-      )
+      if (persistTimer) window.clearTimeout(persistTimer)
+      element.removeEventListener('cornerstonetoolsmeasurementadded', schedulePersist)
+      element.removeEventListener('cornerstonetoolsmeasurementmodified', schedulePersist)
+      element.removeEventListener('cornerstonetoolsmeasurementremoved', schedulePersist)
+      element.removeEventListener('cornerstonenewimage', handleNewImage as EventListener)
     }
   }, [isInitialized, canvasRef])
 }

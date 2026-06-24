@@ -26,7 +26,7 @@ async function loadStudyAndOpenMeasureTools(page: import('@playwright/test').Pag
   return true
 }
 
-test('measure sub-toolbar: reveal, activate cleanly, toggle off, gate Clear', async ({ page }) => {
+test('measure sub-toolbar: reveal, Pointer/Eraser present, activate + toggle cleanly', async ({ page }) => {
   const toolWarnings: string[] = []
   const colorLutWarnings: string[] = []
   page.on('console', (msg) => {
@@ -40,8 +40,9 @@ test('measure sub-toolbar: reveal, activate cleanly, toggle off, gate Clear', as
     return
   }
 
-  // Clear is disabled until something is drawn.
-  await expect(page.locator('[data-testid="clear-measurements-button"]')).toBeDisabled()
+  // The Pointer (select/move) and Eraser (delete) modes are in the sub-toolbar.
+  await expect(page.locator('[data-testid="pointer-tool-button"]')).toBeVisible()
+  await expect(page.locator('[data-testid="eraser-tool-button"]')).toBeVisible()
 
   // A tool can be selected AND unselected (toggle) — reflected in aria-pressed.
   const length = page.locator('[data-testid="length-tool-button"]')
@@ -62,25 +63,34 @@ test('measure sub-toolbar: reveal, activate cleanly, toggle off, gate Clear', as
   expect(colorLutWarnings, `colorLUT warnings: ${colorLutWarnings.join(' | ')}`).toHaveLength(0)
 })
 
-test('draw a length measurement, then clear it', async ({ page }) => {
+test('draw a length measurement (persists), then delete it with the Eraser', async ({ page }) => {
   if (!(await loadStudyAndOpenMeasureTools(page))) {
     test.skip()
     return
   }
   const viewport = page.locator('[data-testid="viewport"]')
-  await page.locator('[data-testid="length-tool-button"]').click()
   const box = await viewport.boundingBox()
   if (!box) throw new Error('no viewport box')
   const cy = box.y + box.height / 2
-  await page.mouse.move(box.x + box.width * 0.35, cy)
+  const x1 = box.x + box.width * 0.35
+  const x2 = box.x + box.width * 0.65
+
+  // Draw a length with the Length tool.
+  await page.locator('[data-testid="length-tool-button"]').click()
+  await page.mouse.move(x1, cy)
   await page.mouse.down()
-  await page.mouse.move(box.x + box.width * 0.65, cy, { steps: 8 })
+  await page.mouse.move(x2, cy, { steps: 8 })
   await page.mouse.up()
+  await page.waitForTimeout(400) // persist debounce
+
+  const stored = async () =>
+    page.evaluate(() => localStorage.getItem('openscans-measurements') || '')
+  expect(await stored(), 'measurement should be persisted after drawing').toContain('Length')
+
+  // Erase it: activate the Eraser and click the middle of the line.
+  await page.locator('[data-testid="eraser-tool-button"]').click()
+  await page.mouse.click((x1 + x2) / 2, cy)
   await page.waitForTimeout(400)
 
-  const clear = page.locator('[data-testid="clear-measurements-button"]')
-  await expect(clear).toBeEnabled()
-  await clear.click()
-  await page.waitForTimeout(300)
-  await expect(clear).toBeDisabled()
+  expect(await stored(), 'measurement should be gone after erasing').not.toContain('Length')
 })
