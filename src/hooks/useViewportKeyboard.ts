@@ -149,6 +149,7 @@ export function useViewportKeyboard(options: UseViewportKeyboardOptions) {
         }
       }
 
+
       // AI detection keyboard shortcut (M)
       if ((e.key === 'm' || e.key === 'M') && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
         if (currentInstance && !isDetecting && !isAnalyzing) {

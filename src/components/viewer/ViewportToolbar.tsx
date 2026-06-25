@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   MonitorCog,
   Target,
@@ -11,6 +12,8 @@ import {
   Triangle,
   Circle,
   Square,
+  Eraser,
+  MousePointer2,
 } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useViewportStore } from '@/stores/viewportStore'
@@ -77,6 +80,11 @@ export function ViewportToolbar({
   // Cine + measurement tool state
   const activeTool = useViewportStore((state) => state.activeTool)
   const setActiveTool = useViewportStore((state) => state.setActiveTool)
+  // The measurement/ROI tools live in a reveal-able sub-toolbar (they're many
+  // and crowd the main bar). Toggled by the Measure button; stays open until
+  // toggled off.
+  const [showMeasureTools, setShowMeasureTools] = useState(false)
+  const measurementToolActive = ['Pointer', 'Eraser', 'Length', 'Angle', 'EllipticalRoi', 'RectangleRoi'].includes(activeTool)
   const cineEnabled = useViewportStore((state) => state.cineEnabled)
   const cineFrameRate = useViewportStore((state) => state.cineFrameRate)
   const toggleCine = useViewportStore((state) => state.toggleCine)
@@ -352,8 +360,10 @@ export function ViewportToolbar({
   }
 
 
+  const rowClass = `flex items-center gap-1 backdrop-blur-sm rounded-lg p-1.5 shadow-lg border ${themeClasses.bg(theme)} ${themeClasses.border(theme)}`
   return (
-    <div className={`flex items-center gap-1 backdrop-blur-sm rounded-lg p-1.5 shadow-lg border ${themeClasses.bg(theme)} ${themeClasses.border(theme)} ${className}`}>
+    <div className={`flex flex-col items-center gap-1 ${className}`}>
+      <div className={rowClass}>
       {/* Reset */}
       <ToolbarButton
         onClick={resetSettings}
@@ -472,38 +482,15 @@ export function ViewportToolbar({
 
       <ToolbarDivider />
 
-      {/* Measurement & ROI tools */}
+      {/* Measure & annotate — opens the tool sub-toolbar (see below). */}
       <ToolbarButton
-        onClick={() => handleToggleTool('Length')}
-        active={activeTool === 'Length'}
+        onClick={() => setShowMeasureTools((v) => !v)}
+        active={showMeasureTools || measurementToolActive}
+        isToggle
         disabled={!currentInstance}
-        title="Distance measurement (L)"
-        data-testid="length-tool-button"
+        title="Measure & annotate (ruler, angle, ROI)"
+        data-testid="measure-tools-toggle"
         icon={<Ruler className="w-4 h-4" />}
-      />
-      <ToolbarButton
-        onClick={() => handleToggleTool('Angle')}
-        active={activeTool === 'Angle'}
-        disabled={!currentInstance}
-        title="Angle measurement (Shift+A)"
-        data-testid="angle-tool-button"
-        icon={<Triangle className="w-4 h-4" />}
-      />
-      <ToolbarButton
-        onClick={() => handleToggleTool('EllipticalRoi')}
-        active={activeTool === 'EllipticalRoi'}
-        disabled={!currentInstance}
-        title="Elliptical ROI"
-        data-testid="ellipse-roi-button"
-        icon={<Circle className="w-4 h-4" />}
-      />
-      <ToolbarButton
-        onClick={() => handleToggleTool('RectangleRoi')}
-        active={activeTool === 'RectangleRoi'}
-        disabled={!currentInstance}
-        title="Rectangle ROI"
-        data-testid="rectangle-roi-button"
-        icon={<Square className="w-4 h-4" />}
       />
 
       <ToolbarDivider />
@@ -715,6 +702,69 @@ export function ViewportToolbar({
           />
         </>
       )}
+      </div>
+
+      {/* Reveal-able measurement / annotation sub-toolbar. */}
+      {showMeasureTools && (
+        <div className={rowClass} data-testid="measure-sub-toolbar">
+          <ToolbarButton
+            onClick={() => setActiveTool('Pointer')}
+            active={activeTool === 'Pointer'}
+            isToggle
+            disabled={!currentInstance}
+            title="Pointer — select, move and resize measurements"
+            data-testid="pointer-tool-button"
+            icon={<MousePointer2 className="w-4 h-4" />}
+          />
+          <ToolbarDivider />
+          <ToolbarButton
+            onClick={() => handleToggleTool('Length')}
+            active={activeTool === 'Length'}
+            isToggle
+            disabled={!currentInstance}
+            title="Distance measurement (L) — click again to deselect"
+            data-testid="length-tool-button"
+            icon={<Ruler className="w-4 h-4" />}
+          />
+          <ToolbarButton
+            onClick={() => handleToggleTool('Angle')}
+            active={activeTool === 'Angle'}
+            isToggle
+            disabled={!currentInstance}
+            title="Angle measurement (Shift+A) — click again to deselect"
+            data-testid="angle-tool-button"
+            icon={<Triangle className="w-4 h-4" />}
+          />
+          <ToolbarButton
+            onClick={() => handleToggleTool('EllipticalRoi')}
+            active={activeTool === 'EllipticalRoi'}
+            isToggle
+            disabled={!currentInstance}
+            title="Elliptical ROI — click again to deselect"
+            data-testid="ellipse-roi-button"
+            icon={<Circle className="w-4 h-4" />}
+          />
+          <ToolbarButton
+            onClick={() => handleToggleTool('RectangleRoi')}
+            active={activeTool === 'RectangleRoi'}
+            isToggle
+            disabled={!currentInstance}
+            title="Rectangle ROI — click again to deselect"
+            data-testid="rectangle-roi-button"
+            icon={<Square className="w-4 h-4" />}
+          />
+          <ToolbarDivider />
+          <ToolbarButton
+            onClick={() => setActiveTool('Eraser')}
+            active={activeTool === 'Eraser'}
+            isToggle
+            disabled={!currentInstance}
+            title="Eraser — click a measurement to delete it"
+            data-testid="eraser-tool-button"
+            icon={<Eraser className="w-4 h-4" />}
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -747,7 +797,7 @@ function ToolbarButton({ onClick, title, icon, active = false, disabled = false,
           disabled
             ? `${themeClasses.textTertiary(theme)} cursor-not-allowed`
             : active
-            ? `${themeClasses.text(theme)} ${themeClasses.hoverBgSecondary(theme)}`
+            ? `${themeClasses.bgActive(theme)} ${themeClasses.text(theme)}`
             : `${themeClasses.textSecondary(theme)} ${themeClasses.hoverBgSecondary(theme)} ${themeClasses.hoverText(theme)}`
         }`}
       >

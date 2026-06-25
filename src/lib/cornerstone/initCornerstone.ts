@@ -40,11 +40,22 @@ function initCornerstoneTools(): void {
       showSVGCursors: true,
     })
 
-    // Built-in measurement + ROI tools (cornerstone-tools v6).
+    // Built-in measurement + ROI tools (cornerstone-tools v6), plus the eraser
+    // (click an annotation to delete it).
     cornerstoneTools.addTool(cornerstoneTools.LengthTool)
     cornerstoneTools.addTool(cornerstoneTools.AngleTool)
     cornerstoneTools.addTool(cornerstoneTools.EllipticalRoiTool)
     cornerstoneTools.addTool(cornerstoneTools.RectangleRoiTool)
+    cornerstoneTools.addTool(cornerstoneTools.EraserTool)
+
+    // Draw measurements in the app's cyan (annotationColors.cyan) for contrast
+    // on the black image, matching the rest of the UI.
+    try {
+      cornerstoneTools.toolColors.setToolColor('#00D9FF')
+      cornerstoneTools.toolColors.setActiveColor('#22e3ff')
+    } catch {
+      // toolColors API missing — non-fatal.
+    }
 
     toolsInitialized = true
   } catch (err) {
@@ -54,6 +65,37 @@ function initCornerstoneTools(): void {
 
 export function areToolsInitialized(): boolean {
   return toolsInitialized
+}
+
+/**
+ * Register the measurement / ROI tools on a specific enabled element.
+ *
+ * Global `cornerstoneTools.addTool` only attaches tools to elements that
+ * cornerstone-tools is tracking, and it only starts tracking an element via the
+ * `ELEMENT_ENABLED` event that fires *after* `cornerstoneTools.init()`. Our
+ * viewport element is enabled before tools-init completes, so it never receives
+ * the global tools and `setToolActiveForElement` warns "Unable to find tool …"
+ * (the toolbar's measure buttons then do nothing). Adding per-element here is
+ * timing-independent. Idempotent — skips when the tools are already present.
+ */
+export function addMeasurementToolsForElement(element: HTMLElement): void {
+  if (!toolsInitialized) return
+  try {
+    // Already registered on this element? (avoids "tool already added" noise.)
+    if (cornerstoneTools.getToolForElement(element, 'Length')) return
+  } catch {
+    // getToolForElement throws if the element isn't tracked yet — fall through
+    // and add the tools below.
+  }
+  try {
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.LengthTool)
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.AngleTool)
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.EllipticalRoiTool)
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.RectangleRoiTool)
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.EraserTool)
+  } catch (err) {
+    console.warn('[CornerstoneTools] Failed to add measurement tools for element:', err)
+  }
 }
 
 /**

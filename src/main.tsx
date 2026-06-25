@@ -1,3 +1,6 @@
+// Must run before cornerstone-tools is imported (it binds logger.warn to the
+// current console.warn at import time) — keep this first.
+import './lib/consoleFilters'
 import './polyfills'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
