@@ -214,6 +214,12 @@ export async function initCornerstone(): Promise<void> {
     // Register measurement / ROI tools (non-fatal if it fails).
     initCornerstoneTools()
 
+    // Register the WADO image loader's own metaData provider so cornerstone-tools
+    // (the position-sync synchronizer, orientation markers, probe HU, scale
+    // overlay) can read slice geometry / VOI / scaling straight from the parsed
+    // DICOM — no custom provider needed.
+    cornerstone.metaData.addProvider(cornerstoneWADOImageLoader.wadouri.metaData.metaDataProvider)
+
     isInitialized = true
   } catch (error) {
     console.error('Failed to initialize Cornerstone:', error)
