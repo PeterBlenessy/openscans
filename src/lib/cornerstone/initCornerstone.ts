@@ -49,6 +49,10 @@ function initCornerstoneTools(): void {
     cornerstoneTools.addTool(cornerstoneTools.RectangleRoiTool)
     cornerstoneTools.addTool(cornerstoneTools.ProbeTool)
     cornerstoneTools.addTool(cornerstoneTools.EraserTool)
+    // Passive, always-on overlays (no interaction): L/R/A/P orientation letters
+    // and a calibrated mm scale bar.
+    cornerstoneTools.addTool(cornerstoneTools.OrientationMarkersTool)
+    cornerstoneTools.addTool(cornerstoneTools.ScaleOverlayTool)
 
     // Draw measurements in the app's cyan (annotationColors.cyan) for contrast
     // on the black image, matching the rest of the UI.
@@ -97,6 +101,12 @@ export function addMeasurementToolsForElement(element: HTMLElement): void {
     cornerstoneTools.addToolForElement(element, cornerstoneTools.RectangleRoiTool)
     cornerstoneTools.addToolForElement(element, cornerstoneTools.ProbeTool)
     cornerstoneTools.addToolForElement(element, cornerstoneTools.EraserTool)
+    // Always-on overlays (orientation markers + mm scale bar). Enabled = drawn
+    // on every render, no mouse interaction.
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.OrientationMarkersTool)
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.ScaleOverlayTool)
+    cornerstoneTools.setToolEnabledForElement(element, 'OrientationMarkers')
+    cornerstoneTools.setToolEnabledForElement(element, 'ScaleOverlay')
   } catch (err) {
     console.warn('[CornerstoneTools] Failed to add measurement tools for element:', err)
   }
