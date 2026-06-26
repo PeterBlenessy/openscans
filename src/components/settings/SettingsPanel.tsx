@@ -219,6 +219,14 @@ function ViewportSection({ settings }: { settings: SettingsState }) {
       <Field label="Measurement Color" description="Color for measurements and ROIs drawn on the image" theme={theme}>
         <ToolColorPicker value={settings.toolColor} onChange={settings.setToolColor} theme={theme} />
       </Field>
+
+      <Field
+        label="WebGL Rendering"
+        description="GPU rendering path — faster on large series. Falls back to Canvas if unsupported."
+        theme={theme}
+      >
+        <Toggle checked={settings.useWebGL} onChange={settings.setUseWebGL} ariaLabel="WebGL rendering" theme={theme} />
+      </Field>
     </div>
   )
 }

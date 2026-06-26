@@ -52,6 +52,8 @@ export interface SettingsState {
   zoomSensitivity: number
   /** Color for measurement / ROI tools drawn on the image (hex). */
   toolColor: string
+  /** Use the WebGL rendering path (GPU) instead of the Canvas 2D renderer. */
+  useWebGL: boolean
 
   // Privacy
   /** Hide patient names, IDs, and dates in UI (HIPAA compliance) */
@@ -97,6 +99,8 @@ export interface SettingsState {
   setZoomSensitivity: (sensitivity: number) => void
   /** Set the measurement / ROI tool color (hex) */
   setToolColor: (color: string) => void
+  /** Toggle the WebGL rendering path */
+  setUseWebGL: (use: boolean) => void
   /** Set patient info visibility */
   setHidePersonalInfo: (hide: boolean) => void
   /** Set study persistence across sessions */
@@ -151,6 +155,7 @@ const defaultSettings = {
   windowLevelSensitivity: 1.5,
   zoomSensitivity: 0.05,
   toolColor: DEFAULT_TOOL_COLOR,
+  useWebGL: false,
   hidePersonalInfo: true,
   persistStudies: true,
   aiEnabled: false,
@@ -367,6 +372,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
       set({ toolColor })
       saveSettings({ ...get(), toolColor })
       // Applied to cornerstone by useViewportTools (which redraws live).
+    },
+
+    setUseWebGL: (useWebGL) => {
+      set({ useWebGL })
+      saveSettings({ ...get(), useWebGL })
+      // The viewport remounts on this change (keyed in App) to re-enable the
+      // element with the chosen renderer.
     },
 
     setHidePersonalInfo: (hidePersonalInfo) => {

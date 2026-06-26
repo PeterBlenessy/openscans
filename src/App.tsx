@@ -54,6 +54,7 @@ function App() {
   useSystemAccent()
   const hidePersonalInfo = useSettingsStore((state) => state.hidePersonalInfo)
   const setHidePersonalInfo = useSettingsStore((state) => state.setHidePersonalInfo)
+  const useWebGL = useSettingsStore((state) => state.useWebGL)
   const currentSeries = useStudyStore((state) => state.currentSeries)
   const currentStudy = useStudyStore((state) => state.currentStudy)
   const currentInstanceIndex = useStudyStore((state) => state.currentInstanceIndex)
@@ -399,7 +400,7 @@ function App() {
             <>
             {/* Viewer */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-              <DicomViewport className="flex-1 min-h-0" />
+              <DicomViewport key={useWebGL ? 'renderer-webgl' : 'renderer-canvas'} className="flex-1 min-h-0" />
 
               {/* Image Slider */}
               {currentSeries && currentSeries.instances.length > 1 && (
