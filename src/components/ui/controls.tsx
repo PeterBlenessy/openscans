@@ -64,10 +64,17 @@ interface SelectOption<T extends string> {
   label: string
 }
 
+interface SelectGroup<T extends string> {
+  label: string
+  options: SelectOption<T>[]
+}
+
 interface SelectProps<T extends string> {
   value: T
   onChange: (value: T) => void
-  options: SelectOption<T>[]
+  /** Flat options, or pass `groups` for grouped options with headers. */
+  options?: SelectOption<T>[]
+  groups?: SelectGroup<T>[]
   ariaLabel: string
   theme: Theme
   className?: string
@@ -78,10 +85,24 @@ export function Select<T extends string>({
   value,
   onChange,
   options,
+  groups,
   ariaLabel,
   theme,
   className = '',
 }: SelectProps<T>) {
+  const renderItem = (opt: SelectOption<T>) => (
+    <RSelect.Item
+      key={opt.value}
+      value={opt.value}
+      className={`relative flex items-center pl-8 pr-3 py-2 text-sm rounded-md cursor-pointer select-none outline-none ${themeClasses.text(theme)} ${themeClasses.menuHighlight(theme)}`}
+    >
+      <RSelect.ItemIndicator className="absolute left-2 inline-flex">
+        <Check className={themeClasses.text(theme)} />
+      </RSelect.ItemIndicator>
+      <RSelect.ItemText>{opt.label}</RSelect.ItemText>
+    </RSelect.Item>
+  )
+
   return (
     <RSelect.Root value={value} onValueChange={(v) => onChange(v as T)}>
       <RSelect.Trigger
@@ -98,21 +119,20 @@ export function Select<T extends string>({
         <RSelect.Content
           position="popper"
           sideOffset={6}
-          className={`z-[60] overflow-hidden rounded-lg border shadow-2xl ${themeClasses.bg(theme)} ${themeClasses.border(theme)}`}
+          className={`z-[60] max-h-[60vh] overflow-hidden rounded-lg border shadow-2xl ${themeClasses.bg(theme)} ${themeClasses.border(theme)}`}
         >
           <RSelect.Viewport className="p-1">
-            {options.map((opt) => (
-              <RSelect.Item
-                key={opt.value}
-                value={opt.value}
-                className={`relative flex items-center pl-8 pr-3 py-2 text-sm rounded-md cursor-pointer select-none outline-none ${themeClasses.text(theme)} ${themeClasses.menuHighlight(theme)}`}
-              >
-                <RSelect.ItemIndicator className="absolute left-2 inline-flex">
-                  <Check className={themeClasses.text(theme)} />
-                </RSelect.ItemIndicator>
-                <RSelect.ItemText>{opt.label}</RSelect.ItemText>
-              </RSelect.Item>
-            ))}
+            {groups
+              ? groups.map((g, gi) => (
+                  <RSelect.Group key={`${g.label}-${gi}`}>
+                    {gi > 0 && <RSelect.Separator className={`my-1 h-px ${themeClasses.divider(theme)}`} />}
+                    <RSelect.Label className={`px-2 pt-1 pb-0.5 text-[11px] font-semibold uppercase tracking-wide ${themeClasses.textTertiary(theme)}`}>
+                      {g.label}
+                    </RSelect.Label>
+                    {g.options.map(renderItem)}
+                  </RSelect.Group>
+                ))
+              : (options ?? []).map(renderItem)}
           </RSelect.Viewport>
         </RSelect.Content>
       </RSelect.Portal>

@@ -13,6 +13,8 @@ interface ComparePaneProps {
   /** Called with the enabled cornerstone element once it has a stack + image. */
   onElementReady: (element: HTMLDivElement) => void
   onElementTeardown: (element: HTMLDivElement) => void
+  /** Reports whether this series exposes ImagePositionPatient (for position sync). */
+  onPositionAvailable: (available: boolean) => void
 }
 
 const STACK_SCROLL_WHEEL = 'StackScrollMouseWheel'
@@ -25,7 +27,7 @@ const STACK_SCROLL_WHEEL = 'StackScrollMouseWheel'
  * move the other pane. All slices are preloaded so the position synchronizer can
  * read every ImagePositionPatient (via the WADO loader's metadata provider).
  */
-export function ComparePane({ series, header, active, onActivate, onElementReady, onElementTeardown }: ComparePaneProps) {
+export function ComparePane({ series, header, active, onActivate, onElementReady, onElementTeardown, onPositionAvailable }: ComparePaneProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [index, setIndex] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -70,6 +72,9 @@ export function ComparePane({ series, header, active, onActivate, onElementReady
         element.addEventListener('cornerstonenewimage', onNewImage)
         setIndex(0)
         setLoading(false)
+        // Position sync needs ImagePositionPatient via the metadata provider.
+        const plane: any = cornerstone.metaData.get('imagePlaneModule', imageIds[0])
+        onPositionAvailable(!!plane?.imagePositionPatient)
         onElementReady(element)
       } catch (err) {
         console.error('[ComparePane] setup failed:', err)

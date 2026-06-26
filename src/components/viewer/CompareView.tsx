@@ -23,24 +23,49 @@ const NEW_IMAGE = 'cornerstonenewimage'
  * All library; no hand-rolled sync math.
  */
 export function CompareView({ studies, onClose }: CompareViewProps) {
-  // Every study × series becomes a selectable option ("studyIdx:seriesIdx").
-  const options = useMemo(
+  // Grouped by study so two timepoints with the SAME series name stay tellable
+  // apart by their study (date / description) header.
+  const groups = useMemo(
     () =>
-      studies.flatMap((st, si) =>
-        st.series.map((se, sei) => ({
+      studies.map((st, si) => ({
+        label: `${st.studyDate || `Study ${si + 1}`}${st.studyDescription ? ` · ${st.studyDescription}` : ''}`,
+        options: st.series.map((se, sei) => ({
           value: `${si}:${sei}`,
-          label: `${st.studyDate || `Study ${si + 1}`} · ${se.seriesDescription || 'Series'} (${se.instances.length})`,
-        }))
-      ),
+          label: `${se.seriesDescription || 'Series'} · ${se.instances.length} img`,
+        })),
+      })),
     [studies]
   )
 
+  // Auto-match: given a series key, find the comparable series (same description)
+  // in a *different* study — so picking the left pane auto-selects the matching
+  // follow-up on the right. Falls back to the first series of another study.
+  const matchInOtherStudy = (forKey: string): string => {
+    const srcStudy = Number(forKey.split(':')[0])
+    const [si0, sei0] = forKey.split(':').map(Number)
+    const desc = (studies[si0]?.series[sei0]?.seriesDescription || '').trim().toLowerCase()
+    for (let si = 0; si < studies.length; si++) {
+      if (si === srcStudy) continue
+      const sei = studies[si].series.findIndex((se) => (se.seriesDescription || '').trim().toLowerCase() === desc && desc !== '')
+      if (sei >= 0) return `${si}:${sei}`
+    }
+    for (let si = 0; si < studies.length; si++) if (si !== srcStudy && studies[si].series[0]) return `${si}:0`
+    return forKey
+  }
+
   const [leftKey, setLeftKey] = useState('0:0')
-  const [rightKey, setRightKey] = useState(
-    () => options.find((o) => o.value.split(':')[0] !== '0')?.value ?? options[1]?.value ?? '0:0'
-  )
+  const [rightKey, setRightKey] = useState(() => matchInOtherStudy('0:0'))
+
+  // Picking the left pane auto-selects the comparable series on the right.
+  const handleLeftChange = (v: string) => {
+    setLeftKey(v)
+    setRightKey(matchInOtherStudy(v))
+  }
   const [syncMode, setSyncMode] = useState<SyncMode>('position')
   const [activeSide, setActiveSide] = useState<'left' | 'right'>('left')
+  const [leftHasPos, setLeftHasPos] = useState(true)
+  const [rightHasPos, setRightHasPos] = useState(true)
+  const positionUnavailable = syncMode === 'position' && (!leftHasPos || !rightHasPos)
 
   const resolve = (key: string) => {
     const [si, sei] = key.split(':').map(Number)
@@ -108,7 +133,7 @@ export function CompareView({ studies, onClose }: CompareViewProps) {
   }, [])
 
   const picker = (value: string, onChange: (v: string) => void, label: string) => (
-    <Select value={value} onChange={onChange} options={options} ariaLabel={label} theme="dark" className="min-w-0 max-w-full" />
+    <Select value={value} onChange={onChange} groups={groups} ariaLabel={label} theme="dark" className="min-w-0 max-w-full" />
   )
 
   return (
@@ -134,16 +159,27 @@ export function CompareView({ studies, onClose }: CompareViewProps) {
         </div>
       </div>
 
+      {positionUnavailable && (
+        <div
+          className="border-b border-amber-700/50 bg-amber-900/40 px-3 py-1.5 text-xs text-amber-200"
+          data-testid="compare-position-warning"
+        >
+          Position sync needs <span className="font-mono">ImagePositionPatient</span>, which one of these series doesn&apos;t
+          provide — the panes won&apos;t align by anatomy. Switch to <strong>Index</strong> to sync by slice number instead.
+        </div>
+      )}
+
       <div className="flex min-h-0 flex-1 gap-px bg-[#2a2a2a]">
         {leftSeries && (
           <ComparePane
             key={`L:${leftKey}`}
             series={leftSeries}
-            header={picker(leftKey, setLeftKey, 'Left study and series')}
+            header={picker(leftKey, handleLeftChange, 'Left study and series')}
             active={activeSide === 'left'}
             onActivate={() => setActiveSide('left')}
             onElementReady={onElementReady}
             onElementTeardown={onElementTeardown}
+            onPositionAvailable={setLeftHasPos}
           />
         )}
         {rightSeries && (
@@ -155,6 +191,7 @@ export function CompareView({ studies, onClose }: CompareViewProps) {
             onActivate={() => setActiveSide('right')}
             onElementReady={onElementReady}
             onElementTeardown={onElementTeardown}
+            onPositionAvailable={setRightHasPos}
           />
         )}
       </div>

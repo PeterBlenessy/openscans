@@ -25,7 +25,7 @@ const SRC = path.join(__dirname, '..', 'e2e', 'fixtures', 'multi-series', 'image
 const OUT = path.join(__dirname, '..', 'e2e', 'fixtures', 'compare')
 
 const DIM = 512 // image2 is 512×512
-const SPACING = 3.0
+const LESION_Z = 36 // physical z (mm) where the lesion is centered, SAME in both studies
 const SHARED_FOR = '1.2.826.0.1.3680043.8.498.999'
 // Stored values (HU = stored - 1024 per image2 rescale): air -1000, soft +40, lesion +200
 const AIR = 24, SOFT = 1064, LESION = 1224
@@ -74,13 +74,13 @@ function phantom(lesionR) {
   }
   return Buffer.from(px.buffer)
 }
-const lesionRadiusAt = (z, zc, scale) => {
-  const half = 18, d = Math.abs(z - zc)
+const lesionRadiusAt = (z, scale) => {
+  const half = 18, d = Math.abs(z - LESION_Z)
   return d > half ? 0 : 52 * scale * (1 - d / half) // 512px → larger radius
 }
 
 function writeSlice(dir, study, i, lesionR) {
-  const z = i * SPACING
+  const z = i * study.spacing
   const buf = Buffer.from(src) // clone the working file
   // pixels
   const px = phantom(lesionR)
@@ -105,14 +105,17 @@ function genStudy(study) {
   const dir = path.join(OUT, study.folder)
   fs.rmSync(dir, { recursive: true, force: true })
   fs.mkdirSync(dir, { recursive: true })
-  const zc = (study.slices * SPACING) / 2
   const rows = []
-  for (let i = 0; i < study.slices; i++) rows.push({ i: i + 1, ...writeSlice(dir, study, i, lesionRadiusAt(i * SPACING, zc, study.scale)) })
+  for (let i = 0; i < study.slices; i++) rows.push({ i: i + 1, ...writeSlice(dir, study, i, lesionRadiusAt(i * study.spacing, study.scale)) })
   return { dir, rows }
 }
 
-const baseline = { folder: 'baseline', date: '20240101', slices: 24, scale: 1.0, studyUID: '1.2.826.0.1.3680043.8.498.1', seriesUID: '1.2.826.0.1.3680043.8.498.1.1', seriesDesc: 'AXIAL BASELINE' }
-const followup = { folder: 'followup', date: '20240701', slices: 18, scale: 0.5, studyUID: '1.2.826.0.1.3680043.8.498.2', seriesUID: '1.2.826.0.1.3680043.8.498.2.1', seriesDesc: 'AXIAL FOLLOWUP' }
+// Different slice spacing (3 mm vs 4 mm) on purpose: position-sync must match by
+// physical z, not slice index, so the two diverge (z=36 is index 12 at 3 mm but
+// index 9 at 4 mm). Same SeriesDescription too — they should still be tellable
+// apart by study in the picker (grouping).
+const baseline = { folder: 'baseline', date: '20240101', slices: 24, spacing: 3.0, scale: 1.0, studyUID: '1.2.826.0.1.3680043.8.498.1', seriesUID: '1.2.826.0.1.3680043.8.498.1.1', seriesDesc: 'AXIAL CHEST' }
+const followup = { folder: 'followup', date: '20240701', slices: 18, spacing: 4.0, scale: 0.5, studyUID: '1.2.826.0.1.3680043.8.498.2', seriesUID: '1.2.826.0.1.3680043.8.498.2.1', seriesDesc: 'AXIAL CHEST' }
 
 for (const study of [baseline, followup]) {
   const { dir, rows } = genStudy(study)
