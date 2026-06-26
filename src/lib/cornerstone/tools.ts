@@ -6,8 +6,10 @@
 export const MEASUREMENT_TOOL_NAMES = {
   Length: 'Length',
   Angle: 'Angle',
+  CobbAngle: 'CobbAngle',
   EllipticalRoi: 'EllipticalRoi',
   RectangleRoi: 'RectangleRoi',
+  Probe: 'Probe',
 } as const
 
 export type MeasurementToolName = keyof typeof MEASUREMENT_TOOL_NAMES

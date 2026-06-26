@@ -14,6 +14,8 @@ import {
   Square,
   Eraser,
   MousePointer2,
+  Spline,
+  Pipette,
 } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useViewportStore } from '@/stores/viewportStore'
@@ -84,7 +86,7 @@ export function ViewportToolbar({
   // and crowd the main bar). Toggled by the Measure button; stays open until
   // toggled off.
   const [showMeasureTools, setShowMeasureTools] = useState(false)
-  const measurementToolActive = ['Pointer', 'Eraser', 'Length', 'Angle', 'EllipticalRoi', 'RectangleRoi'].includes(activeTool)
+  const measurementToolActive = ['Pointer', 'Eraser', 'Length', 'Angle', 'CobbAngle', 'EllipticalRoi', 'RectangleRoi', 'Probe'].includes(activeTool)
   const cineEnabled = useViewportStore((state) => state.cineEnabled)
   const cineFrameRate = useViewportStore((state) => state.cineFrameRate)
   const toggleCine = useViewportStore((state) => state.toggleCine)
@@ -736,6 +738,15 @@ export function ViewportToolbar({
             icon={<Triangle className="w-4 h-4" />}
           />
           <ToolbarButton
+            onClick={() => handleToggleTool('CobbAngle')}
+            active={activeTool === 'CobbAngle'}
+            isToggle
+            disabled={!currentInstance}
+            title="Cobb angle (spine) — click again to deselect"
+            data-testid="cobb-angle-button"
+            icon={<Spline className="w-4 h-4" />}
+          />
+          <ToolbarButton
             onClick={() => handleToggleTool('EllipticalRoi')}
             active={activeTool === 'EllipticalRoi'}
             isToggle
@@ -752,6 +763,15 @@ export function ViewportToolbar({
             title="Rectangle ROI — click again to deselect"
             data-testid="rectangle-roi-button"
             icon={<Square className="w-4 h-4" />}
+          />
+          <ToolbarButton
+            onClick={() => handleToggleTool('Probe')}
+            active={activeTool === 'Probe'}
+            isToggle
+            disabled={!currentInstance}
+            title="Probe — click to read the pixel/HU value — click again to deselect"
+            data-testid="probe-button"
+            icon={<Pipette className="w-4 h-4" />}
           />
           <ToolbarDivider />
           <ToolbarButton

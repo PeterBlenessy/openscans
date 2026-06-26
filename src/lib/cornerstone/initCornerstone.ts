@@ -44,8 +44,10 @@ function initCornerstoneTools(): void {
     // (click an annotation to delete it).
     cornerstoneTools.addTool(cornerstoneTools.LengthTool)
     cornerstoneTools.addTool(cornerstoneTools.AngleTool)
+    cornerstoneTools.addTool(cornerstoneTools.CobbAngleTool)
     cornerstoneTools.addTool(cornerstoneTools.EllipticalRoiTool)
     cornerstoneTools.addTool(cornerstoneTools.RectangleRoiTool)
+    cornerstoneTools.addTool(cornerstoneTools.ProbeTool)
     cornerstoneTools.addTool(cornerstoneTools.EraserTool)
 
     // Draw measurements in the app's cyan (annotationColors.cyan) for contrast
@@ -90,8 +92,10 @@ export function addMeasurementToolsForElement(element: HTMLElement): void {
   try {
     cornerstoneTools.addToolForElement(element, cornerstoneTools.LengthTool)
     cornerstoneTools.addToolForElement(element, cornerstoneTools.AngleTool)
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.CobbAngleTool)
     cornerstoneTools.addToolForElement(element, cornerstoneTools.EllipticalRoiTool)
     cornerstoneTools.addToolForElement(element, cornerstoneTools.RectangleRoiTool)
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.ProbeTool)
     cornerstoneTools.addToolForElement(element, cornerstoneTools.EraserTool)
   } catch (err) {
     console.warn('[CornerstoneTools] Failed to add measurement tools for element:', err)
