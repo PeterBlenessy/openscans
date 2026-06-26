@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useRef, useState } from 'react'
+import { ReactNode, useEffect, useRef, useState } from 'react'
 import { cornerstone, cornerstoneTools, initCornerstone } from '@/lib/cornerstone/initCornerstone'
 import { DicomSeries } from '@/types'
-import { Spinner } from '@/components/ui'
+import { Spinner, Slider } from '@/components/ui'
 
 interface ComparePaneProps {
   series: DicomSeries
-  label: string
+  /** Study/series picker rendered in the pane header. */
+  header: ReactNode
   active: boolean
   onActivate: () => void
   /** Called with the enabled cornerstone element once it has a stack + image. */
@@ -18,12 +19,13 @@ const STACK_SCROLL_WHEEL = 'StackScrollMouseWheel'
 
 /**
  * One pane of the comparison view: a cornerstone viewport backed by a `stack`
- * tool state (the native model for a series). Mouse-wheel scrolling is the
- * library `StackScrollMouseWheelTool`; the parent links panes with a cornerstone
- * Synchronizer. All slices are preloaded so the position synchronizer can read
- * every slice's ImagePositionPatient (via the WADO loader's metadata provider).
+ * tool state (the native model for a series). Navigation is the library
+ * StackScrollMouseWheelTool (wheel) plus a slider that drives the same stack;
+ * either fires `cornerstonenewimage`, which the parent's Synchronizer uses to
+ * move the other pane. All slices are preloaded so the position synchronizer can
+ * read every ImagePositionPatient (via the WADO loader's metadata provider).
  */
-export function ComparePane({ series, label, active, onActivate, onElementReady, onElementTeardown }: ComparePaneProps) {
+export function ComparePane({ series, header, active, onActivate, onElementReady, onElementTeardown }: ComparePaneProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [index, setIndex] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -66,6 +68,7 @@ export function ComparePane({ series, label, active, onActivate, onElementReady,
         cornerstoneTools.setToolActiveForElement(element, STACK_SCROLL_WHEEL, {})
 
         element.addEventListener('cornerstonenewimage', onNewImage)
+        setIndex(0)
         setLoading(false)
         onElementReady(element)
       } catch (err) {
@@ -85,28 +88,60 @@ export function ComparePane({ series, label, active, onActivate, onElementReady,
         /* ignore */
       }
     }
-    // series is stable for the life of the pane
+    // Remounted (via key) when the series changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  /** Drive the stack to a slice index; displayImage fires newimage → sync. */
+  const scrollTo = (i: number) => {
+    const element = ref.current
+    if (!element) return
+    const st: any = cornerstoneTools.getToolState(element, 'stack')
+    const stack = st?.data?.[0]
+    if (!stack) return
+    const clamped = Math.max(0, Math.min(Math.round(i), stack.imageIds.length - 1))
+    if (clamped === stack.currentImageIdIndex) return
+    stack.currentImageIdIndex = clamped
+    cornerstone
+      .loadAndCacheImage(stack.imageIds[clamped])
+      .then((image: any) => {
+        if (stack.currentImageIdIndex === clamped) cornerstone.displayImage(element, image)
+      })
+      .catch(() => {})
+  }
+
   return (
     <div
-      className={`relative flex-1 min-w-0 bg-black ${active ? 'ring-2 ring-inset ring-accent' : ''}`}
+      className={`relative flex min-w-0 flex-1 flex-col bg-black ${active ? 'z-10 ring-2 ring-inset ring-accent' : ''}`}
       onMouseDown={onActivate}
       data-testid="compare-pane"
     >
-      <div ref={ref} className="w-full h-full" />
-      <div className="pointer-events-none absolute top-2 left-2 rounded bg-black/55 px-2 py-1 text-xs font-medium text-white/90">
-        {label}
+      <div className="flex items-center gap-2 border-b border-[#2a2a2a] bg-[#1a1a1a] px-2 py-1.5">{header}</div>
+
+      <div className="relative min-h-0 flex-1">
+        <div ref={ref} className="h-full w-full" />
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Spinner size="md" />
+          </div>
+        )}
       </div>
-      <div className="pointer-events-none absolute bottom-2 left-2 rounded bg-black/55 px-2 py-1 text-xs tabular-nums text-white/90" data-testid="compare-counter">
-        {index + 1} / {total}
+
+      <div className="flex items-center gap-3 border-t border-[#2a2a2a] bg-[#1a1a1a] px-3 py-2">
+        <span className="w-14 shrink-0 text-xs tabular-nums text-gray-300" data-testid="compare-counter">
+          {index + 1} / {total}
+        </span>
+        <Slider
+          value={index}
+          onChange={scrollTo}
+          min={0}
+          max={Math.max(0, total - 1)}
+          step={1}
+          ariaLabel="Slice"
+          className="flex-1"
+          theme="dark"
+        />
       </div>
-      {loading && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Spinner size="md" />
-        </div>
-      )}
     </div>
   )
 }

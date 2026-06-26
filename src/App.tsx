@@ -492,19 +492,9 @@ function App() {
           </>
         )}
 
-        {/* Comparison overlay — baseline (study 0) vs follow-up (study 1) */}
+        {/* Comparison overlay — pick a study/series per pane, scroll in sync */}
         {compareActive && studies.length >= 2 && (
-          <CompareView
-            left={{
-              series: studies[0].series[0],
-              label: `${studies[0].studyDate || 'Study 1'} · ${studies[0].series[0]?.seriesDescription || ''}`,
-            }}
-            right={{
-              series: studies[1].series[0],
-              label: `${studies[1].studyDate || 'Study 2'} · ${studies[1].series[0]?.seriesDescription || ''}`,
-            }}
-            onClose={() => setCompareActive(false)}
-          />
+          <CompareView studies={studies} onClose={() => setCompareActive(false)} />
         )}
         </main>
       </div>

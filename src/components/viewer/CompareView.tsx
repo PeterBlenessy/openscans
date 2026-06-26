@@ -1,18 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { cornerstoneTools } from '@/lib/cornerstone/initCornerstone'
-import { DicomSeries } from '@/types'
+import { DicomStudy } from '@/types'
 import { ComparePane } from './ComparePane'
-import { Button, SegmentedControl } from '@/components/ui'
+import { Button, SegmentedControl, Select } from '@/components/ui'
 
-interface CompareSource {
-  series: DicomSeries
-  label: string
-}
 interface CompareViewProps {
-  left: CompareSource
-  right: CompareSource
+  studies: DicomStudy[]
   onClose: () => void
 }
 
@@ -21,21 +16,46 @@ const NEW_IMAGE = 'cornerstonenewimage'
 
 /**
  * Side-by-side comparison of two series (e.g. two timepoints of the same
- * patient), linked with a cornerstone-tools Synchronizer so scrolling one pane
- * scrolls the other to the matching slice — by physical ImagePositionPatient
- * ('position', the right choice for follow-ups with different slice counts) or
- * by slice index ('index'). All library; no hand-rolled sync math.
+ * patient), each chosen with a study/series picker. The panes are linked with a
+ * cornerstone-tools Synchronizer — by physical ImagePositionPatient ('position',
+ * the right choice for follow-ups with different slice counts) or slice index —
+ * so scrolling/scrubbing one pane moves the other to the matching slice.
+ * All library; no hand-rolled sync math.
  */
-export function CompareView({ left, right, onClose }: CompareViewProps) {
+export function CompareView({ studies, onClose }: CompareViewProps) {
+  // Every study × series becomes a selectable option ("studyIdx:seriesIdx").
+  const options = useMemo(
+    () =>
+      studies.flatMap((st, si) =>
+        st.series.map((se, sei) => ({
+          value: `${si}:${sei}`,
+          label: `${st.studyDate || `Study ${si + 1}`} · ${se.seriesDescription || 'Series'} (${se.instances.length})`,
+        }))
+      ),
+    [studies]
+  )
+
+  const [leftKey, setLeftKey] = useState('0:0')
+  const [rightKey, setRightKey] = useState(
+    () => options.find((o) => o.value.split(':')[0] !== '0')?.value ?? options[1]?.value ?? '0:0'
+  )
   const [syncMode, setSyncMode] = useState<SyncMode>('position')
   const [activeSide, setActiveSide] = useState<'left' | 'right'>('left')
+
+  const resolve = (key: string) => {
+    const [si, sei] = key.split(':').map(Number)
+    return studies[si]?.series[sei]
+  }
+  const leftSeries = resolve(leftKey)
+  const rightSeries = resolve(rightKey)
+
+  // ── synchronizer ──────────────────────────────────────────────────────────
   const elementsRef = useRef<Set<HTMLDivElement>>(new Set())
   const syncRef = useRef<any>(null)
 
-  const rebuildSynchronizer = useCallback((mode: SyncMode) => {
+  const rebuild = useCallback((mode: SyncMode) => {
     if (syncRef.current) {
       try {
-        elementsRef.current.forEach((el) => syncRef.current.remove(el))
         syncRef.current.destroy?.()
       } catch {
         /* ignore */
@@ -58,9 +78,8 @@ export function CompareView({ left, right, onClose }: CompareViewProps) {
     syncRef.current = sync
   }, [])
 
-  // Rebuild when the sync mode changes.
   useEffect(() => {
-    rebuildSynchronizer(syncMode)
+    rebuild(syncMode)
     return () => {
       try {
         syncRef.current?.destroy?.()
@@ -69,7 +88,7 @@ export function CompareView({ left, right, onClose }: CompareViewProps) {
       }
       syncRef.current = null
     }
-  }, [syncMode, rebuildSynchronizer])
+  }, [syncMode, rebuild])
 
   const onElementReady = useCallback((el: HTMLDivElement) => {
     elementsRef.current.add(el)
@@ -87,6 +106,10 @@ export function CompareView({ left, right, onClose }: CompareViewProps) {
     }
     elementsRef.current.delete(el)
   }, [])
+
+  const picker = (value: string, onChange: (v: string) => void, label: string) => (
+    <Select value={value} onChange={onChange} options={options} ariaLabel={label} theme="dark" className="min-w-0 max-w-full" />
+  )
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col bg-black" data-testid="compare-view">
@@ -110,23 +133,30 @@ export function CompareView({ left, right, onClose }: CompareViewProps) {
           </Button>
         </div>
       </div>
+
       <div className="flex min-h-0 flex-1 gap-px bg-[#2a2a2a]">
-        <ComparePane
-          series={left.series}
-          label={left.label}
-          active={activeSide === 'left'}
-          onActivate={() => setActiveSide('left')}
-          onElementReady={onElementReady}
-          onElementTeardown={onElementTeardown}
-        />
-        <ComparePane
-          series={right.series}
-          label={right.label}
-          active={activeSide === 'right'}
-          onActivate={() => setActiveSide('right')}
-          onElementReady={onElementReady}
-          onElementTeardown={onElementTeardown}
-        />
+        {leftSeries && (
+          <ComparePane
+            key={`L:${leftKey}`}
+            series={leftSeries}
+            header={picker(leftKey, setLeftKey, 'Left study and series')}
+            active={activeSide === 'left'}
+            onActivate={() => setActiveSide('left')}
+            onElementReady={onElementReady}
+            onElementTeardown={onElementTeardown}
+          />
+        )}
+        {rightSeries && (
+          <ComparePane
+            key={`R:${rightKey}`}
+            series={rightSeries}
+            header={picker(rightKey, setRightKey, 'Right study and series')}
+            active={activeSide === 'right'}
+            onActivate={() => setActiveSide('right')}
+            onElementReady={onElementReady}
+            onElementTeardown={onElementTeardown}
+          />
+        )}
       </div>
     </div>
   )
