@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { storeKey, getKey, deleteKey } from '../lib/utils/credentials'
+import { DEFAULT_TOOL_COLOR } from '../lib/colors'
 
 /** Resolved UI theme applied to the document root. */
 export type Theme = 'dark' | 'light'
@@ -49,6 +50,8 @@ export interface SettingsState {
   windowLevelSensitivity: number
   /** Zoom scroll wheel sensitivity (0.01 to 0.2, default: 0.05) */
   zoomSensitivity: number
+  /** Color for measurement / ROI tools drawn on the image (hex). */
+  toolColor: string
 
   // Privacy
   /** Hide patient names, IDs, and dates in UI (HIPAA compliance) */
@@ -92,6 +95,8 @@ export interface SettingsState {
   setWindowLevelSensitivity: (sensitivity: number) => void
   /** Set zoom scroll sensitivity */
   setZoomSensitivity: (sensitivity: number) => void
+  /** Set the measurement / ROI tool color (hex) */
+  setToolColor: (color: string) => void
   /** Set patient info visibility */
   setHidePersonalInfo: (hide: boolean) => void
   /** Set study persistence across sessions */
@@ -145,6 +150,7 @@ const defaultSettings = {
   scrollDirection: 'natural' as ScrollDirection,
   windowLevelSensitivity: 1.5,
   zoomSensitivity: 0.05,
+  toolColor: DEFAULT_TOOL_COLOR,
   hidePersonalInfo: true,
   persistStudies: true,
   aiEnabled: false,
@@ -355,6 +361,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
     setZoomSensitivity: (zoomSensitivity) => {
       set({ zoomSensitivity })
       saveSettings({ ...get(), zoomSensitivity })
+    },
+
+    setToolColor: (toolColor) => {
+      set({ toolColor })
+      saveSettings({ ...get(), toolColor })
+      // Applied to cornerstone by useViewportTools (which redraws live).
     },
 
     setHidePersonalInfo: (hidePersonalInfo) => {

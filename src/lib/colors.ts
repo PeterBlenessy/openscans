@@ -28,6 +28,22 @@ export const annotationColors = {
   selected: '#FF00FF',  // Magenta - selected/active state
 } as const
 
+/** Default color for measurement / ROI tools (the cornerstone tool color). */
+export const DEFAULT_TOOL_COLOR: string = annotationColors.orange
+
+/**
+ * Selectable colors for the measurement / ROI tool color picker in Settings.
+ * All chosen for high contrast on grayscale medical images.
+ */
+export const TOOL_COLOR_OPTIONS: ReadonlyArray<{ label: string; value: string }> = [
+  { label: 'Orange', value: annotationColors.orange },
+  { label: 'Yellow', value: annotationColors.yellow },
+  { label: 'Cyan', value: annotationColors.cyan },
+  { label: 'Magenta', value: annotationColors.magenta },
+  { label: 'Green', value: '#22C55E' },
+  { label: 'White', value: '#FFFFFF' },
+]
+
 /**
  * UI element colors - for toolbar buttons, indicators, and interface elements
  * These appear in the UI chrome, not on the medical images themselves.

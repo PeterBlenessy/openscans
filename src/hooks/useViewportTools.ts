@@ -4,9 +4,11 @@ import {
   cornerstoneTools,
   areToolsInitialized,
   addMeasurementToolsForElement,
+  applyToolColor,
 } from '@/lib/cornerstone/initCornerstone'
 import { useViewportStore } from '@/stores/viewportStore'
 import { useStudyStore } from '@/stores/studyStore'
+import { useSettingsStore } from '@/stores/settingsStore'
 import { MEASUREMENT_TOOL_NAMES, isMeasurementTool } from '@/lib/cornerstone/tools'
 import {
   persistMeasurements,
@@ -42,6 +44,13 @@ export function useViewportTools(
   isInitialized: boolean
 ): void {
   const activeTool = useViewportStore((s) => s.activeTool)
+  const toolColor = useSettingsStore((s) => s.toolColor)
+
+  // Apply the chosen measurement color globally and redraw (live on change).
+  useEffect(() => {
+    if (!isInitialized || !areToolsInitialized()) return
+    applyToolColor(toolColor)
+  }, [toolColor, isInitialized])
 
   // Map activeTool → cornerstone tool modes + cursor.
   useEffect(() => {

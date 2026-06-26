@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { ThemePreference, ScrollDirection, AIProvider } from '@/stores/settingsStore'
+import { ThemePreference, ScrollDirection, AIProvider, Theme } from '@/stores/settingsStore'
 import { themeClasses } from '@/lib/utils'
+import { TOOL_COLOR_OPTIONS } from '@/lib/colors'
 import { useSettingsState } from '@/hooks/useSettingsState'
 import { isTauri } from '@/lib/utils/platform'
 import { MrEngineSettings } from './MrEngineSettings'
@@ -214,6 +215,37 @@ function ViewportSection({ settings }: { settings: SettingsState }) {
           theme={theme}
         />
       </Field>
+
+      <Field label="Measurement Color" description="Color for measurements and ROIs drawn on the image" theme={theme}>
+        <ToolColorPicker value={settings.toolColor} onChange={settings.setToolColor} theme={theme} />
+      </Field>
+    </div>
+  )
+}
+
+/** Swatch row for choosing the cornerstone measurement / ROI color. */
+function ToolColorPicker({ value, onChange, theme }: { value: string; onChange: (c: string) => void; theme: Theme }) {
+  return (
+    <div className="flex items-center gap-2.5" role="radiogroup" aria-label="Measurement color">
+      {TOOL_COLOR_OPTIONS.map((opt) => {
+        const selected = value.toLowerCase() === opt.value.toLowerCase()
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            aria-label={opt.label}
+            title={opt.label}
+            onClick={() => onChange(opt.value)}
+            data-testid={`tool-color-${opt.label.toLowerCase()}`}
+            className={`h-7 w-7 rounded-full border-2 transition ${
+              selected ? 'scale-110 border-accent ring-2 ring-accent/40' : `${themeClasses.border(theme)} ${themeClasses.hoverBorder(theme)}`
+            }`}
+            style={{ backgroundColor: opt.value }}
+          />
+        )
+      })}
     </div>
   )
 }

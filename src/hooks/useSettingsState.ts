@@ -27,6 +27,7 @@ export function useSettingsState() {
   const scrollDirection = useSettingsStore((state) => state.scrollDirection)
   const windowLevelSensitivity = useSettingsStore((state) => state.windowLevelSensitivity)
   const zoomSensitivity = useSettingsStore((state) => state.zoomSensitivity)
+  const toolColor = useSettingsStore((state) => state.toolColor)
   const hidePersonalInfo = useSettingsStore((state) => state.hidePersonalInfo)
   const persistStudies = useSettingsStore((state) => state.persistStudies)
   const aiEnabled = useSettingsStore((state) => state.aiEnabled)
@@ -45,6 +46,7 @@ export function useSettingsState() {
   const setScrollDirection = useSettingsStore((state) => state.setScrollDirection)
   const setWindowLevelSensitivity = useSettingsStore((state) => state.setWindowLevelSensitivity)
   const setZoomSensitivity = useSettingsStore((state) => state.setZoomSensitivity)
+  const setToolColor = useSettingsStore((state) => state.setToolColor)
   const setHidePersonalInfo = useSettingsStore((state) => state.setHidePersonalInfo)
   const setPersistStudies = useSettingsStore((state) => state.setPersistStudies)
   const setAiEnabled = useSettingsStore((state) => state.setAiEnabled)
@@ -66,6 +68,7 @@ export function useSettingsState() {
     scrollDirection,
     windowLevelSensitivity,
     zoomSensitivity,
+    toolColor,
     hidePersonalInfo,
     persistStudies,
     aiEnabled,
@@ -84,6 +87,7 @@ export function useSettingsState() {
     setScrollDirection,
     setWindowLevelSensitivity,
     setZoomSensitivity,
+    setToolColor,
     setHidePersonalInfo,
     setPersistStudies,
     setAiEnabled,

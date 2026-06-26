@@ -10,6 +10,7 @@ import dicomParser from 'dicom-parser'
 // @ts-expect-error - hammerjs may not ship type defs in this install
 import Hammer from 'hammerjs'
 import { isTauri } from '../utils/platform'
+import { DEFAULT_TOOL_COLOR } from '../colors'
 
 let isInitialized = false
 let toolsInitialized = false
@@ -54,16 +55,11 @@ function initCornerstoneTools(): void {
     cornerstoneTools.addTool(cornerstoneTools.OrientationMarkersTool)
     cornerstoneTools.addTool(cornerstoneTools.ScaleOverlayTool)
 
-    // Draw measurements in the app's cyan (annotationColors.cyan) for contrast
-    // on the black image, matching the rest of the UI.
-    try {
-      cornerstoneTools.toolColors.setToolColor('#00D9FF')
-      cornerstoneTools.toolColors.setActiveColor('#22e3ff')
-    } catch {
-      // toolColors API missing — non-fatal.
-    }
-
     toolsInitialized = true
+
+    // Default measurement color; the `toolColor` setting overrides this live
+    // (applied by useViewportTools).
+    applyToolColor(DEFAULT_TOOL_COLOR)
   } catch (err) {
     console.warn('[CornerstoneTools] Initialization failed (measurement tools disabled):', err)
   }
@@ -71,6 +67,28 @@ function initCornerstoneTools(): void {
 
 export function areToolsInitialized(): boolean {
   return toolsInitialized
+}
+
+/**
+ * Set the global color cornerstone-tools uses to draw measurements / ROIs and
+ * redraw any enabled elements so the change is immediate. No-op until tools
+ * are initialized; safe to call repeatedly.
+ */
+export function applyToolColor(color: string): void {
+  if (!toolsInitialized) return
+  try {
+    cornerstoneTools.toolColors.setToolColor(color)
+    cornerstoneTools.toolColors.setActiveColor(color)
+    cornerstone.getEnabledElements?.().forEach((e: any) => {
+      try {
+        cornerstone.updateImage(e.element)
+      } catch {
+        /* element has no image displayed yet — nothing to redraw */
+      }
+    })
+  } catch {
+    /* toolColors API missing — non-fatal */
+  }
 }
 
 /**
