@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { PanelLeft, PanelRight, PanelBottom, ShieldCheck, ShieldOff } from 'lucide-react'
+import { PanelLeft, PanelRight, PanelBottom, ShieldCheck, ShieldOff, Columns2 } from 'lucide-react'
+import { CompareView } from './components/viewer/CompareView'
 import { FileDropzone } from './components/viewer/FileDropzone'
 import { DicomViewport } from './components/viewer/DicomViewport'
 import { StudySeriesBrowser } from './components/viewer/StudySeriesBrowser'
@@ -40,6 +41,7 @@ function App() {
   })
   const [showRightSidebar, setShowRightSidebar] = useState(true)
   const [showThumbnailStrip, setShowThumbnailStrip] = useState(true)
+  const [compareActive, setCompareActive] = useState(false)
 
   // Right sidebar width state
   const [rightSidebarWidth, setRightSidebarWidth] = useState(() => {
@@ -348,6 +350,21 @@ function App() {
             {hidePersonalInfo ? <ShieldCheck size={18} aria-hidden="true" /> : <ShieldOff size={18} aria-hidden="true" />}
           </button>
           </Tooltip>
+
+          {/* Compare two studies (e.g. baseline vs follow-up), synced by position */}
+          {studies.length >= 2 && (
+            <Tooltip label="Compare two studies side by side">
+            <button
+              onClick={() => setCompareActive((v) => !v)}
+              className={`p-2 rounded transition-colors ${compareActive ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-400' : 'hover:bg-gray-200 text-gray-600')}`}
+              aria-label="Compare studies"
+              aria-pressed={compareActive}
+              data-testid="compare-toggle"
+            >
+              <Columns2 size={18} aria-hidden="true" />
+            </button>
+            </Tooltip>
+          )}
         </div>
       </header>
 
@@ -473,6 +490,21 @@ function App() {
               )}
             </aside>
           </>
+        )}
+
+        {/* Comparison overlay — baseline (study 0) vs follow-up (study 1) */}
+        {compareActive && studies.length >= 2 && (
+          <CompareView
+            left={{
+              series: studies[0].series[0],
+              label: `${studies[0].studyDate || 'Study 1'} · ${studies[0].series[0]?.seriesDescription || ''}`,
+            }}
+            right={{
+              series: studies[1].series[0],
+              label: `${studies[1].studyDate || 'Study 2'} · ${studies[1].series[0]?.seriesDescription || ''}`,
+            }}
+            onClose={() => setCompareActive(false)}
+          />
         )}
         </main>
       </div>
