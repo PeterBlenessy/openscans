@@ -16,6 +16,7 @@ import { useViewportPanAndZoom } from '@/hooks/useViewportPanAndZoom'
 import { useViewportKeyboard } from '@/hooks/useViewportKeyboard'
 import { useViewportSetup } from '@/hooks/useViewportSetup'
 import { useViewportTools } from '@/hooks/useViewportTools'
+import { useStackPrefetch } from '@/hooks/useStackPrefetch'
 import { useCinePlayback } from '@/hooks/useCinePlayback'
 import { useFullscreen } from '@/hooks/useFullscreen'
 
@@ -71,6 +72,7 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
 
   // Measurement / ROI tools (Length, Angle, Elliptical/Rectangle ROI)
   useViewportTools(canvasRef, isInitialized)
+  useStackPrefetch(canvasRef, isInitialized)
 
   // Cine loop / auto-play through the current series
   useCinePlayback()
