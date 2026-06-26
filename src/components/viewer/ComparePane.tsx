@@ -69,6 +69,15 @@ export function ComparePane({ series, header, active, onActivate, onElementReady
         cornerstoneTools.addToolForElement(element, cornerstoneTools.StackScrollMouseWheelTool)
         cornerstoneTools.setToolActiveForElement(element, STACK_SCROLL_WHEEL, {})
 
+        // Window/level (left drag), zoom (right), pan (middle) — adjustable per
+        // pane; the parent optionally syncs these across panes.
+        cornerstoneTools.addToolForElement(element, cornerstoneTools.WwwcTool)
+        cornerstoneTools.addToolForElement(element, cornerstoneTools.ZoomTool)
+        cornerstoneTools.addToolForElement(element, cornerstoneTools.PanTool)
+        cornerstoneTools.setToolActiveForElement(element, 'Wwwc', { mouseButtonMask: 1 })
+        cornerstoneTools.setToolActiveForElement(element, 'Zoom', { mouseButtonMask: 2 })
+        cornerstoneTools.setToolActiveForElement(element, 'Pan', { mouseButtonMask: 4 })
+
         element.addEventListener('cornerstonenewimage', onNewImage)
         setIndex(0)
         setLoading(false)

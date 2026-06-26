@@ -4,7 +4,7 @@ import { X } from 'lucide-react'
 import { cornerstoneTools } from '@/lib/cornerstone/initCornerstone'
 import { DicomStudy } from '@/types'
 import { ComparePane } from './ComparePane'
-import { Button, SegmentedControl, Select } from '@/components/ui'
+import { Button, Checkbox, SegmentedControl, Select } from '@/components/ui'
 
 interface CompareViewProps {
   studies: DicomStudy[]
@@ -13,6 +13,7 @@ interface CompareViewProps {
 
 type SyncMode = 'position' | 'index' | 'off'
 const NEW_IMAGE = 'cornerstonenewimage'
+const IMAGE_RENDERED = 'cornerstoneimagerendered'
 
 /**
  * Side-by-side comparison of two series (e.g. two timepoints of the same
@@ -65,6 +66,8 @@ export function CompareView({ studies, onClose }: CompareViewProps) {
   const [activeSide, setActiveSide] = useState<'left' | 'right'>('left')
   const [leftHasPos, setLeftHasPos] = useState(true)
   const [rightHasPos, setRightHasPos] = useState(true)
+  const [syncWL, setSyncWL] = useState(false)
+  const [syncZoom, setSyncZoom] = useState(false)
   const positionUnavailable = syncMode === 'position' && (!leftHasPos || !rightHasPos)
 
   const resolve = (key: string) => {
@@ -74,25 +77,16 @@ export function CompareView({ studies, onClose }: CompareViewProps) {
   const leftSeries = resolve(leftKey)
   const rightSeries = resolve(rightKey)
 
-  // ── synchronizer ──────────────────────────────────────────────────────────
+  // ── synchronizers ─────────────────────────────────────────────────────────
+  // Three independent cornerstone-tools Synchronizers: scroll (newimage),
+  // window/level + zoom/pan (imagerendered). Each tracks the same elements.
   const elementsRef = useRef<Set<HTMLDivElement>>(new Set())
-  const syncRef = useRef<any>(null)
+  const scrollSyncRef = useRef<any>(null)
+  const wlSyncRef = useRef<any>(null)
+  const zoomSyncRef = useRef<any>(null)
 
-  const rebuild = useCallback((mode: SyncMode) => {
-    if (syncRef.current) {
-      try {
-        syncRef.current.destroy?.()
-      } catch {
-        /* ignore */
-      }
-      syncRef.current = null
-    }
-    if (mode === 'off') return
-    const handler =
-      mode === 'position'
-        ? cornerstoneTools.stackImagePositionSynchronizer
-        : cornerstoneTools.stackImageIndexSynchronizer
-    const sync = new cornerstoneTools.Synchronizer(NEW_IMAGE, handler)
+  const makeSync = useCallback((event: string, handler: any) => {
+    const sync = new cornerstoneTools.Synchronizer(event, handler)
     elementsRef.current.forEach((el) => {
       try {
         sync.add(el)
@@ -100,35 +94,90 @@ export function CompareView({ studies, onClose }: CompareViewProps) {
         /* ignore */
       }
     })
-    syncRef.current = sync
+    return sync
   }, [])
 
+  // Scroll sync: position / index / off.
   useEffect(() => {
-    rebuild(syncMode)
+    try {
+      scrollSyncRef.current?.destroy?.()
+    } catch {
+      /* ignore */
+    }
+    scrollSyncRef.current =
+      syncMode === 'off'
+        ? null
+        : makeSync(
+            NEW_IMAGE,
+            syncMode === 'position'
+              ? cornerstoneTools.stackImagePositionSynchronizer
+              : cornerstoneTools.stackImageIndexSynchronizer
+          )
     return () => {
       try {
-        syncRef.current?.destroy?.()
+        scrollSyncRef.current?.destroy?.()
       } catch {
         /* ignore */
       }
-      syncRef.current = null
+      scrollSyncRef.current = null
     }
-  }, [syncMode, rebuild])
+  }, [syncMode, makeSync])
 
+  // Window/level sync.
+  useEffect(() => {
+    try {
+      wlSyncRef.current?.destroy?.()
+    } catch {
+      /* ignore */
+    }
+    wlSyncRef.current = syncWL ? makeSync(IMAGE_RENDERED, cornerstoneTools.wwwcSynchronizer) : null
+    return () => {
+      try {
+        wlSyncRef.current?.destroy?.()
+      } catch {
+        /* ignore */
+      }
+      wlSyncRef.current = null
+    }
+  }, [syncWL, makeSync])
+
+  // Zoom + pan sync.
+  useEffect(() => {
+    try {
+      zoomSyncRef.current?.destroy?.()
+    } catch {
+      /* ignore */
+    }
+    zoomSyncRef.current = syncZoom ? makeSync(IMAGE_RENDERED, cornerstoneTools.panZoomSynchronizer) : null
+    return () => {
+      try {
+        zoomSyncRef.current?.destroy?.()
+      } catch {
+        /* ignore */
+      }
+      zoomSyncRef.current = null
+    }
+  }, [syncZoom, makeSync])
+
+  const allSyncs = () => [scrollSyncRef, wlSyncRef, zoomSyncRef]
   const onElementReady = useCallback((el: HTMLDivElement) => {
     elementsRef.current.add(el)
-    try {
-      syncRef.current?.add(el)
-    } catch {
-      /* ignore */
-    }
+    allSyncs().forEach((r) => {
+      try {
+        r.current?.add(el)
+      } catch {
+        /* ignore */
+      }
+    })
   }, [])
   const onElementTeardown = useCallback((el: HTMLDivElement) => {
-    try {
-      syncRef.current?.remove(el)
-    } catch {
-      /* ignore */
-    }
+    allSyncs().forEach((r) => {
+      try {
+        r.current?.remove(el)
+      } catch {
+        /* ignore */
+      }
+    })
     elementsRef.current.delete(el)
   }, [])
 
@@ -153,6 +202,9 @@ export function CompareView({ studies, onClose }: CompareViewProps) {
             ariaLabel="Scroll sync mode"
             theme="dark"
           />
+          <div className="mx-1 h-5 w-px bg-[#2a2a2a]" />
+          <Checkbox checked={syncWL} onChange={setSyncWL} label="W/L" theme="dark" ariaLabel="Sync window/level" />
+          <Checkbox checked={syncZoom} onChange={setSyncZoom} label="Zoom+Pan" theme="dark" ariaLabel="Sync zoom and pan" />
           <Button variant="icon" onClick={onClose} theme="dark" aria-label="Close compare" data-testid="compare-close">
             <X className="h-4 w-4" />
           </Button>
