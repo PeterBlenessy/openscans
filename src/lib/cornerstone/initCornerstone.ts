@@ -11,6 +11,24 @@ import dicomParser from 'dicom-parser'
 import Hammer from 'hammerjs'
 import { isTauri } from '../utils/platform'
 import { DEFAULT_TOOL_COLOR } from '../colors'
+import { promptText } from '../ui/promptText'
+
+/**
+ * ArrowAnnotate label prompts — replace the tool's default blocking
+ * `window.prompt` (which breaks the Tauri webview) with the app's themed dialog.
+ */
+const arrowAnnotateConfig = {
+  getTextCallback: (callback: (text: string) => void) => {
+    promptText({ title: 'Arrow label', placeholder: 'Enter a label…', confirmLabel: 'Add' }).then((t) =>
+      callback(t ?? '')
+    )
+  },
+  changeTextCallback: (data: { text?: string }, _evt: unknown, callback: (text: string) => void) => {
+    promptText({ title: 'Edit label', initialValue: data?.text ?? '', confirmLabel: 'Save' }).then((t) =>
+      callback(t ?? '')
+    )
+  },
+}
 
 let isInitialized = false
 let toolsInitialized = false
@@ -49,6 +67,7 @@ function initCornerstoneTools(): void {
     cornerstoneTools.addTool(cornerstoneTools.EllipticalRoiTool)
     cornerstoneTools.addTool(cornerstoneTools.RectangleRoiTool)
     cornerstoneTools.addTool(cornerstoneTools.ProbeTool)
+    cornerstoneTools.addTool(cornerstoneTools.ArrowAnnotateTool, { configuration: arrowAnnotateConfig })
     cornerstoneTools.addTool(cornerstoneTools.EraserTool)
     // Passive, always-on overlays (no interaction): L/R/A/P orientation letters
     // and a calibrated mm scale bar.
@@ -118,6 +137,7 @@ export function addMeasurementToolsForElement(element: HTMLElement): void {
     cornerstoneTools.addToolForElement(element, cornerstoneTools.EllipticalRoiTool)
     cornerstoneTools.addToolForElement(element, cornerstoneTools.RectangleRoiTool)
     cornerstoneTools.addToolForElement(element, cornerstoneTools.ProbeTool)
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.ArrowAnnotateTool, { configuration: arrowAnnotateConfig })
     cornerstoneTools.addToolForElement(element, cornerstoneTools.EraserTool)
     // Always-on overlays (orientation markers + mm scale bar). Enabled = drawn
     // on every render, no mouse interaction.

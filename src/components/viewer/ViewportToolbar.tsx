@@ -16,6 +16,7 @@ import {
   MousePointer2,
   Spline,
   Pipette,
+  ArrowUpRight,
 } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useViewportStore } from '@/stores/viewportStore'
@@ -86,7 +87,7 @@ export function ViewportToolbar({
   // and crowd the main bar). Toggled by the Measure button; stays open until
   // toggled off.
   const [showMeasureTools, setShowMeasureTools] = useState(false)
-  const measurementToolActive = ['Pointer', 'Eraser', 'Length', 'Angle', 'CobbAngle', 'EllipticalRoi', 'RectangleRoi', 'Probe'].includes(activeTool)
+  const measurementToolActive = ['Pointer', 'Eraser', 'Length', 'Angle', 'CobbAngle', 'EllipticalRoi', 'RectangleRoi', 'Probe', 'ArrowAnnotate'].includes(activeTool)
   const cineEnabled = useViewportStore((state) => state.cineEnabled)
   const cineFrameRate = useViewportStore((state) => state.cineFrameRate)
   const toggleCine = useViewportStore((state) => state.toggleCine)
@@ -772,6 +773,15 @@ export function ViewportToolbar({
             title="Probe — click to read the pixel/HU value — click again to deselect"
             data-testid="probe-button"
             icon={<Pipette className="w-4 h-4" />}
+          />
+          <ToolbarButton
+            onClick={() => handleToggleTool('ArrowAnnotate')}
+            active={activeTool === 'ArrowAnnotate'}
+            isToggle
+            disabled={!currentInstance}
+            title="Arrow + label annotation — click again to deselect"
+            data-testid="arrow-annotate-button"
+            icon={<ArrowUpRight className="w-4 h-4" />}
           />
           <ToolbarDivider />
           <ToolbarButton

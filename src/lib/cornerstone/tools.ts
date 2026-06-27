@@ -10,6 +10,7 @@ export const MEASUREMENT_TOOL_NAMES = {
   EllipticalRoi: 'EllipticalRoi',
   RectangleRoi: 'RectangleRoi',
   Probe: 'Probe',
+  ArrowAnnotate: 'ArrowAnnotate',
 } as const
 
 export type MeasurementToolName = keyof typeof MEASUREMENT_TOOL_NAMES

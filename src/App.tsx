@@ -14,6 +14,7 @@ import { ResizeHandle } from './components/layout/ResizeHandle'
 import { SettingsPanel } from './components/settings/SettingsPanel'
 import { ErrorToast } from './components/ErrorToast'
 import { ConfirmDialog } from './components/ui/ConfirmDialog'
+import { TextPrompt } from './components/ui/TextPrompt'
 import { Slider, Spinner, Tooltip, TooltipProvider } from './components/ui'
 import { useSystemAccent } from './hooks/useSystemAccent'
 import { UpdateNotification } from './components/UpdateNotification'
@@ -285,6 +286,7 @@ function App() {
 
       {/* Generic confirmation dialog (replaces window.confirm) */}
       <ConfirmDialog />
+      <TextPrompt />
 
       {/* Header */}
       <header className={`px-6 py-2.5 flex items-center justify-between border-b flex-shrink-0 ${theme === 'dark' ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
