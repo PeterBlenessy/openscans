@@ -45,23 +45,36 @@ export const TOOL_COLOR_OPTIONS: ReadonlyArray<{ label: string; value: string }>
 ]
 
 /**
- * Stable, distinct color for an anatomical structure label so each segmented
- * structure (e.g. vertebra L1 vs T12 vs an organ) gets its own consistent color
- * across slices. The `vertebrae_` prefix is stripped so the same vertebra from
+ * Base hue per spinal region (cervical / thoracic / lumbar / sacral) so the
+ * spine reads as a few anatomical color families rather than a different color
+ * per vertebra.
+ */
+const REGION_HUE: Record<string, number> = {
+  c: 275, // cervical — purple
+  t: 150, // thoracic — green
+  l: 205, // lumbar — blue
+  s: 32, // sacral — orange
+}
+
+/**
+ * Color for an anatomical structure label, stable across slices. Vertebrae are
+ * colored by spinal region (so e.g. all lumbar are one blue — the label gives
+ * the exact level); other structures (organs, ribs, …) get a distinct hashed
+ * hue each. The `vertebrae_` prefix is stripped so the same vertebra from
  * different AI sources (cloud "L1" vs engine "vertebrae_L1") matches.
- *
- * Uses a hashed HSL hue (fixed saturation/lightness tuned for contrast on the
- * grayscale image) rather than a fixed palette, so the ~100 structures
- * TotalSegmentator can emit stay distinguishable instead of colliding.
  */
 export function colorForStructure(label: string): string {
   const key = label.trim().toLowerCase().replace(/^vertebrae[_-]/, '')
   if (!key) return annotationColors.orange
+  // Vertebra like c1..c7 / t1..t12 / l1..l5 / s1..s5 → color by region.
+  const vertebra = key.match(/^([ctls])\d{1,2}$/)
+  if (vertebra && REGION_HUE[vertebra[1]] !== undefined) {
+    return `hsl(${REGION_HUE[vertebra[1]]}, 70%, 60%)`
+  }
+  // Other structures — a distinct hashed hue each (golden-angle spread).
   let hash = 0
   for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0
-  // Spread hues around the wheel; golden-angle stepping keeps nearby labels apart.
-  const hue = (hash * 137) % 360
-  return `hsl(${hue}, 80%, 62%)`
+  return `hsl(${(hash * 137) % 360}, 80%, 62%)`
 }
 
 /**
