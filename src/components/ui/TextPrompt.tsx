@@ -50,10 +50,9 @@ export function TextPrompt() {
 
   if (!pending) return null
 
-  const submit = () => {
-    const trimmed = value.trim()
-    settle(trimmed.length > 0 ? trimmed : null)
-  }
+  // Save resolves the (trimmed) value even when empty, so callers can tell
+  // "saved an empty label" from "cancelled" (which resolves null).
+  const submit = () => settle(value.trim())
 
   return (
     <Modal

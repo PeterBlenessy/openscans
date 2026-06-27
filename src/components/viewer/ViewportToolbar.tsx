@@ -26,6 +26,7 @@ import { useAnnotationStore } from '@/stores/annotationStore'
 import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { themeClasses } from '@/lib/utils'
+import { isMeasurementTool } from '@/lib/cornerstone/tools'
 import { Tooltip } from '@/components/ui'
 import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { mockDetector } from '@/lib/ai/mockVertebralDetector'
@@ -87,7 +88,9 @@ export function ViewportToolbar({
   // and crowd the main bar). Toggled by the Measure button; stays open until
   // toggled off.
   const [showMeasureTools, setShowMeasureTools] = useState(false)
-  const measurementToolActive = ['Pointer', 'Eraser', 'Length', 'Angle', 'CobbAngle', 'EllipticalRoi', 'RectangleRoi', 'Probe', 'ArrowAnnotate'].includes(activeTool)
+  // Derive from the canonical tool list so new measurement tools don't need a
+  // second edit here (Pointer/Eraser are the non-measurement viewport modes).
+  const measurementToolActive = activeTool === 'Pointer' || activeTool === 'Eraser' || isMeasurementTool(activeTool)
   const cineEnabled = useViewportStore((state) => state.cineEnabled)
   const cineFrameRate = useViewportStore((state) => state.cineFrameRate)
   const toggleCine = useViewportStore((state) => state.toggleCine)

@@ -45,6 +45,9 @@ export function useStackPrefetch(canvasRef: RefObject<HTMLDivElement>, isInitial
         }
         cornerstoneTools.stackPrefetch.enable(element)
         done = true
+        // Stop listening once prefetch is enabled — `cornerstoneimagerendered`
+        // fires every frame (W/L drag, zoom, pan), so the listener must not linger.
+        element.removeEventListener('cornerstoneimagerendered', setup)
       } catch (err) {
         console.warn('[StackPrefetch] setup failed:', err)
       }

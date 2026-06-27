@@ -97,7 +97,7 @@ export function AnnotationOverlay({ canvasElement }: AnnotationOverlayProps) {
       </svg>
 
       {/* Structure legend — color key for the segmentation overlay. */}
-      {legend.length > 1 && (
+      {legend.length > 0 && (
         <div
           className="absolute left-2 top-2 z-20 max-h-[45%] overflow-auto rounded-md bg-black/60 px-2.5 py-2 backdrop-blur-sm"
           style={{ pointerEvents: 'none' }}

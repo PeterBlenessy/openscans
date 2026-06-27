@@ -25,13 +25,17 @@ const arrowAnnotateConfig = {
   },
   changeTextCallback: (data: { text?: string }, _evt: unknown, callback: (text: string) => void) => {
     promptText({ title: 'Edit label', initialValue: data?.text ?? '', confirmLabel: 'Save' }).then((t) =>
-      callback(t ?? '')
+      // Cancel (null) keeps the existing label; saving an empty field clears it.
+      callback(t ?? data?.text ?? '')
     )
   },
 }
 
 let isInitialized = false
 let toolsInitialized = false
+/** In-flight init promise — dedupes concurrent callers (e.g. main viewport +
+ *  ComparePane) so the metadata provider / image loaders register only once. */
+let initPromise: Promise<void> | null = null
 
 /**
  * Initialize cornerstone-tools and register the built-in measurement / ROI tools.
@@ -158,7 +162,13 @@ export async function initCornerstone(): Promise<void> {
   if (isInitialized) {
     return
   }
+  // A second caller while init is in flight awaits the same promise instead of
+  // re-running registration (addProvider / registerImageLoader).
+  if (initPromise) {
+    return initPromise
+  }
 
+  initPromise = (async () => {
   try {
     // Suppress source map and worker-related errors that don't affect functionality
     const originalError = console.error
@@ -275,8 +285,12 @@ export async function initCornerstone(): Promise<void> {
     isInitialized = true
   } catch (error) {
     console.error('Failed to initialize Cornerstone:', error)
+    initPromise = null // allow a retry after a failed init
     throw error
   }
+  })()
+
+  return initPromise
 }
 
 /**
