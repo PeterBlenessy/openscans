@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
 import { X } from 'lucide-react'
 import { cornerstoneTools } from '@/lib/cornerstone/initCornerstone'
 import { DicomStudy } from '@/types'
@@ -14,6 +14,44 @@ interface CompareViewProps {
 type SyncMode = 'position' | 'index' | 'off'
 const NEW_IMAGE = 'cornerstonenewimage'
 const IMAGE_RENDERED = 'cornerstoneimagerendered'
+
+/**
+ * One cornerstone-tools Synchronizer bound to a shared element set. Created when
+ * `active`, rebuilt when event/handler/active change, destroyed on cleanup.
+ * Returns a stable ref to the live Synchronizer (or null when inactive).
+ */
+function useSynchronizer(
+  event: string,
+  handler: any,
+  active: boolean,
+  elementsRef: MutableRefObject<Set<HTMLDivElement>>
+): MutableRefObject<any> {
+  const ref = useRef<any>(null)
+  useEffect(() => {
+    if (!active) {
+      ref.current = null
+      return
+    }
+    const sync = new cornerstoneTools.Synchronizer(event, handler)
+    elementsRef.current.forEach((el) => {
+      try {
+        sync.add(el)
+      } catch {
+        /* ignore */
+      }
+    })
+    ref.current = sync
+    return () => {
+      try {
+        sync.destroy?.()
+      } catch {
+        /* ignore */
+      }
+      ref.current = null
+    }
+  }, [event, handler, active, elementsRef])
+  return ref
+}
 
 /**
  * Side-by-side comparison of two series (e.g. two timepoints of the same
@@ -78,108 +116,48 @@ export function CompareView({ studies, onClose }: CompareViewProps) {
   const rightSeries = resolve(rightKey)
 
   // ── synchronizers ─────────────────────────────────────────────────────────
-  // Three independent cornerstone-tools Synchronizers: scroll (newimage),
-  // window/level + zoom/pan (imagerendered). Each tracks the same elements.
+  // Scroll (newimage) + window/level and zoom/pan (imagerendered), each a
+  // cornerstone-tools Synchronizer over the same set of pane elements.
   const elementsRef = useRef<Set<HTMLDivElement>>(new Set())
-  const scrollSyncRef = useRef<any>(null)
-  const wlSyncRef = useRef<any>(null)
-  const zoomSyncRef = useRef<any>(null)
+  const scrollSyncRef = useSynchronizer(
+    NEW_IMAGE,
+    syncMode === 'position'
+      ? cornerstoneTools.stackImagePositionSynchronizer
+      : cornerstoneTools.stackImageIndexSynchronizer,
+    syncMode !== 'off',
+    elementsRef
+  )
+  const wlSyncRef = useSynchronizer(IMAGE_RENDERED, cornerstoneTools.wwwcSynchronizer, syncWL, elementsRef)
+  const zoomSyncRef = useSynchronizer(IMAGE_RENDERED, cornerstoneTools.panZoomSynchronizer, syncZoom, elementsRef)
 
-  const makeSync = useCallback((event: string, handler: any) => {
-    const sync = new cornerstoneTools.Synchronizer(event, handler)
-    elementsRef.current.forEach((el) => {
-      try {
-        sync.add(el)
-      } catch {
-        /* ignore */
+  // A pane reports its element here once ready / before teardown; we add/remove
+  // it from every live synchronizer. (The sync refs are stable across renders.)
+  const onElementReady = useCallback(
+    (el: HTMLDivElement) => {
+      elementsRef.current.add(el)
+      for (const r of [scrollSyncRef, wlSyncRef, zoomSyncRef]) {
+        try {
+          r.current?.add(el)
+        } catch {
+          /* ignore */
+        }
       }
-    })
-    return sync
-  }, [])
-
-  // Scroll sync: position / index / off.
-  useEffect(() => {
-    try {
-      scrollSyncRef.current?.destroy?.()
-    } catch {
-      /* ignore */
-    }
-    scrollSyncRef.current =
-      syncMode === 'off'
-        ? null
-        : makeSync(
-            NEW_IMAGE,
-            syncMode === 'position'
-              ? cornerstoneTools.stackImagePositionSynchronizer
-              : cornerstoneTools.stackImageIndexSynchronizer
-          )
-    return () => {
-      try {
-        scrollSyncRef.current?.destroy?.()
-      } catch {
-        /* ignore */
+    },
+    [scrollSyncRef, wlSyncRef, zoomSyncRef]
+  )
+  const onElementTeardown = useCallback(
+    (el: HTMLDivElement) => {
+      for (const r of [scrollSyncRef, wlSyncRef, zoomSyncRef]) {
+        try {
+          r.current?.remove(el)
+        } catch {
+          /* ignore */
+        }
       }
-      scrollSyncRef.current = null
-    }
-  }, [syncMode, makeSync])
-
-  // Window/level sync.
-  useEffect(() => {
-    try {
-      wlSyncRef.current?.destroy?.()
-    } catch {
-      /* ignore */
-    }
-    wlSyncRef.current = syncWL ? makeSync(IMAGE_RENDERED, cornerstoneTools.wwwcSynchronizer) : null
-    return () => {
-      try {
-        wlSyncRef.current?.destroy?.()
-      } catch {
-        /* ignore */
-      }
-      wlSyncRef.current = null
-    }
-  }, [syncWL, makeSync])
-
-  // Zoom + pan sync.
-  useEffect(() => {
-    try {
-      zoomSyncRef.current?.destroy?.()
-    } catch {
-      /* ignore */
-    }
-    zoomSyncRef.current = syncZoom ? makeSync(IMAGE_RENDERED, cornerstoneTools.panZoomSynchronizer) : null
-    return () => {
-      try {
-        zoomSyncRef.current?.destroy?.()
-      } catch {
-        /* ignore */
-      }
-      zoomSyncRef.current = null
-    }
-  }, [syncZoom, makeSync])
-
-  const allSyncs = () => [scrollSyncRef, wlSyncRef, zoomSyncRef]
-  const onElementReady = useCallback((el: HTMLDivElement) => {
-    elementsRef.current.add(el)
-    allSyncs().forEach((r) => {
-      try {
-        r.current?.add(el)
-      } catch {
-        /* ignore */
-      }
-    })
-  }, [])
-  const onElementTeardown = useCallback((el: HTMLDivElement) => {
-    allSyncs().forEach((r) => {
-      try {
-        r.current?.remove(el)
-      } catch {
-        /* ignore */
-      }
-    })
-    elementsRef.current.delete(el)
-  }, [])
+      elementsRef.current.delete(el)
+    },
+    [scrollSyncRef, wlSyncRef, zoomSyncRef]
+  )
 
   const picker = (value: string, onChange: (v: string) => void, label: string) => (
     <Select value={value} onChange={onChange} groups={groups} ariaLabel={label} theme="dark" className="min-w-0 max-w-full" />
