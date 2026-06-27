@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ReactNode, useEffect, useRef, useState } from 'react'
 import { cornerstone, cornerstoneTools, initCornerstone } from '@/lib/cornerstone/initCornerstone'
+import { useSettingsStore } from '@/stores/settingsStore'
 import { DicomSeries } from '@/types'
 import { Spinner, Slider } from '@/components/ui'
 
@@ -20,6 +21,29 @@ interface ComparePaneProps {
 const STACK_SCROLL_WHEEL = 'StackScrollMouseWheel'
 
 /**
+ * Whether the series exposes ImagePositionPatient (needed for position sync).
+ * Checks the first slice and, if it's missing (e.g. a leading localizer), the
+ * middle slice — so a real volume isn't misreported as position-less.
+ */
+async function hasPositionData(imageIds: string[]): Promise<boolean> {
+  const check = (id: string) => {
+    try {
+      const plane: any = cornerstone.metaData.get('imagePlaneModule', id)
+      return !!plane?.imagePositionPatient
+    } catch {
+      return false
+    }
+  }
+  if (check(imageIds[0])) return true
+  const mid = imageIds[Math.floor(imageIds.length / 2)]
+  if (mid && mid !== imageIds[0]) {
+    await cornerstone.loadAndCacheImage(mid).catch(() => null)
+    if (check(mid)) return true
+  }
+  return false
+}
+
+/**
  * One pane of the comparison view: a cornerstone viewport backed by a `stack`
  * tool state (the native model for a series). Navigation is the library
  * StackScrollMouseWheelTool (wheel) plus a slider that drives the same stack;
@@ -32,6 +56,8 @@ export function ComparePane({ series, header, active, onActivate, onElementReady
   const [index, setIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const total = series.instances.length
+  // Captured at mount; the pane re-inits (keyed in CompareView) on series change.
+  const useWebGL = useSettingsStore.getState().useWebGL
 
   useEffect(() => {
     let mounted = true
@@ -52,12 +78,11 @@ export function ComparePane({ series, header, active, onActivate, onElementReady
       try {
         await initCornerstone()
         if (!mounted || !element) return
-        cornerstone.enable(element)
+        cornerstone.enable(element, useWebGL ? { renderer: 'webgl' } : undefined)
         cornerstone.resize(element, true)
-        // Preload every slice so the position synchronizer can read all
-        // ImagePositionPatient values, and scrolling stays flicker-free.
-        await Promise.all(imageIds.map((id) => cornerstone.loadAndCacheImage(id).catch(() => null)))
-        if (!mounted) return
+        // Show the first slice immediately; the rest stream into cache via
+        // stackPrefetch below (so first paint isn't blocked behind the whole
+        // series, and large series don't decode all-at-once on open).
         const image = await cornerstone.loadAndCacheImage(imageIds[0])
         if (!mounted) return
         cornerstone.displayImage(element, image)
@@ -68,6 +93,14 @@ export function ComparePane({ series, header, active, onActivate, onElementReady
         cornerstoneTools.addToolState(element, 'stack', { imageIds, currentImageIdIndex: 0 })
         cornerstoneTools.addToolForElement(element, cornerstoneTools.StackScrollMouseWheelTool)
         cornerstoneTools.setToolActiveForElement(element, STACK_SCROLL_WHEEL, {})
+        // Background-prefetch the series (cornerstone-tools prioritises slices
+        // nearest the current one); position sync reads each ImagePositionPatient
+        // as slices arrive.
+        try {
+          cornerstoneTools.stackPrefetch.enable(element)
+        } catch {
+          /* prefetch is best-effort */
+        }
 
         // Window/level (left drag), zoom (right), pan (middle) — adjustable per
         // pane; the parent optionally syncs these across panes.
@@ -81,10 +114,10 @@ export function ComparePane({ series, header, active, onActivate, onElementReady
         element.addEventListener('cornerstonenewimage', onNewImage)
         setIndex(0)
         setLoading(false)
-        // Position sync needs ImagePositionPatient via the metadata provider.
-        const plane: any = cornerstone.metaData.get('imagePlaneModule', imageIds[0])
-        onPositionAvailable(!!plane?.imagePositionPatient)
         onElementReady(element)
+        // Position sync needs ImagePositionPatient via the metadata provider.
+        const available = await hasPositionData(imageIds)
+        if (mounted) onPositionAvailable(available)
       } catch (err) {
         console.error('[ComparePane] setup failed:', err)
         setLoading(false)
@@ -96,6 +129,11 @@ export function ComparePane({ series, header, active, onActivate, onElementReady
       mounted = false
       element.removeEventListener('cornerstonenewimage', onNewImage)
       onElementTeardown(element)
+      try {
+        cornerstoneTools.stackPrefetch.disable(element)
+      } catch {
+        /* ignore */
+      }
       try {
         cornerstone.disable(element)
       } catch {
