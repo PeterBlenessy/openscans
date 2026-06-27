@@ -17,6 +17,7 @@ import {
   Spline,
   Pipette,
   ArrowUpRight,
+  Cross,
 } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useViewportStore } from '@/stores/viewportStore'
@@ -767,6 +768,15 @@ export function ViewportToolbar({
             title="Rectangle ROI — click again to deselect"
             data-testid="rectangle-roi-button"
             icon={<Square className="w-4 h-4" />}
+          />
+          <ToolbarButton
+            onClick={() => handleToggleTool('Bidirectional')}
+            active={activeTool === 'Bidirectional'}
+            isToggle
+            disabled={!currentInstance}
+            title="Bidirectional (lesion long + short axis) — click again to deselect"
+            data-testid="bidirectional-button"
+            icon={<Cross className="w-4 h-4" />}
           />
           <ToolbarButton
             onClick={() => handleToggleTool('Probe')}

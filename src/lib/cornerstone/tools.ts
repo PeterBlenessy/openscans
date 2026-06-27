@@ -9,6 +9,7 @@ export const MEASUREMENT_TOOL_NAMES = {
   CobbAngle: 'CobbAngle',
   EllipticalRoi: 'EllipticalRoi',
   RectangleRoi: 'RectangleRoi',
+  Bidirectional: 'Bidirectional',
   Probe: 'Probe',
   ArrowAnnotate: 'ArrowAnnotate',
 } as const
