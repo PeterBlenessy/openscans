@@ -10,9 +10,32 @@ import dicomParser from 'dicom-parser'
 // @ts-expect-error - hammerjs may not ship type defs in this install
 import Hammer from 'hammerjs'
 import { isTauri } from '../utils/platform'
+import { DEFAULT_TOOL_COLOR } from '../colors'
+import { promptText } from '../ui/promptText'
+
+/**
+ * ArrowAnnotate label prompts — replace the tool's default blocking
+ * `window.prompt` (which breaks the Tauri webview) with the app's themed dialog.
+ */
+const arrowAnnotateConfig = {
+  getTextCallback: (callback: (text: string) => void) => {
+    promptText({ title: 'Arrow label', placeholder: 'Enter a label…', confirmLabel: 'Add' }).then((t) =>
+      callback(t ?? '')
+    )
+  },
+  changeTextCallback: (data: { text?: string }, _evt: unknown, callback: (text: string) => void) => {
+    promptText({ title: 'Edit label', initialValue: data?.text ?? '', confirmLabel: 'Save' }).then((t) =>
+      // Cancel (null) keeps the existing label; saving an empty field clears it.
+      callback(t ?? data?.text ?? '')
+    )
+  },
+}
 
 let isInitialized = false
 let toolsInitialized = false
+/** In-flight init promise — dedupes concurrent callers (e.g. main viewport +
+ *  ComparePane) so the metadata provider / image loaders register only once. */
+let initPromise: Promise<void> | null = null
 
 /**
  * Initialize cornerstone-tools and register the built-in measurement / ROI tools.
@@ -44,20 +67,23 @@ function initCornerstoneTools(): void {
     // (click an annotation to delete it).
     cornerstoneTools.addTool(cornerstoneTools.LengthTool)
     cornerstoneTools.addTool(cornerstoneTools.AngleTool)
+    cornerstoneTools.addTool(cornerstoneTools.CobbAngleTool)
     cornerstoneTools.addTool(cornerstoneTools.EllipticalRoiTool)
     cornerstoneTools.addTool(cornerstoneTools.RectangleRoiTool)
+    cornerstoneTools.addTool(cornerstoneTools.BidirectionalTool)
+    cornerstoneTools.addTool(cornerstoneTools.ProbeTool)
+    cornerstoneTools.addTool(cornerstoneTools.ArrowAnnotateTool, { configuration: arrowAnnotateConfig })
     cornerstoneTools.addTool(cornerstoneTools.EraserTool)
-
-    // Draw measurements in the app's cyan (annotationColors.cyan) for contrast
-    // on the black image, matching the rest of the UI.
-    try {
-      cornerstoneTools.toolColors.setToolColor('#00D9FF')
-      cornerstoneTools.toolColors.setActiveColor('#22e3ff')
-    } catch {
-      // toolColors API missing — non-fatal.
-    }
+    // Passive, always-on overlays (no interaction): L/R/A/P orientation letters
+    // and a calibrated mm scale bar.
+    cornerstoneTools.addTool(cornerstoneTools.OrientationMarkersTool)
+    cornerstoneTools.addTool(cornerstoneTools.ScaleOverlayTool)
 
     toolsInitialized = true
+
+    // Default measurement color; the `toolColor` setting overrides this live
+    // (applied by useViewportTools).
+    applyToolColor(DEFAULT_TOOL_COLOR)
   } catch (err) {
     console.warn('[CornerstoneTools] Initialization failed (measurement tools disabled):', err)
   }
@@ -65,6 +91,28 @@ function initCornerstoneTools(): void {
 
 export function areToolsInitialized(): boolean {
   return toolsInitialized
+}
+
+/**
+ * Set the global color cornerstone-tools uses to draw measurements / ROIs and
+ * redraw any enabled elements so the change is immediate. No-op until tools
+ * are initialized; safe to call repeatedly.
+ */
+export function applyToolColor(color: string): void {
+  if (!toolsInitialized) return
+  try {
+    cornerstoneTools.toolColors.setToolColor(color)
+    cornerstoneTools.toolColors.setActiveColor(color)
+    cornerstone.getEnabledElements?.().forEach((e: any) => {
+      try {
+        cornerstone.updateImage(e.element)
+      } catch {
+        /* element has no image displayed yet — nothing to redraw */
+      }
+    })
+  } catch {
+    /* toolColors API missing — non-fatal */
+  }
 }
 
 /**
@@ -90,9 +138,19 @@ export function addMeasurementToolsForElement(element: HTMLElement): void {
   try {
     cornerstoneTools.addToolForElement(element, cornerstoneTools.LengthTool)
     cornerstoneTools.addToolForElement(element, cornerstoneTools.AngleTool)
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.CobbAngleTool)
     cornerstoneTools.addToolForElement(element, cornerstoneTools.EllipticalRoiTool)
     cornerstoneTools.addToolForElement(element, cornerstoneTools.RectangleRoiTool)
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.BidirectionalTool)
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.ProbeTool)
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.ArrowAnnotateTool, { configuration: arrowAnnotateConfig })
     cornerstoneTools.addToolForElement(element, cornerstoneTools.EraserTool)
+    // Always-on overlays (orientation markers + mm scale bar). Enabled = drawn
+    // on every render, no mouse interaction.
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.OrientationMarkersTool)
+    cornerstoneTools.addToolForElement(element, cornerstoneTools.ScaleOverlayTool)
+    cornerstoneTools.setToolEnabledForElement(element, 'OrientationMarkers')
+    cornerstoneTools.setToolEnabledForElement(element, 'ScaleOverlay')
   } catch (err) {
     console.warn('[CornerstoneTools] Failed to add measurement tools for element:', err)
   }
@@ -106,7 +164,13 @@ export async function initCornerstone(): Promise<void> {
   if (isInitialized) {
     return
   }
+  // A second caller while init is in flight awaits the same promise instead of
+  // re-running registration (addProvider / registerImageLoader).
+  if (initPromise) {
+    return initPromise
+  }
 
+  initPromise = (async () => {
   try {
     // Suppress source map and worker-related errors that don't affect functionality
     const originalError = console.error
@@ -214,11 +278,21 @@ export async function initCornerstone(): Promise<void> {
     // Register measurement / ROI tools (non-fatal if it fails).
     initCornerstoneTools()
 
+    // Register the WADO image loader's own metaData provider so cornerstone-tools
+    // (the position-sync synchronizer, orientation markers, probe HU, scale
+    // overlay) can read slice geometry / VOI / scaling straight from the parsed
+    // DICOM — no custom provider needed.
+    cornerstone.metaData.addProvider(cornerstoneWADOImageLoader.wadouri.metaData.metaDataProvider)
+
     isInitialized = true
   } catch (error) {
     console.error('Failed to initialize Cornerstone:', error)
+    initPromise = null // allow a retry after a failed init
     throw error
   }
+  })()
+
+  return initPromise
 }
 
 /**

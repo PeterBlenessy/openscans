@@ -3,7 +3,7 @@ import { useAnnotationStore } from '@/stores/annotationStore'
 import { useViewportStore } from '@/stores/viewportStore'
 import { useStudyStore } from '@/stores/studyStore'
 import { MarkerAnnotation } from '@/types/annotation'
-import { annotationColors } from '@/lib/colors'
+import { annotationColors, colorForStructure } from '@/lib/colors'
 // @ts-expect-error - cornerstone-core doesn't have TypeScript definitions
 import cornerstone from 'cornerstone-core'
 
@@ -57,9 +57,18 @@ export function AnnotationOverlay({ canvasElement }: AnnotationOverlayProps) {
       if (seen.has(ann.id)) return false
       seen.add(ann.id)
       return true
-    })
+    }) as MarkerAnnotation[]
   }, [currentInstance, showAnnotations, areMarkersVisible, allAnnotations])
 
+
+  // Distinct structures on this slice → legend (label + its color).
+  const legend = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const a of annotations) {
+      if (a.label && !m.has(a.label)) m.set(a.label, colorForStructure(a.label))
+    }
+    return [...m.entries()]
+  }, [annotations])
 
   if (!canvasElement || !currentInstance || !showAnnotations || annotations.length === 0) {
     return null
@@ -71,20 +80,41 @@ export function AnnotationOverlay({ canvasElement }: AnnotationOverlayProps) {
   }
 
   return (
-    <svg
-      className="absolute inset-0"
-      width={dimensions.width}
-      height={dimensions.height}
-      style={{ zIndex: 10, pointerEvents: 'none' }}
-    >
-      {/* Only AI markers render here. Measurements / ROIs are drawn by
-          cornerstone-tools directly on the canvas (single source). */}
-      {annotations.map((annotation) =>
-        annotation.type === 'marker' ? (
-          <MarkerRenderer key={annotation.id} annotation={annotation} canvasElement={canvasElement} />
-        ) : null
+    <>
+      <svg
+        className="absolute inset-0"
+        width={dimensions.width}
+        height={dimensions.height}
+        style={{ zIndex: 10, pointerEvents: 'none' }}
+      >
+        {/* Only AI markers render here. Measurements / ROIs are drawn by
+            cornerstone-tools directly on the canvas (single source). */}
+        {annotations.map((annotation) =>
+          annotation.type === 'marker' ? (
+            <MarkerRenderer key={annotation.id} annotation={annotation} canvasElement={canvasElement} />
+          ) : null
+        )}
+      </svg>
+
+      {/* Structure legend — color key for the segmentation overlay. */}
+      {legend.length > 0 && (
+        <div
+          className="absolute left-2 top-2 z-20 max-h-[45%] overflow-auto rounded-md bg-black/60 px-2.5 py-2 backdrop-blur-sm"
+          style={{ pointerEvents: 'none' }}
+          data-testid="structure-legend"
+        >
+          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Structures</div>
+          <ul className="space-y-1">
+            {legend.map(([label, color]) => (
+              <li key={label} className="flex items-center gap-1.5 text-xs text-gray-200">
+                <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                <span className="truncate">{label}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
-    </svg>
+    </>
   )
 }
 
@@ -146,10 +176,11 @@ function MarkerRenderer({ annotation, canvasElement }: MarkerRendererProps) {
   const labelOffsetX = 12
   const labelOffsetY = 5
 
-  // Use orange for all markers
-  const markerColor = annotationColors.orange
-  // Fill opacity: solid when manually adjusted, transparent when automatic
-  const fillOpacity = annotation.manuallyAdjusted ? 0.8 : 0.15
+  // Color-code each structure by its anatomical label (segmentation overlay);
+  // unlabeled markers fall back to orange.
+  const markerColor = annotation.label ? colorForStructure(annotation.label) : annotationColors.orange
+  // Fill opacity: solid when manually adjusted, lighter when automatic.
+  const fillOpacity = annotation.manuallyAdjusted ? 0.8 : 0.25
   const strokeWidth = 1.5
 
   const handleMouseDown = (e: React.MouseEvent) => {

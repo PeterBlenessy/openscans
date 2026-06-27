@@ -16,6 +16,11 @@ declare module 'cornerstone-wado-image-loader' {
       remove: (imageId: string) => void
       get: (imageId: string) => File | undefined
     }
+    /** The loader's built-in cornerstone metaData provider (imagePlaneModule,
+     *  voiLutModule, modalityLutModule, …) read from the parsed DICOM. */
+    metaData: {
+      metaDataProvider: (type: string, imageId: string) => unknown
+    }
   }
 
   const cornerstoneWADOImageLoader: {

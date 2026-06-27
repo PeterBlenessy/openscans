@@ -326,6 +326,7 @@ export class DicomStudyService {
       }
     }
 
+
     // Extract pixel value range for performance optimization
     const minPixelValue = getNumber('x00280106', undefined)
     const maxPixelValue = getNumber('x00280107', undefined)

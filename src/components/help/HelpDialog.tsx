@@ -91,8 +91,21 @@ export function HelpDialog({ show, onClose }: HelpDialogProps) {
                 measurement sub-toolbar. It stays open until you click the ruler again.
               </p>
               <div>
-                <strong className="text-gray-200 block mb-1">Drawing:</strong>
-                <p>Pick a tool — Length (distance), Angle, Elliptical ROI, or Rectangle ROI — then press and drag on the image from the start point to the end point. Length shows millimetres when the image has pixel spacing (pixels otherwise); ROIs show area and mean value. Click an active tool again to deselect it.</p>
+                <strong className="text-gray-200 block mb-1">Drawing tools (press and drag):</strong>
+                <ul className="list-disc list-inside ml-4 space-y-0.5">
+                  <li><strong>Length</strong> — distance (mm when the image has pixel spacing, pixels otherwise)</li>
+                  <li><strong>Angle</strong> and <strong>Cobb angle</strong> — Cobb measures the angle between two drawn lines (spine curvature)</li>
+                  <li><strong>Elliptical</strong> / <strong>Rectangle ROI</strong> — area and mean pixel value</li>
+                  <li><strong>Bidirectional</strong> — a long axis plus a perpendicular short axis (lesion size, e.g. for tracking change over time)</li>
+                </ul>
+              </div>
+              <div>
+                <strong className="text-gray-200 block mb-1">Probe (click):</strong>
+                <p>Click a point to read its pixel value — and the Hounsfield (HU) value on CT.</p>
+              </div>
+              <div>
+                <strong className="text-gray-200 block mb-1">Arrow (drag + label):</strong>
+                <p>Drag to draw an arrow, then type a label in the prompt. Double-click an arrow to edit its label.</p>
               </div>
               <div>
                 <strong className="text-gray-200 block mb-1">Editing (Pointer):</strong>
@@ -102,7 +115,45 @@ export function HelpDialog({ show, onClose }: HelpDialogProps) {
                 <strong className="text-gray-200 block mb-1">Deleting (Eraser):</strong>
                 <p>Switch to the <strong className="text-gray-200">Eraser</strong> tool and click a measurement to remove it.</p>
               </div>
-              <p className="leading-5 text-gray-400">Measurements are saved per image and persist across reloads. Shortcuts: <strong className="text-gray-200">L</strong> = Length, <strong className="text-gray-200">Shift+A</strong> = Angle.</p>
+              <p className="leading-5 text-gray-400">Click an active tool again to deselect it. Measurements are saved per image and persist across reloads, and draw in the color set under Settings → Viewport → Measurement Color. Shortcuts: <strong className="text-gray-200">L</strong> = Length, <strong className="text-gray-200">Shift+A</strong> = Angle.</p>
+            </div>
+          </section>
+
+          {/* Comparison */}
+          <section>
+            <h3 className={`text-base font-semibold ${themeClasses.text(theme)} mb-1.5 mt-3`}>Comparing Two Studies</h3>
+            <div className="space-y-2 text-sm">
+              <p className="leading-5">
+                Compare two timepoints of the same patient (e.g. baseline vs follow-up) side by side. The
+                <strong className="text-gray-200"> Compare</strong> button appears in the header once two or more studies are loaded.
+              </p>
+              <div>
+                <strong className="text-gray-200 block mb-1">Choosing series:</strong>
+                <p>Each pane has a picker grouped by study; picking the left series auto-selects the matching series in the other study. A slider and counter under each pane scrub through its slices.</p>
+              </div>
+              <div>
+                <strong className="text-gray-200 block mb-1">Synced scrolling:</strong>
+                <p>Scroll either pane and the other follows — by <strong className="text-gray-200">Position</strong> (matched anatomy, the default and best choice when the two scans have different slice counts) or <strong className="text-gray-200">Index</strong> (slice number), switchable, or <strong className="text-gray-200">Off</strong>.</p>
+              </div>
+              <div>
+                <strong className="text-gray-200 block mb-1">Linked adjustments:</strong>
+                <p>Optionally tick <strong className="text-gray-200">W/L</strong> and <strong className="text-gray-200">Zoom+Pan</strong> so window/level and zoom/pan stay in step across both panes.</p>
+              </div>
+            </div>
+          </section>
+
+          {/* On-image overlays */}
+          <section>
+            <h3 className={`text-base font-semibold ${themeClasses.text(theme)} mb-1.5 mt-3`}>On-Image Overlays</h3>
+            <div className="space-y-2 text-sm">
+              <div>
+                <strong className="text-gray-200 block mb-1">Orientation &amp; scale:</strong>
+                <p>Orientation letters (R/L/A/P) at the edges and a calibrated millimetre scale bar are shown automatically when the image provides the necessary geometry.</p>
+              </div>
+              <div>
+                <strong className="text-gray-200 block mb-1">AI structure markers:</strong>
+                <p>Detected / segmented structures appear as colored markers with a legend. Vertebrae are colored by spinal region (cervical, thoracic, lumbar, sacral); the label gives the exact level. Drag a marker to correct its position; right-click to clear the AI markers on a slice. Toggle markers with <strong className="text-gray-200">A</strong>.</p>
+              </div>
             </div>
           </section>
 

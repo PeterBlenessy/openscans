@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { PanelLeft, PanelRight, PanelBottom, ShieldCheck, ShieldOff } from 'lucide-react'
+import { PanelLeft, PanelRight, PanelBottom, ShieldCheck, ShieldOff, Columns2 } from 'lucide-react'
+import { CompareView } from './components/viewer/CompareView'
 import { FileDropzone } from './components/viewer/FileDropzone'
 import { DicomViewport } from './components/viewer/DicomViewport'
 import { StudySeriesBrowser } from './components/viewer/StudySeriesBrowser'
@@ -13,6 +14,7 @@ import { ResizeHandle } from './components/layout/ResizeHandle'
 import { SettingsPanel } from './components/settings/SettingsPanel'
 import { ErrorToast } from './components/ErrorToast'
 import { ConfirmDialog } from './components/ui/ConfirmDialog'
+import { TextPrompt } from './components/ui/TextPrompt'
 import { Slider, Spinner, Tooltip, TooltipProvider } from './components/ui'
 import { useSystemAccent } from './hooks/useSystemAccent'
 import { UpdateNotification } from './components/UpdateNotification'
@@ -40,6 +42,7 @@ function App() {
   })
   const [showRightSidebar, setShowRightSidebar] = useState(true)
   const [showThumbnailStrip, setShowThumbnailStrip] = useState(true)
+  const [compareActive, setCompareActive] = useState(false)
 
   // Right sidebar width state
   const [rightSidebarWidth, setRightSidebarWidth] = useState(() => {
@@ -52,6 +55,7 @@ function App() {
   useSystemAccent()
   const hidePersonalInfo = useSettingsStore((state) => state.hidePersonalInfo)
   const setHidePersonalInfo = useSettingsStore((state) => state.setHidePersonalInfo)
+  const useWebGL = useSettingsStore((state) => state.useWebGL)
   const currentSeries = useStudyStore((state) => state.currentSeries)
   const currentStudy = useStudyStore((state) => state.currentStudy)
   const currentInstanceIndex = useStudyStore((state) => state.currentInstanceIndex)
@@ -282,6 +286,7 @@ function App() {
 
       {/* Generic confirmation dialog (replaces window.confirm) */}
       <ConfirmDialog />
+      <TextPrompt />
 
       {/* Header */}
       <header className={`px-6 py-2.5 flex items-center justify-between border-b flex-shrink-0 ${theme === 'dark' ? 'bg-[#1a1a1a] border-[#2a2a2a]' : 'bg-white border-gray-200'}`}>
@@ -348,6 +353,21 @@ function App() {
             {hidePersonalInfo ? <ShieldCheck size={18} aria-hidden="true" /> : <ShieldOff size={18} aria-hidden="true" />}
           </button>
           </Tooltip>
+
+          {/* Compare two studies (e.g. baseline vs follow-up), synced by position */}
+          {studies.length >= 2 && (
+            <Tooltip label="Compare two studies side by side">
+            <button
+              onClick={() => setCompareActive((v) => !v)}
+              className={`p-2 rounded transition-colors ${compareActive ? (theme === 'dark' ? 'bg-[#2a2a2a] text-white' : 'bg-gray-300 text-gray-900') : (theme === 'dark' ? 'hover:bg-[#1a1a1a] text-gray-400' : 'hover:bg-gray-200 text-gray-600')}`}
+              aria-label="Compare studies"
+              aria-pressed={compareActive}
+              data-testid="compare-toggle"
+            >
+              <Columns2 size={18} aria-hidden="true" />
+            </button>
+            </Tooltip>
+          )}
         </div>
       </header>
 
@@ -382,7 +402,7 @@ function App() {
             <>
             {/* Viewer */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-              <DicomViewport className="flex-1 min-h-0" />
+              <DicomViewport key={useWebGL ? 'renderer-webgl' : 'renderer-canvas'} className="flex-1 min-h-0" />
 
               {/* Image Slider */}
               {currentSeries && currentSeries.instances.length > 1 && (
@@ -473,6 +493,11 @@ function App() {
               )}
             </aside>
           </>
+        )}
+
+        {/* Comparison overlay — pick a study/series per pane, scroll in sync */}
+        {compareActive && studies.length >= 2 && (
+          <CompareView studies={studies} onClose={() => setCompareActive(false)} />
         )}
         </main>
       </div>

@@ -40,3 +40,6 @@ coverage/
 __pycache__/
 *.pyc
 .venv/
+
+# Generated comparison-viewer test data (run scripts/gen-compare-fixtures.mjs)
+e2e/fixtures/compare/

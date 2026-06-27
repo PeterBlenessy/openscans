@@ -28,6 +28,55 @@ export const annotationColors = {
   selected: '#FF00FF',  // Magenta - selected/active state
 } as const
 
+/** Default color for measurement / ROI tools (the cornerstone tool color). */
+export const DEFAULT_TOOL_COLOR: string = annotationColors.orange
+
+/**
+ * Selectable colors for the measurement / ROI tool color picker in Settings.
+ * All chosen for high contrast on grayscale medical images.
+ */
+export const TOOL_COLOR_OPTIONS: ReadonlyArray<{ label: string; value: string }> = [
+  { label: 'Orange', value: annotationColors.orange },
+  { label: 'Yellow', value: annotationColors.yellow },
+  { label: 'Cyan', value: annotationColors.cyan },
+  { label: 'Magenta', value: annotationColors.magenta },
+  { label: 'Green', value: '#22C55E' },
+  { label: 'White', value: '#FFFFFF' },
+]
+
+/**
+ * Base hue per spinal region (cervical / thoracic / lumbar / sacral) so the
+ * spine reads as a few anatomical color families rather than a different color
+ * per vertebra.
+ */
+const REGION_HUE: Record<string, number> = {
+  c: 275, // cervical — purple
+  t: 150, // thoracic — green
+  l: 205, // lumbar — blue
+  s: 32, // sacral — orange
+}
+
+/**
+ * Color for an anatomical structure label, stable across slices. Vertebrae are
+ * colored by spinal region (so e.g. all lumbar are one blue — the label gives
+ * the exact level); other structures (organs, ribs, …) get a distinct hashed
+ * hue each. The `vertebrae_` prefix is stripped so the same vertebra from
+ * different AI sources (cloud "L1" vs engine "vertebrae_L1") matches.
+ */
+export function colorForStructure(label: string): string {
+  const key = label.trim().toLowerCase().replace(/^vertebrae[_-]/, '')
+  if (!key) return annotationColors.orange
+  // Vertebra like c1..c7 / t1..t12 / l1..l5 / s1..s5 → color by region.
+  const vertebra = key.match(/^([ctls])\d{1,2}$/)
+  if (vertebra && REGION_HUE[vertebra[1]] !== undefined) {
+    return `hsl(${REGION_HUE[vertebra[1]]}, 70%, 60%)`
+  }
+  // Other structures — a distinct hashed hue each (golden-angle spread).
+  let hash = 0
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0
+  return `hsl(${(hash * 137) % 360}, 80%, 62%)`
+}
+
 /**
  * UI element colors - for toolbar buttons, indicators, and interface elements
  * These appear in the UI chrome, not on the medical images themselves.

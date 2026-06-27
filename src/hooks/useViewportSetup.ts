@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { RefObject, MutableRefObject, useEffect, useState } from 'react'
 import { initCornerstone, cornerstone } from '../lib/cornerstone/initCornerstone'
+import { useSettingsStore } from '../stores/settingsStore'
 import { DicomInstance, ViewportSettings } from '../types'
 
 interface UseViewportSetupOptions {
@@ -49,6 +50,10 @@ export function useViewportSetup(options: UseViewportSetupOptions): UseViewportS
     currentImageIdRef,
     setModality
   } = options
+
+  // Renderer choice. The viewport is keyed by this in App, so it remounts (and
+  // this hook re-runs from scratch) when it changes — no live re-enable needed.
+  const useWebGL = useSettingsStore((s) => s.useWebGL)
 
   const [isInitialized, setIsInitialized] = useState(false)
   const [isElementEnabled, setIsElementEnabled] = useState(false)
@@ -100,7 +105,20 @@ export function useViewportSetup(options: UseViewportSetupOptions): UseViewportS
     const element = canvasRef.current
 
     try {
-      cornerstone.enable(element)
+      // WebGL renderer (GPU) when enabled. cornerstone falls back to Canvas when
+      // WebGL is *unavailable*, but a renderer that throws at enable (e.g. GL
+      // context creation failure) would otherwise leave the element unusable —
+      // so retry with the Canvas renderer explicitly.
+      try {
+        cornerstone.enable(element, useWebGL ? { renderer: 'webgl' } : undefined)
+      } catch (glErr) {
+        if (useWebGL) {
+          console.warn('WebGL renderer failed to enable; falling back to Canvas:', glErr)
+          cornerstone.enable(element)
+        } else {
+          throw glErr
+        }
+      }
       // Force resize to ensure canvas fills container and uses devicePixelRatio for High-DPI displays
       // The 'true' parameter enables high-DPI support (scales canvas by devicePixelRatio)
       cornerstone.resize(element, true)

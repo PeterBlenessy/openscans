@@ -1,9 +1,10 @@
 import { RefObject, useCallback, useEffect, useState } from 'react'
+import { isTauri } from '@/lib/utils/platform'
 
 /**
  * Subset of the vendor-prefixed Fullscreen API surface we rely on. Safari (and
- * older WebKit, including some Tauri/macOS WebViews) still ships the `webkit`
- * prefixed variants instead of the standard ones.
+ * older WebKit) still ships the `webkit` prefixed variants instead of the
+ * standard ones.
  */
 interface FullscreenElement extends HTMLElement {
   webkitRequestFullscreen?: () => Promise<void> | void
@@ -20,27 +21,43 @@ function getFullscreenElement(): Element | null {
 }
 
 interface UseFullscreenReturn {
-  /** Whether a fullscreen element is currently active */
+  /** Whether fullscreen is currently active */
   isFullscreen: boolean
-  /** Toggle the referenced element in/out of fullscreen */
+  /** Toggle in/out of fullscreen */
   toggleFullscreen: () => Promise<void>
 }
 
 /**
- * Manage browser fullscreen for a given element.
+ * Manage fullscreen for a given element.
  *
- * Handles the standard Fullscreen API plus the `webkit`-prefixed fallbacks for
- * Safari/WebKit, and keeps `isFullscreen` in sync with the
- * `fullscreenchange` / `webkitfullscreenchange` events (so the browser's own
- * Escape-to-exit is reflected in state). Listeners are cleaned up on unmount.
+ * On the web this uses the HTML Fullscreen API (standard + `webkit` fallbacks).
+ * In the Tauri desktop app that API is a no-op in WKWebView, so we toggle the
+ * **native window** fullscreen via `@tauri-apps/api/window` instead — this is
+ * why the button "did nothing" on desktop. State is kept in sync with the
+ * browser `fullscreenchange` events (web) or the window resize event (Tauri),
+ * so the OS's own Escape/exit is reflected.
  *
- * @param elementRef - Ref to the element that should fill the screen
+ * @param elementRef - Ref to the element that should fill the screen (web only)
  * @returns `{ isFullscreen, toggleFullscreen }`
  */
 export function useFullscreen(elementRef: RefObject<HTMLElement>): UseFullscreenReturn {
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const tauri = isTauri()
 
   const toggleFullscreen = useCallback(async () => {
+    if (tauri) {
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window')
+        const win = getCurrentWindow()
+        const next = !(await win.isFullscreen())
+        await win.setFullscreen(next)
+        setIsFullscreen(next)
+      } catch (err) {
+        console.error('Fullscreen toggle failed:', err)
+      }
+      return
+    }
+
     const doc = document as FullscreenDocument
     try {
       if (getFullscreenElement()) {
@@ -61,22 +78,41 @@ export function useFullscreen(elementRef: RefObject<HTMLElement>): UseFullscreen
     } catch (err) {
       console.error('Fullscreen toggle failed:', err)
     }
-  }, [elementRef])
+  }, [tauri, elementRef])
 
   useEffect(() => {
-    const handler = () => setIsFullscreen(!!getFullscreenElement())
+    if (tauri) {
+      // Track native-window fullscreen (covers OS-initiated exit via the green
+      // button / Esc, which fires a resize).
+      let cancelled = false
+      let unlisten: (() => void) | undefined
+      ;(async () => {
+        try {
+          const { getCurrentWindow } = await import('@tauri-apps/api/window')
+          const win = getCurrentWindow()
+          if (!cancelled) setIsFullscreen(await win.isFullscreen())
+          unlisten = await win.onResized(async () => {
+            if (!cancelled) setIsFullscreen(await win.isFullscreen())
+          })
+        } catch (err) {
+          console.error('Fullscreen state sync failed:', err)
+        }
+      })()
+      return () => {
+        cancelled = true
+        unlisten?.()
+      }
+    }
 
+    const handler = () => setIsFullscreen(!!getFullscreenElement())
     document.addEventListener('fullscreenchange', handler)
     document.addEventListener('webkitfullscreenchange', handler)
-
-    // Initialise in case we mount while already fullscreen.
-    handler()
-
+    handler() // initialise in case we mount while already fullscreen
     return () => {
       document.removeEventListener('fullscreenchange', handler)
       document.removeEventListener('webkitfullscreenchange', handler)
     }
-  }, [])
+  }, [tauri])
 
   return { isFullscreen, toggleFullscreen }
 }

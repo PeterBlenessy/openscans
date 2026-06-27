@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   MonitorCog,
   Target,
@@ -14,6 +14,18 @@ import {
   Square,
   Eraser,
   MousePointer2,
+  Spline,
+  Pipette,
+  ArrowUpRight,
+  Cross,
+  PencilRuler,
+  FlipHorizontal2,
+  Sparkles,
+  RotateCcw,
+  RotateCw,
+  FlipHorizontal,
+  FlipVertical,
+  Contrast,
 } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useViewportStore } from '@/stores/viewportStore'
@@ -23,6 +35,7 @@ import { useAnnotationStore } from '@/stores/annotationStore'
 import { useAiAnalysisStore } from '@/stores/aiAnalysisStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { themeClasses } from '@/lib/utils'
+import { isMeasurementTool } from '@/lib/cornerstone/tools'
 import { Tooltip } from '@/components/ui'
 import { useErrorHandler } from '@/hooks/useErrorHandler'
 import { mockDetector } from '@/lib/ai/mockVertebralDetector'
@@ -80,11 +93,30 @@ export function ViewportToolbar({
   // Cine + measurement tool state
   const activeTool = useViewportStore((state) => state.activeTool)
   const setActiveTool = useViewportStore((state) => state.setActiveTool)
-  // The measurement/ROI tools live in a reveal-able sub-toolbar (they're many
-  // and crowd the main bar). Toggled by the Measure button; stays open until
-  // toggled off.
-  const [showMeasureTools, setShowMeasureTools] = useState(false)
-  const measurementToolActive = ['Pointer', 'Eraser', 'Length', 'Angle', 'EllipticalRoi', 'RectangleRoi'].includes(activeTool)
+  // Secondary controls live in reveal-able sub-toolbars (they crowd the main
+  // bar): measurement tools, image transforms, and AI. One group is open at a
+  // time, toggled by its main-bar button; stays open until toggled off.
+  const [openTools, setOpenTools] = useState<'measure' | 'transform' | 'ai' | null>(null)
+  // Horizontal offset (px, relative to the toolbar) where the open sub-toolbar
+  // is anchored — set to the clicked group button so it reads as that button's
+  // submenu rather than a detached second row.
+  const [subAnchorX, setSubAnchorX] = useState<number | null>(null)
+  const toolbarRef = useRef<HTMLDivElement>(null)
+  const openGroup = (group: 'measure' | 'transform' | 'ai', e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (openTools === group) {
+      setOpenTools(null)
+      return
+    }
+    const btn = e?.currentTarget?.getBoundingClientRect()
+    const cont = toolbarRef.current?.getBoundingClientRect()
+    if (btn && cont) setSubAnchorX(btn.left + btn.width / 2 - cont.left)
+    setOpenTools(group)
+  }
+  // Derive from the canonical tool list so new measurement tools don't need a
+  // second edit here (Pointer/Eraser are the non-measurement viewport modes).
+  const measurementToolActive = activeTool === 'Pointer' || activeTool === 'Eraser' || isMeasurementTool(activeTool)
+  const transformActive =
+    settings.rotation !== 0 || settings.flipHorizontal || settings.flipVertical || settings.invert
   const cineEnabled = useViewportStore((state) => state.cineEnabled)
   const cineFrameRate = useViewportStore((state) => state.cineFrameRate)
   const toggleCine = useViewportStore((state) => state.toggleCine)
@@ -361,8 +393,12 @@ export function ViewportToolbar({
 
 
   const rowClass = `flex items-center gap-1 backdrop-blur-sm rounded-lg p-1.5 shadow-lg border ${themeClasses.bg(theme)} ${themeClasses.border(theme)}`
+  // A sub-toolbar opens as an absolute panel centered under the button that
+  // opened it (anchored to the button, not the viewport).
+  const subToolbarStyle = { left: subAnchorX ?? '50%', transform: 'translateX(-50%)' }
+
   return (
-    <div className={`flex flex-col items-center gap-1 ${className}`}>
+    <div ref={toolbarRef} className={`flex flex-col items-center gap-1 ${className}`}>
       <div className={rowClass}>
       {/* Reset */}
       <ToolbarButton
@@ -417,80 +453,27 @@ export function ViewportToolbar({
 
       <ToolbarDivider />
 
-      {/* Rotate Left */}
+      {/* Transform — opens the rotate / flip / invert sub-toolbar (see below). */}
       <ToolbarButton
-        onClick={handleRotateLeft}
-        title="Rotate left ([)"
-        icon={
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-            <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39z" clipRule="evenodd" />
-          </svg>
-        }
-      />
-
-      {/* Rotate Right */}
-      <ToolbarButton
-        onClick={handleRotateRight}
-        title="Rotate right (])"
-        icon={
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 scale-x-[-1]">
-            <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39z" clipRule="evenodd" />
-          </svg>
-        }
-      />
-
-      <ToolbarDivider />
-
-      {/* Flip Horizontal */}
-      <ToolbarButton
-        onClick={handleFlipHorizontal}
-        active={settings.flipHorizontal}
+        onClick={(e) => openGroup('transform', e)}
+        active={openTools === 'transform' || transformActive}
         isToggle
-        title="Flip horizontal (H)"
-        icon={
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-            <path fillRule="evenodd" d="M13.2 2.24a.75.75 0 00.04 1.06l2.1 1.95H6.75a.75.75 0 000 1.5h8.59l-2.1 1.95a.75.75 0 101.02 1.1l3.5-3.25a.75.75 0 000-1.1l-3.5-3.25a.75.75 0 00-1.06.04zm-6.4 8a.75.75 0 00-1.06-.04l-3.5 3.25a.75.75 0 000 1.1l3.5 3.25a.75.75 0 101.02-1.1l-2.1-1.95h8.59a.75.75 0 000-1.5H4.66l2.1-1.95a.75.75 0 00.04-1.06z" clipRule="evenodd" />
-          </svg>
-        }
-      />
-
-      {/* Flip Vertical */}
-      <ToolbarButton
-        onClick={handleFlipVertical}
-        active={settings.flipVertical}
-        isToggle
-        title="Flip vertical (V)"
-        icon={
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 rotate-90">
-            <path fillRule="evenodd" d="M13.2 2.24a.75.75 0 00.04 1.06l2.1 1.95H6.75a.75.75 0 000 1.5h8.59l-2.1 1.95a.75.75 0 101.02 1.1l3.5-3.25a.75.75 0 000-1.1l-3.5-3.25a.75.75 0 00-1.06.04zm-6.4 8a.75.75 0 00-1.06-.04l-3.5 3.25a.75.75 0 000 1.1l3.5 3.25a.75.75 0 101.02-1.1l-2.1-1.95h8.59a.75.75 0 000-1.5H4.66l2.1-1.95a.75.75 0 00.04-1.06z" clipRule="evenodd" />
-          </svg>
-        }
-      />
-
-      {/* Invert */}
-      <ToolbarButton
-        onClick={handleInvert}
-        active={settings.invert}
-        isToggle
-        title="Invert colors (I)"
-        icon={
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-            <path d="M10 2a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 2zM10 15a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0v-1.5A.75.75 0 0110 15zM10 7a3 3 0 100 6 3 3 0 000-6zM15.657 5.404a.75.75 0 10-1.06-1.06l-1.061 1.06a.75.75 0 001.06 1.06l1.06-1.06zM6.464 14.596a.75.75 0 10-1.06-1.06l-1.06 1.06a.75.75 0 001.06 1.06l1.06-1.06zM18 10a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 0118 10zM5 10a.75.75 0 01-.75.75h-1.5a.75.75 0 010-1.5h1.5A.75.75 0 015 10zM14.596 15.657a.75.75 0 001.06-1.06l-1.06-1.061a.75.75 0 10-1.06 1.06l1.06 1.06zM5.404 6.464a.75.75 0 001.06-1.06l-1.06-1.06a.75.75 0 10-1.061 1.06l1.06 1.06z" />
-          </svg>
-        }
+        title="Transform (rotate, flip, invert)"
+        data-testid="transform-tools-toggle"
+        icon={<FlipHorizontal2 className="w-4 h-4" />}
       />
 
       <ToolbarDivider />
 
       {/* Measure & annotate — opens the tool sub-toolbar (see below). */}
       <ToolbarButton
-        onClick={() => setShowMeasureTools((v) => !v)}
-        active={showMeasureTools || measurementToolActive}
+        onClick={(e) => openGroup('measure', e)}
+        active={openTools === 'measure' || measurementToolActive}
         isToggle
         disabled={!currentInstance}
         title="Measure & annotate (ruler, angle, ROI)"
         data-testid="measure-tools-toggle"
-        icon={<Ruler className="w-4 h-4" />}
+        icon={<PencilRuler className="w-4 h-4" />}
       />
 
       <ToolbarDivider />
@@ -645,45 +628,16 @@ export function ViewportToolbar({
       {showAiControls && (
         <>
           <ToolbarDivider />
-
-          {/* AI Vertebrae Detection */}
+          {/* AI — opens the AI sub-toolbar (detection / analysis / segmentation). */}
           <ToolbarButton
-            onClick={handleAiDetection}
-            title="AI vertebrae detection (M)"
-            disabled={!currentInstance || isDetecting || isAnalyzing}
-            data-testid="ai-detection-button"
-            icon={<Target className="w-4 h-4" />}
+            onClick={(e) => openGroup('ai', e)}
+            active={openTools === 'ai' || isDetecting || isAnalyzing}
+            isToggle
+            disabled={!currentInstance}
+            title="AI tools (detection, analysis, segmentation)"
+            data-testid="ai-tools-toggle"
+            icon={<Sparkles className="w-4 h-4" />}
           />
-
-          {/* AI Radiology Analysis */}
-          <ToolbarButton
-            onClick={handleAiAnalysis}
-            title={
-              currentInstance && getAnalysisForInstance(currentInstance.sopInstanceUID)
-                ? "View AI analysis (N)"
-                : "AI radiology analysis (N)"
-            }
-            disabled={!currentInstance || isDetecting || isAnalyzing}
-            data-testid="ai-analysis-button"
-            icon={<FileText className="w-4 h-4" />}
-          />
-
-          {/* MR-precision segmentation — local TotalSegmentator-MRI (Phase 3).
-              Gated until the engine is published (see MR_SEGMENTATION_AVAILABLE). */}
-          <ToolbarButton
-            onClick={handleMrSegmentation}
-            title={
-              MR_SEGMENTATION_AVAILABLE
-                ? 'MR-precision vertebra segmentation (local, on-device)'
-                : 'MR-precision segmentation — coming soon (engine not yet available)'
-            }
-            disabled={
-              !MR_SEGMENTATION_AVAILABLE || !currentInstance || isDetecting || isAnalyzing
-            }
-            data-testid="mr-segmentation-button"
-            icon={<ScanLine className="w-4 h-4" />}
-          />
-
           {/* Per-send confirmation dialog (imperative, awaited by the handlers) */}
           <AiSendConfirmDialog />
         </>
@@ -705,8 +659,8 @@ export function ViewportToolbar({
       </div>
 
       {/* Reveal-able measurement / annotation sub-toolbar. */}
-      {showMeasureTools && (
-        <div className={rowClass} data-testid="measure-sub-toolbar">
+      {openTools === 'measure' && (
+        <div className={`${rowClass} absolute top-full mt-1`} style={subToolbarStyle} data-testid="measure-sub-toolbar">
           <ToolbarButton
             onClick={() => setActiveTool('Pointer')}
             active={activeTool === 'Pointer'}
@@ -736,6 +690,15 @@ export function ViewportToolbar({
             icon={<Triangle className="w-4 h-4" />}
           />
           <ToolbarButton
+            onClick={() => handleToggleTool('CobbAngle')}
+            active={activeTool === 'CobbAngle'}
+            isToggle
+            disabled={!currentInstance}
+            title="Cobb angle (spine) — click again to deselect"
+            data-testid="cobb-angle-button"
+            icon={<Spline className="w-4 h-4" />}
+          />
+          <ToolbarButton
             onClick={() => handleToggleTool('EllipticalRoi')}
             active={activeTool === 'EllipticalRoi'}
             isToggle
@@ -753,6 +716,33 @@ export function ViewportToolbar({
             data-testid="rectangle-roi-button"
             icon={<Square className="w-4 h-4" />}
           />
+          <ToolbarButton
+            onClick={() => handleToggleTool('Bidirectional')}
+            active={activeTool === 'Bidirectional'}
+            isToggle
+            disabled={!currentInstance}
+            title="Bidirectional (lesion long + short axis) — click again to deselect"
+            data-testid="bidirectional-button"
+            icon={<Cross className="w-4 h-4" />}
+          />
+          <ToolbarButton
+            onClick={() => handleToggleTool('Probe')}
+            active={activeTool === 'Probe'}
+            isToggle
+            disabled={!currentInstance}
+            title="Probe — click to read the pixel/HU value — click again to deselect"
+            data-testid="probe-button"
+            icon={<Pipette className="w-4 h-4" />}
+          />
+          <ToolbarButton
+            onClick={() => handleToggleTool('ArrowAnnotate')}
+            active={activeTool === 'ArrowAnnotate'}
+            isToggle
+            disabled={!currentInstance}
+            title="Arrow + label annotation — click again to deselect"
+            data-testid="arrow-annotate-button"
+            icon={<ArrowUpRight className="w-4 h-4" />}
+          />
           <ToolbarDivider />
           <ToolbarButton
             onClick={() => setActiveTool('Eraser')}
@@ -765,12 +755,62 @@ export function ViewportToolbar({
           />
         </div>
       )}
+
+      {/* Reveal-able transform sub-toolbar (rotate / flip / invert). */}
+      {openTools === 'transform' && (
+        <div className={`${rowClass} absolute top-full mt-1`} style={subToolbarStyle} data-testid="transform-sub-toolbar">
+          <ToolbarButton onClick={handleRotateLeft} title="Rotate left ([)" data-testid="rotate-left-button" icon={<RotateCcw className="w-4 h-4" />} />
+          <ToolbarButton onClick={handleRotateRight} title="Rotate right (])" data-testid="rotate-right-button" icon={<RotateCw className="w-4 h-4" />} />
+          <ToolbarDivider />
+          <ToolbarButton onClick={handleFlipHorizontal} active={settings.flipHorizontal} isToggle title="Flip horizontal (H)" data-testid="flip-h-button" icon={<FlipHorizontal className="w-4 h-4" />} />
+          <ToolbarButton onClick={handleFlipVertical} active={settings.flipVertical} isToggle title="Flip vertical (V)" data-testid="flip-v-button" icon={<FlipVertical className="w-4 h-4" />} />
+          <ToolbarDivider />
+          <ToolbarButton onClick={handleInvert} active={settings.invert} isToggle title="Invert colors (I)" data-testid="invert-button" icon={<Contrast className="w-4 h-4" />} />
+        </div>
+      )}
+
+      {/* Reveal-able AI sub-toolbar (desktop-only). */}
+      {showAiControls && openTools === 'ai' && (
+        <div className={`${rowClass} absolute top-full mt-1`} style={subToolbarStyle} data-testid="ai-sub-toolbar">
+          <ToolbarButton
+            onClick={handleAiDetection}
+            title="AI vertebrae detection (M)"
+            disabled={!currentInstance || isDetecting || isAnalyzing}
+            data-testid="ai-detection-button"
+            icon={<Target className="w-4 h-4" />}
+          />
+          <ToolbarButton
+            onClick={handleAiAnalysis}
+            title={
+              currentInstance && getAnalysisForInstance(currentInstance.sopInstanceUID)
+                ? 'View AI analysis (N)'
+                : 'AI radiology analysis (N)'
+            }
+            disabled={!currentInstance || isDetecting || isAnalyzing}
+            data-testid="ai-analysis-button"
+            icon={<FileText className="w-4 h-4" />}
+          />
+          {/* MR-precision segmentation — local TotalSegmentator-MRI; gated until
+              the engine is published (see MR_SEGMENTATION_AVAILABLE). */}
+          <ToolbarButton
+            onClick={handleMrSegmentation}
+            title={
+              MR_SEGMENTATION_AVAILABLE
+                ? 'MR-precision vertebra segmentation (local, on-device)'
+                : 'MR-precision segmentation — coming soon (engine not yet available)'
+            }
+            disabled={!MR_SEGMENTATION_AVAILABLE || !currentInstance || isDetecting || isAnalyzing}
+            data-testid="mr-segmentation-button"
+            icon={<ScanLine className="w-4 h-4" />}
+          />
+        </div>
+      )}
     </div>
   )
 }
 
 interface ToolbarButtonProps {
-  onClick: () => void
+  onClick: (e?: React.MouseEvent<HTMLButtonElement>) => void
   title: string
   icon: React.ReactNode
   active?: boolean

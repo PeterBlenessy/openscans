@@ -16,6 +16,7 @@ import { useViewportPanAndZoom } from '@/hooks/useViewportPanAndZoom'
 import { useViewportKeyboard } from '@/hooks/useViewportKeyboard'
 import { useViewportSetup } from '@/hooks/useViewportSetup'
 import { useViewportTools } from '@/hooks/useViewportTools'
+import { useStackPrefetch } from '@/hooks/useStackPrefetch'
 import { useCinePlayback } from '@/hooks/useCinePlayback'
 import { useFullscreen } from '@/hooks/useFullscreen'
 
@@ -71,6 +72,7 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
 
   // Measurement / ROI tools (Length, Angle, Elliptical/Rectangle ROI)
   useViewportTools(canvasRef, isInitialized)
+  useStackPrefetch(canvasRef, isInitialized)
 
   // Cine loop / auto-play through the current series
   useCinePlayback()
@@ -157,9 +159,11 @@ export function DicomViewport({ className = '' }: DicomViewportProps) {
         }}
       />
 
-      {/* Viewport Toolbar. In fullscreen it auto-hides and reveals on hover. */}
+      {/* Viewport Toolbar. In fullscreen it auto-hides and reveals on hover.
+          z-30 keeps it (and its measure sub-toolbar) above the annotation
+          overlay (svg z-10 / legend z-20) so tool markers never cover it. */}
       <ViewportToolbar
-        className={`absolute top-4 left-1/2 -translate-x-1/2 transition-all duration-300 ease-in-out ${
+        className={`absolute top-4 left-1/2 -translate-x-1/2 z-30 transition-all duration-300 ease-in-out ${
           isFullscreen
             ? 'opacity-0 group-hover:opacity-100 focus-within:opacity-100 pointer-events-auto'
             : ''
