@@ -14,6 +14,7 @@ import { initCornerstone } from '@/lib/cornerstone/initCornerstone'
 import { dicomStudyService } from '@/lib/dicom/DicomStudyService'
 import { useStudyStore } from '@/stores/studyStore'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { useAnnotationStore } from '@/stores/annotationStore'
 import { ensureLocalServer } from '@/lib/ai/localServer'
 import { localDetector } from '@/lib/ai/localVisionDetector'
 import { segmentSeries } from '@/lib/ai/segmentationServer'
@@ -103,6 +104,7 @@ export function installE2EHook(): void {
     runMrSeg,
     settingsStore: useSettingsStore,
     studyStore: useStudyStore,
+    annotationStore: useAnnotationStore,
   }
   console.log('[E2E] window.__E2E__ installed')
 }

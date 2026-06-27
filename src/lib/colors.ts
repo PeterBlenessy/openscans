@@ -45,6 +45,26 @@ export const TOOL_COLOR_OPTIONS: ReadonlyArray<{ label: string; value: string }>
 ]
 
 /**
+ * Stable, distinct color for an anatomical structure label so each segmented
+ * structure (e.g. vertebra L1 vs T12 vs an organ) gets its own consistent color
+ * across slices. The `vertebrae_` prefix is stripped so the same vertebra from
+ * different AI sources (cloud "L1" vs engine "vertebrae_L1") matches.
+ *
+ * Uses a hashed HSL hue (fixed saturation/lightness tuned for contrast on the
+ * grayscale image) rather than a fixed palette, so the ~100 structures
+ * TotalSegmentator can emit stay distinguishable instead of colliding.
+ */
+export function colorForStructure(label: string): string {
+  const key = label.trim().toLowerCase().replace(/^vertebrae[_-]/, '')
+  if (!key) return annotationColors.orange
+  let hash = 0
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0
+  // Spread hues around the wheel; golden-angle stepping keeps nearby labels apart.
+  const hue = (hash * 137) % 360
+  return `hsl(${hue}, 80%, 62%)`
+}
+
+/**
  * UI element colors - for toolbar buttons, indicators, and interface elements
  * These appear in the UI chrome, not on the medical images themselves.
  */
