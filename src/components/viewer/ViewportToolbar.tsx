@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   MonitorCog,
   Target,
@@ -97,8 +97,21 @@ export function ViewportToolbar({
   // bar): measurement tools, image transforms, and AI. One group is open at a
   // time, toggled by its main-bar button; stays open until toggled off.
   const [openTools, setOpenTools] = useState<'measure' | 'transform' | 'ai' | null>(null)
-  const toggleGroup = (group: 'measure' | 'transform' | 'ai') =>
-    setOpenTools((prev) => (prev === group ? null : group))
+  // Horizontal offset (px, relative to the toolbar) where the open sub-toolbar
+  // is anchored — set to the clicked group button so it reads as that button's
+  // submenu rather than a detached second row.
+  const [subAnchorX, setSubAnchorX] = useState<number | null>(null)
+  const toolbarRef = useRef<HTMLDivElement>(null)
+  const openGroup = (group: 'measure' | 'transform' | 'ai', e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (openTools === group) {
+      setOpenTools(null)
+      return
+    }
+    const btn = e?.currentTarget?.getBoundingClientRect()
+    const cont = toolbarRef.current?.getBoundingClientRect()
+    if (btn && cont) setSubAnchorX(btn.left + btn.width / 2 - cont.left)
+    setOpenTools(group)
+  }
   // Derive from the canonical tool list so new measurement tools don't need a
   // second edit here (Pointer/Eraser are the non-measurement viewport modes).
   const measurementToolActive = activeTool === 'Pointer' || activeTool === 'Eraser' || isMeasurementTool(activeTool)
@@ -380,8 +393,12 @@ export function ViewportToolbar({
 
 
   const rowClass = `flex items-center gap-1 backdrop-blur-sm rounded-lg p-1.5 shadow-lg border ${themeClasses.bg(theme)} ${themeClasses.border(theme)}`
+  // A sub-toolbar opens as an absolute panel centered under the button that
+  // opened it (anchored to the button, not the viewport).
+  const subToolbarStyle = { left: subAnchorX ?? '50%', transform: 'translateX(-50%)' }
+
   return (
-    <div className={`flex flex-col items-center gap-1 ${className}`}>
+    <div ref={toolbarRef} className={`flex flex-col items-center gap-1 ${className}`}>
       <div className={rowClass}>
       {/* Reset */}
       <ToolbarButton
@@ -438,7 +455,7 @@ export function ViewportToolbar({
 
       {/* Transform — opens the rotate / flip / invert sub-toolbar (see below). */}
       <ToolbarButton
-        onClick={() => toggleGroup('transform')}
+        onClick={(e) => openGroup('transform', e)}
         active={openTools === 'transform' || transformActive}
         isToggle
         title="Transform (rotate, flip, invert)"
@@ -450,7 +467,7 @@ export function ViewportToolbar({
 
       {/* Measure & annotate — opens the tool sub-toolbar (see below). */}
       <ToolbarButton
-        onClick={() => toggleGroup('measure')}
+        onClick={(e) => openGroup('measure', e)}
         active={openTools === 'measure' || measurementToolActive}
         isToggle
         disabled={!currentInstance}
@@ -613,7 +630,7 @@ export function ViewportToolbar({
           <ToolbarDivider />
           {/* AI — opens the AI sub-toolbar (detection / analysis / segmentation). */}
           <ToolbarButton
-            onClick={() => toggleGroup('ai')}
+            onClick={(e) => openGroup('ai', e)}
             active={openTools === 'ai' || isDetecting || isAnalyzing}
             isToggle
             disabled={!currentInstance}
@@ -643,7 +660,7 @@ export function ViewportToolbar({
 
       {/* Reveal-able measurement / annotation sub-toolbar. */}
       {openTools === 'measure' && (
-        <div className={rowClass} data-testid="measure-sub-toolbar">
+        <div className={`${rowClass} absolute top-full mt-1`} style={subToolbarStyle} data-testid="measure-sub-toolbar">
           <ToolbarButton
             onClick={() => setActiveTool('Pointer')}
             active={activeTool === 'Pointer'}
@@ -741,7 +758,7 @@ export function ViewportToolbar({
 
       {/* Reveal-able transform sub-toolbar (rotate / flip / invert). */}
       {openTools === 'transform' && (
-        <div className={rowClass} data-testid="transform-sub-toolbar">
+        <div className={`${rowClass} absolute top-full mt-1`} style={subToolbarStyle} data-testid="transform-sub-toolbar">
           <ToolbarButton onClick={handleRotateLeft} title="Rotate left ([)" data-testid="rotate-left-button" icon={<RotateCcw className="w-4 h-4" />} />
           <ToolbarButton onClick={handleRotateRight} title="Rotate right (])" data-testid="rotate-right-button" icon={<RotateCw className="w-4 h-4" />} />
           <ToolbarDivider />
@@ -754,7 +771,7 @@ export function ViewportToolbar({
 
       {/* Reveal-able AI sub-toolbar (desktop-only). */}
       {showAiControls && openTools === 'ai' && (
-        <div className={rowClass} data-testid="ai-sub-toolbar">
+        <div className={`${rowClass} absolute top-full mt-1`} style={subToolbarStyle} data-testid="ai-sub-toolbar">
           <ToolbarButton
             onClick={handleAiDetection}
             title="AI vertebrae detection (M)"
@@ -793,7 +810,7 @@ export function ViewportToolbar({
 }
 
 interface ToolbarButtonProps {
-  onClick: () => void
+  onClick: (e?: React.MouseEvent<HTMLButtonElement>) => void
   title: string
   icon: React.ReactNode
   active?: boolean
