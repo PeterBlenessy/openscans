@@ -105,9 +105,20 @@ export function useViewportSetup(options: UseViewportSetupOptions): UseViewportS
     const element = canvasRef.current
 
     try {
-      // WebGL renderer (GPU) when enabled; cornerstone falls back to Canvas if
-      // WebGL is unavailable. Otherwise the default Canvas 2D renderer.
-      cornerstone.enable(element, useWebGL ? { renderer: 'webgl' } : undefined)
+      // WebGL renderer (GPU) when enabled. cornerstone falls back to Canvas when
+      // WebGL is *unavailable*, but a renderer that throws at enable (e.g. GL
+      // context creation failure) would otherwise leave the element unusable —
+      // so retry with the Canvas renderer explicitly.
+      try {
+        cornerstone.enable(element, useWebGL ? { renderer: 'webgl' } : undefined)
+      } catch (glErr) {
+        if (useWebGL) {
+          console.warn('WebGL renderer failed to enable; falling back to Canvas:', glErr)
+          cornerstone.enable(element)
+        } else {
+          throw glErr
+        }
+      }
       // Force resize to ensure canvas fills container and uses devicePixelRatio for High-DPI displays
       // The 'true' parameter enables high-DPI support (scales canvas by devicePixelRatio)
       cornerstone.resize(element, true)
